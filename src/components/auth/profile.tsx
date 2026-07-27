@@ -106,15 +106,26 @@ export function Profile() {
       const { signInWithPopup } = await import('firebase/auth')
       const cred = await signInWithPopup(fb.auth, fb.googleProvider)
       const idToken = await cred.user.getIdToken()
+      // Send email/name/photo alongside idToken as a backup in case
+      // the server's Admin SDK can't verify the token
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({
+          idToken,
+          email: cred.user.email || undefined,
+          name: cred.user.displayName || undefined,
+          image: cred.user.photoURL || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error || 'Google sign-in failed')
         return
+      }
+      if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
+        console.warn('Auth warnings:', data.warnings)
+        toast.info('Signed in with warnings — check /api/debug-env for details.')
       }
       signIn({
         email: data.user.email,
@@ -129,9 +140,15 @@ export function Profile() {
       }
     } catch (e) {
       console.error('Google popup failed:', e)
-      // Likely "auth/configuration-not-found" — Google provider not enabled in Firebase Console
-      toast.info('Google popup sign-in needs to be enabled in your Firebase Console (Authentication → Sign-in method → Google). Falling back to email sign-in.')
-      handleSignIn()
+      const errMsg = (e as Error)?.message || ''
+      if (errMsg.includes('configuration-not-found') || errMsg.includes('auth/configuration-not-found')) {
+        toast.error('Google Sign-In provider not enabled. Open Firebase Console → Authentication → Sign-in method → enable Google, then try again.')
+      } else if (errMsg.includes('popup-closed-by-user') || errMsg.includes('cancelled')) {
+        toast.info('Sign-in cancelled.')
+      } else {
+        toast.info('Google popup failed: ' + errMsg.substring(0, 120) + '. Falling back to email sign-in.')
+        handleSignIn()
+      }
     } finally {
       setLoading(false)
     }
