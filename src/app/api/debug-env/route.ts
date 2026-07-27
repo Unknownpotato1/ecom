@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { isAdminAvailable, getAdminInitError } from '@/lib/firebase-admin'
-import { isDbAvailable } from '@/lib/firestore'
+import { isAdminAvailable, getAdminInitError, getAdmin } from '@/lib/firebase-admin'
 
 /**
  * GET /api/debug-env
@@ -8,10 +7,19 @@ import { isDbAvailable } from '@/lib/firestore'
  * Use this to diagnose why Firebase Auth, Firestore, or Cloudinary isn't working on Vercel.
  */
 export async function GET() {
+  // Inspect the admin app object to see what methods are available
+  const adminApp = getAdmin() as unknown as Record<string, unknown> | null
+  let adminKeys: string[] = []
+  let firestoreType: string = 'no-app'
+  if (adminApp) {
+    adminKeys = Object.keys(adminApp)
+    const fs = (adminApp as { firestore?: unknown }).firestore
+    firestoreType = typeof fs
+  }
+
   return NextResponse.json({
     firebase: {
       serviceAccountSet: !!process.env.FIREBASE_SERVICE_ACCOUNT,
-      serviceAccountLength: process.env.FIREBASE_SERVICE_ACCOUNT?.length || 0,
       serviceAccountValidJson:
         (() => {
           const raw = process.env.FIREBASE_SERVICE_ACCOUNT
@@ -25,22 +33,16 @@ export async function GET() {
         })(),
       adminSdkAvailable: isAdminAvailable(),
       adminSdkInitError: getAdminInitError(),
+      adminAppKeys: adminKeys,
+      firestoreMethodType: firestoreType,
       clientApiKeySet: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       clientProjectIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       clientAppIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    },
-    firestore: {
-      available: isDbAvailable(),
     },
     cloudinary: {
       cloudNameSet: !!process.env.CLOUDINARY_CLOUD_NAME,
       apiKeySet: !!process.env.CLOUDINARY_API_KEY,
       apiSecretSet: !!process.env.CLOUDINARY_API_SECRET,
-    },
-    database: {
-      // Legacy — we now use Firestore, but keep for backwards compat
-      urlSet: !!process.env.DATABASE_URL,
-      note: 'Using Firestore as primary database. DATABASE_URL is no longer required.',
     },
     nodeEnv: process.env.NODE_ENV,
     vercelEnv: process.env.VERCEL_ENV,
