@@ -5,7 +5,6 @@ import {
   Menu,
   Search,
   ShoppingBag,
-  User,
   X,
   ChevronRight,
 } from 'lucide-react'
@@ -15,15 +14,6 @@ import { useAuth } from '@/lib/auth-store'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 
 const MENU_LINKS = [
@@ -103,7 +93,7 @@ export function Header() {
             </button>
           </div>
 
-          {/* Right: actions */}
+          {/* Right: actions (search + bag only; account is in the menu) */}
           <div className="flex items-center justify-end gap-1 sm:gap-2">
             <Button
               variant="ghost"
@@ -114,60 +104,6 @@ export function Header() {
             >
               <Search className="h-5 w-5" />
             </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full text-white hover:bg-white/15"
-                  aria-label="Account"
-                >
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {user ? (
-                  <>
-                    <DropdownMenuLabel className="flex items-center gap-2">
-                      <Avatar className="h-8 w-8">
-                        {user.image && <AvatarImage src={user.image} alt={user.name || user.email} />}
-                        <AvatarFallback className="bg-brand-soft text-brand">
-                          {(user.name || user.email)[0]?.toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium leading-tight">{user.name || 'Account'}</span>
-                        <span className="text-xs text-muted-foreground leading-tight truncate max-w-[140px]">{user.email}</span>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => useUI.getState().goOrders()}>
-                      My Orders
-                    </DropdownMenuItem>
-                    {isAdmin() && (
-                      <DropdownMenuItem onClick={goAdmin} className="text-brand font-medium">
-                        Admin Panel
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => signOut()} className="text-destructive">
-                      Sign out
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <DropdownMenuLabel>Account</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => useUI.getState().goProfile()}>
-                      Sign in with Google
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => useUI.getState().goOrders()}>
-                      Track Order
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             <Button
               variant="ghost"

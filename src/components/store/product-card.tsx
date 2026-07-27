@@ -105,8 +105,6 @@ export function ProductCard({ product }: { product: Product }) {
           {product.title}
         </h3>
 
-        <p className="mt-1 text-xs text-muted-foreground line-clamp-1">{product.description}</p>
-
         <div className="mt-auto pt-3 flex items-end justify-between gap-2">
           <div className="flex flex-col">
             <span className="text-base font-semibold text-price">{formatPrice(product.price)}</span>

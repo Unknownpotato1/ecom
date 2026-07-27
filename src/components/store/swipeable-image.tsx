@@ -16,6 +16,9 @@ interface SwipeableImageProps {
   threshold?: number
   /** initial index */
   initialIndex?: number
+  /** adaptive: no fixed height, image shows at natural aspect ratio (no padding/cropping).
+   *  Only the active image renders (no sliding track) so height adjusts per image. */
+  adaptive?: boolean
 }
 
 /**
@@ -36,6 +39,7 @@ export function SwipeableImage({
   objectFit = 'cover',
   threshold = 40,
   initialIndex = 0,
+  adaptive = false,
 }: SwipeableImageProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex)
   const touchStartX = useRef(0)
@@ -93,6 +97,81 @@ export function SwipeableImage({
     return (
       <div className={cn('flex items-center justify-center bg-pink-50', className)}>
         <span className="text-muted-foreground text-sm">No image</span>
+      </div>
+    )
+  }
+
+  // Adaptive mode: render only the active image at natural dimensions.
+  // No fixed height, no sliding track — the image shows at its full natural
+  // aspect ratio with zero padding/cropping. Swiping swaps the image.
+  if (adaptive) {
+    const img = images[activeIndex]
+    return (
+      <div
+        className={cn('relative select-none cursor-grab active:cursor-grabbing', className)}
+        onTouchStart={(e) => handleStart(e.touches[0].clientX)}
+        onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+        onTouchEnd={handleEnd}
+        onMouseDown={(e) => handleStart(e.clientX)}
+        onMouseMove={(e) => handleMove(e.clientX)}
+        onMouseUp={handleEnd}
+        onMouseLeave={handleEnd}
+        onClickCapture={handleClickCapture}
+      >
+        <img
+          src={img.url}
+          alt={img.alt || ''}
+          className={cn('block w-full h-auto', imageClassName)}
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+          draggable={false}
+        />
+
+        {/* Desktop arrow controls */}
+        {images.length > 1 && indicator === 'bar' && (
+          <>
+            <button
+              type="button"
+              onClickCapture={handleClickCapture}
+              onClick={(e) => { e.stopPropagation(); prev() }}
+              className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100"
+              aria-label="Previous image"
+              style={{ opacity: 0 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClickCapture={handleClickCapture}
+              onClick={(e) => { e.stopPropagation(); next() }}
+              className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 h-9 w-9 items-center justify-center rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white opacity-0 hover:opacity-100 transition-opacity group-hover:opacity-100"
+              aria-label="Next image"
+              style={{ opacity: 0 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </>
+        )}
+
+        {/* Progress bar */}
+        {images.length > 1 && indicator === 'bar' && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/15">
+            <div
+              className="h-full bg-brand transition-all duration-300 ease-out"
+              style={{ width: `${((activeIndex + 1) / images.length) * 100}%` }}
+            />
+          </div>
+        )}
+
+        {/* Image counter badge */}
+        {images.length > 1 && indicator === 'bar' && (
+          <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-white text-[10px] font-medium">
+            {activeIndex + 1} / {images.length}
+          </div>
+        )}
       </div>
     )
   }

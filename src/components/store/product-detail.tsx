@@ -169,9 +169,9 @@ export function ProductDetail({ productId }: { productId: string }) {
           <div className="relative group">
             <SwipeableImage
               images={product.images}
-              className="w-full h-[55vh] sm:h-[65vh] lg:h-[75vh] lg:rounded-xl bg-pink-50 lg:border lg:border-pink-100"
-              imageClassName="w-full h-full"
-              objectFit="contain"
+              className="w-full lg:rounded-xl"
+              imageClassName="w-full"
+              adaptive
               indicator="bar"
               onIndexChange={setActiveImage}
             />
@@ -226,8 +226,6 @@ export function ProductDetail({ productId }: { productId: string }) {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Inclusive of all taxes</p>
-
-            <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{product.description}</p>
 
             {/* Quantity + Add */}
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -337,7 +335,7 @@ export function ProductDetail({ productId }: { productId: string }) {
               <div className="py-4 text-sm">
                 {tab === 'description' && (
                   <div className="space-y-3 text-muted-foreground leading-relaxed">
-                    <p>{product.longDescription || product.description}</p>
+                    <p>{product.longDescription || 'No description available.'}</p>
                     <p>
                       Every Aurora hamper is hand-packed in our Bengaluru studio. We use recyclable kraft boxes,
                       satin ribbons, and a handwritten note card so your gift feels as thoughtful as it looks.

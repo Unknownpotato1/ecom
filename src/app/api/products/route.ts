@@ -41,14 +41,14 @@ export async function POST(req: NextRequest) {
     images,
   } = body
 
-  if (!title || !description || price == null) {
+  if (!title || price == null) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
   try {
     const product = await createProduct({
       title,
-      description,
+      description: description || '',
       longDescription: longDescription ?? null,
       price: Number(price),
       comparedPrice: comparedPrice ? Number(comparedPrice) : null,

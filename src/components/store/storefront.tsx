@@ -14,6 +14,7 @@ interface Props {
 export function Storefront({ heroFallback }: Props) {
   const [sections, setSections] = useState<Section[]>([])
   const [customSections, setCustomSections] = useState<CustomSection[]>([])
+  const [heroSetting, setHeroSetting] = useState<HeroConfig | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,8 +22,9 @@ export function Storefront({ heroFallback }: Props) {
     Promise.all([
       fetch('/api/sections').then((r) => r.json()),
       fetch('/api/custom-sections').then((r) => r.json()),
+      fetch('/api/settings').then((r) => r.json()),
     ])
-      .then(([secData, customData]) => {
+      .then(([secData, customData, settingsData]) => {
         if (!active) return
         const visibleSections = (secData.sections as Section[]).filter((s) => s.visible)
         // Only render custom sections marked as 'storefront' (default) on the home page.
@@ -32,6 +34,14 @@ export function Storefront({ heroFallback }: Props) {
           .sort((a, b) => a.position - b.position)
         setSections(visibleSections.sort((a, b) => a.position - b.position))
         setCustomSections(visibleCustom)
+        // Load hero config from settings (where admin saves it)
+        if (settingsData.settings?.hero) {
+          try {
+            setHeroSetting(JSON.parse(settingsData.settings.hero))
+          } catch {
+            // ignore
+          }
+        }
         setLoading(false)
       })
       .catch(() => {
@@ -98,14 +108,19 @@ export function Storefront({ heroFallback }: Props) {
         }
         const s = item.data
         if (s.type === 'hero') {
-          const config: HeroConfig = s.config
+          // Priority: admin-saved settings.hero > section config > fallback
+          // The admin hero editor saves to settings.hero, NOT to the section config.
+          // So we check heroSetting first — if it has an imageUrl, use it.
+          const sectionConfig: HeroConfig = s.config
             ? JSON.parse(s.config)
             : heroFallback || { imageUrl: '', title: 'Aurora', subtitle: '' }
-          const merged: HeroConfig = {
-            ...config,
-            ...(config.imageUrl ? {} : (heroFallback || {})),
-          }
-          return <HeroSection key={s.id} config={merged} />
+          const adminConfig = heroSetting
+          const effectiveConfig: HeroConfig = adminConfig?.imageUrl
+            ? adminConfig
+            : sectionConfig.imageUrl
+            ? sectionConfig
+            : heroFallback || { imageUrl: '' }
+          return <HeroSection key={s.id} config={effectiveConfig} />
         }
         if (s.type === 'products') {
           const cfg = s.config ? JSON.parse(s.config) : { filter: 'all' }

@@ -106,7 +106,7 @@ export function AdminProducts() {
     setDraft({
       id: p.id,
       title: p.title,
-      description: p.description,
+      description: p.description || '',
       longDescription: p.longDescription || '',
       price: String(p.price),
       comparedPrice: p.comparedPrice ? String(p.comparedPrice) : '',
@@ -155,8 +155,8 @@ export function AdminProducts() {
   }
 
   const save = async () => {
-    if (!draft.title || !draft.description || !draft.price) {
-      toast.error('Title, description and price are required')
+    if (!draft.title || !draft.price) {
+      toast.error('Title and price are required')
       return
     }
     setSaving(true)
@@ -176,7 +176,7 @@ export function AdminProducts() {
 
     const body = {
       title: draft.title,
-      description: draft.description,
+      description: draft.description || '',
       longDescription: draft.longDescription || null,
       price: Number(draft.price),
       comparedPrice: draft.comparedPrice ? Number(draft.comparedPrice) : null,
@@ -373,11 +373,7 @@ export function AdminProducts() {
                 <Input id="p-title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} className="mt-1" placeholder="e.g. Midnight Bliss Chocolate Hamper" />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="p-desc" className="text-xs">Short description *</Label>
-                <Input id="p-desc" value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} className="mt-1" placeholder="Shown on product cards" />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="p-long" className="text-xs">Long description</Label>
+                <Label htmlFor="p-long" className="text-xs">Description</Label>
                 <Textarea id="p-long" value={draft.longDescription} onChange={(e) => setDraft((d) => ({ ...d, longDescription: e.target.value }))} rows={3} className="mt-1" placeholder="Shown on product detail page" />
               </div>
               <div>

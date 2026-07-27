@@ -2,7 +2,7 @@ export interface Product {
   id: string
   title: string
   slug: string
-  description: string
+  description?: string
   longDescription?: string | null
   price: number
   comparedPrice?: number | null
