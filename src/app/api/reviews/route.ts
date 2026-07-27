@@ -11,7 +11,8 @@ export async function GET(req: NextRequest) {
     const db = app.firestore()
     let q: CollectionRefLike = db.collection('reviews')
     if (productId) q = q.where('productId', '==', productId)
-    const snap = await q.orderBy('createdAt', 'desc').get()
+    // where() only (no orderBy) to avoid composite index requirement; sort in memory
+    const snap = await q.get()
     const reviews: ReviewDoc[] = snap.docs.map((d) => {
       const data = (d.data() || {}) as Record<string, unknown>
       return {
@@ -25,6 +26,12 @@ export async function GET(req: NextRequest) {
           ? (data.createdAt as Date).toISOString()
           : (data.createdAt as string) || new Date().toISOString(),
       } as ReviewDoc
+    })
+    // Sort in memory by createdAt descending
+    reviews.sort((a, b) => {
+      const ta = new Date(a.createdAt).getTime()
+      const tb = new Date(b.createdAt).getTime()
+      return tb - ta
     })
     return NextResponse.json({ reviews })
   } catch (e) {

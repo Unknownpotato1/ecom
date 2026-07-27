@@ -250,13 +250,22 @@ export async function listProducts(opts: {
 } = {}): Promise<ProductDoc[]> {
   const database = db()
   if (!database) return []
+  // NOTE: Do NOT combine .where() with .orderBy() — Firestore requires a
+  // composite index for that, which would need manual creation in the console.
+  // Instead, fetch with where() only (single-field indexes are auto-created)
+  // and sort in memory.
   let q: CollectionRefLike = database.collection('products')
   if (opts.category) q = q.where('category', '==', opts.category)
   if (opts.trending) q = q.where('isTrending', '==', true)
   if (opts.best) q = q.where('isBestSeller', '==', true)
-  q = q.orderBy('createdAt', 'desc')
   const snap = await q.get()
   let products = snap.docs.map(snapshotToProduct).filter(Boolean) as ProductDoc[]
+  // Sort in memory by createdAt descending (newest first)
+  products.sort((a, b) => {
+    const ta = new Date(a.createdAt).getTime()
+    const tb = new Date(b.createdAt).getTime()
+    return tb - ta
+  })
   if (opts.search) {
     const s = opts.search.toLowerCase()
     products = products.filter(
@@ -272,14 +281,13 @@ export async function getProduct(id: string): Promise<ProductDoc | null> {
   const snap = await database.collection('products').doc(id).get()
   const product = snapshotToProduct(snap)
   if (!product) return null
-  // Attach reviews
+  // Attach reviews — where() only (no orderBy) to avoid composite index requirement
   const reviewsSnap = await database
     .collection('reviews')
     .where('productId', '==', id)
-    .orderBy('createdAt', 'desc')
     .get()
-  product.reviews = reviewsSnap.docs.map((d) => {
-    const data = d.data()
+  const reviews: ReviewDoc[] = reviewsSnap.docs.map((d) => {
+    const data = d.data()!
     return {
       id: d.id,
       productId: data.productId,
@@ -291,6 +299,13 @@ export async function getProduct(id: string): Promise<ProductDoc | null> {
       createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
     } as ReviewDoc
   })
+  // Sort in memory by createdAt descending
+  reviews.sort((a, b) => {
+    const ta = new Date(a.createdAt).getTime()
+    const tb = new Date(b.createdAt).getTime()
+    return tb - ta
+  })
+  product.reviews = reviews
   return product
 }
 
@@ -481,12 +496,12 @@ export async function createOrder(input: {
 export async function listOrders(email?: string): Promise<OrderDoc[]> {
   const database = db()
   if (!database) return []
+  // where() only (no orderBy) to avoid composite index requirement
   let q: CollectionRefLike = database.collection('orders')
   if (email) q = q.where('customerEmail', '==', email)
-  q = q.orderBy('createdAt', 'desc')
   const snap = await q.get()
-  return snap.docs.map((d) => {
-    const data = d.data()
+  const orders = snap.docs.map((d) => {
+    const data = d.data()!
     return {
       id: d.id,
       orderNumber: data.orderNumber || '',
@@ -507,6 +522,13 @@ export async function listOrders(email?: string): Promise<OrderDoc[]> {
       items: data.items || [],
     } as OrderDoc
   })
+  // Sort in memory by createdAt descending
+  orders.sort((a, b) => {
+    const ta = new Date(a.createdAt).getTime()
+    const tb = new Date(b.createdAt).getTime()
+    return tb - ta
+  })
+  return orders
 }
 
 // --- Sections ---
@@ -514,12 +536,12 @@ export async function listOrders(email?: string): Promise<OrderDoc[]> {
 export async function listSections(all = false): Promise<SectionDoc[]> {
   const database = db()
   if (!database) return []
+  // where() only (no orderBy) to avoid composite index requirement
   let q: CollectionRefLike = database.collection('sections')
   if (!all) q = q.where('visible', '==', true)
-  q = q.orderBy('position', 'asc')
   const snap = await q.get()
-  return snap.docs.map((d) => {
-    const data = d.data()
+  const sections = snap.docs.map((d) => {
+    const data = d.data()!
     return {
       id: d.id,
       type: data.type || '',
@@ -529,6 +551,9 @@ export async function listSections(all = false): Promise<SectionDoc[]> {
       config: data.config || null,
     } as SectionDoc
   })
+  // Sort in memory by position ascending
+  sections.sort((a, b) => a.position - b.position)
+  return sections
 }
 
 export async function createSection(input: {
