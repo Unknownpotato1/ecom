@@ -773,6 +773,8 @@ function AdminCustomSections() {
 function AdminSettings() {
   const [shippingFee, setShippingFee] = useState('99')
   const [freeThreshold, setFreeThreshold] = useState('1499')
+  const [logoUrl, setLogoUrl] = useState('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -782,9 +784,39 @@ function AdminSettings() {
       .then((d) => {
         setShippingFee(d.settings?.shippingFee || '99')
         setFreeThreshold(d.settings?.freeShippingThreshold || '1499')
+        setLogoUrl(d.settings?.logoUrl || '')
         setLoading(false)
       })
   }, [])
+
+  const handleLogoUpload = async (file: File) => {
+    setUploadingLogo(true)
+    toast.info('Uploading logo...')
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (data.url) {
+        setLogoUrl(data.url)
+        // Save immediately so the header updates on next page load
+        await fetch('/api/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            updates: [{ key: 'logoUrl', value: data.url }],
+          }),
+        })
+        toast.success('Logo uploaded and saved')
+      } else {
+        toast.error('Logo upload failed: ' + (data.error || 'Unknown error'))
+      }
+    } catch (e) {
+      toast.error('Logo upload failed: ' + (e as Error).message)
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
 
   const save = async () => {
     setSaving(true)
@@ -795,6 +827,7 @@ function AdminSettings() {
         updates: [
           { key: 'shippingFee', value: shippingFee },
           { key: 'freeShippingThreshold', value: freeThreshold },
+          { key: 'logoUrl', value: logoUrl },
         ],
       }),
     })
@@ -805,25 +838,95 @@ function AdminSettings() {
   if (loading) return <div className="text-sm text-muted-foreground">Loading...</div>
 
   return (
-    <Card className="border-pink-100">
-      <CardHeader>
-        <CardTitle className="text-base">Store settings</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 max-w-md">
-        <div>
-          <Label htmlFor="ship-fee" className="text-xs">Shipping fee (₹)</Label>
-          <Input id="ship-fee" value={shippingFee} onChange={(e) => setShippingFee(e.target.value)} className="mt-1" />
-        </div>
-        <div>
-          <Label htmlFor="free-ship" className="text-xs">Free shipping threshold (₹)</Label>
-          <Input id="free-ship" value={freeThreshold} onChange={(e) => setFreeThreshold(e.target.value)} className="mt-1" />
-          <p className="text-[11px] text-muted-foreground mt-1">Orders above this amount ship free.</p>
-        </div>
-        <Button className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={save}>
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Save settings
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      {/* Logo upload */}
+      <Card className="border-pink-100">
+        <CardHeader>
+          <CardTitle className="text-base">Store logo</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Preview — adaptive dimensions like hero, no forced circle */}
+          <div className="rounded-lg overflow-hidden bg-pink-50 border border-pink-100 flex items-center justify-center p-4 min-h-[80px]">
+            {logoUrl ? (
+               
+              <img src={logoUrl} alt="Store logo" className="block max-h-24 w-auto" style={{ display: 'block', maxHeight: '96px', width: 'auto' }} />
+            ) : (
+              <div className="flex items-center justify-center text-muted-foreground text-sm py-6">
+                No logo uploaded — header shows default "A" badge
+              </div>
+            )}
+          </div>
+
+          {/* Upload */}
+          <div>
+            <Label className="text-xs">Logo image</Label>
+            <div className="mt-1 flex gap-2">
+              <Input
+                placeholder="Image URL or upload below"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+              />
+              <label className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-brand text-white text-sm font-medium cursor-pointer hover:shadow-lg shrink-0">
+                {uploadingLogo ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <ImageIcon className="h-4 w-4 mr-1.5" />}
+                {uploadingLogo ? 'Uploading...' : 'Upload'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) handleLogoUpload(f)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">Upload any logo — square, horizontal, or vertical. It displays at its natural aspect ratio in the header center (not forced into a circle). JPG/PNG/WebP/SVG, max 10MB.</p>
+          </div>
+
+          {/* Clear logo */}
+          {logoUrl && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={async () => {
+                setLogoUrl('')
+                await fetch('/api/settings', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ updates: [{ key: 'logoUrl', value: '' }] }),
+                })
+                toast.success('Logo removed — header will show default badge')
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove logo
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Shipping settings */}
+      <Card className="border-pink-100">
+        <CardHeader>
+          <CardTitle className="text-base">Shipping settings</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 max-w-md">
+          <div>
+            <Label htmlFor="ship-fee" className="text-xs">Shipping fee (₹)</Label>
+            <Input id="ship-fee" value={shippingFee} onChange={(e) => setShippingFee(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <Label htmlFor="free-ship" className="text-xs">Free shipping threshold (₹)</Label>
+            <Input id="free-ship" value={freeThreshold} onChange={(e) => setFreeThreshold(e.target.value)} className="mt-1" />
+            <p className="text-[11px] text-muted-foreground mt-1">Orders above this amount ship free.</p>
+          </div>
+          <Button className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={save}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Save settings
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

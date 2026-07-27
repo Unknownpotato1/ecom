@@ -41,9 +41,18 @@ export function Header() {
   const { goHome, goAdmin, goOrders, searchOpen, setSearchOpen, mobileMenuOpen, setMobileMenuOpen, goSearch } = useUI()
   const { user, isAdmin, signOut } = useAuth()
   const [searchVal, setSearchVal] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
   const [mounted, setMounted] = useState(false)
+
   useEffect(() => {
     Promise.resolve().then(() => setMounted(true))
+    // Fetch logo from settings
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.settings?.logoUrl) setLogoUrl(d.settings.logoUrl)
+      })
+      .catch(() => {})
   }, [])
 
   const submitSearch = (e: React.FormEvent) => {
@@ -72,14 +81,25 @@ export function Header() {
             </Button>
           </div>
 
-          {/* Center: logo only */}
+          {/* Center: logo (uploaded image at natural aspect ratio, or default "A" badge) */}
           <div className="flex items-center justify-center">
             <button
               onClick={goHome}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand font-bold text-xl shadow-sm hover:scale-105 transition-transform"
+              className="inline-flex items-center justify-center hover:scale-105 transition-transform"
               aria-label="Aurora home"
             >
-              A
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Aurora"
+                  className="block"
+                  style={{ display: 'block', maxHeight: '40px', maxWidth: '160px', width: 'auto', height: 'auto' }}
+                />
+              ) : (
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand font-bold text-xl shadow-sm">
+                  A
+                </span>
+              )}
             </button>
           </div>
 
@@ -172,8 +192,11 @@ export function Header() {
         <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0">
           <SheetHeader className="p-4 border-b border-pink-100">
             <SheetTitle className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand text-white font-bold">A</span>
-              Aurora
+              {logoUrl ? (
+                <img src={logoUrl} alt="Aurora" style={{ display: 'block', maxHeight: '32px', maxWidth: '120px', width: 'auto', height: 'auto' }} />
+              ) : (
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand text-white font-bold">A</span>
+              )}
             </SheetTitle>
           </SheetHeader>
           <div className="py-2">

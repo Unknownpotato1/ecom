@@ -8,6 +8,10 @@ import type { CustomSection } from '@/lib/types'
  * Renders custom sections targeted to the product detail page
  * (location: 'product-below-actions'). Placed right after the
  * Add to bag / Buy now / Wishlist buttons.
+ *
+ * Uses compact mode so the section fills the product info column
+ * (no max-w-7xl wrapper) and hides the title heading — the section's
+ * own HTML/CSS controls all visual styling.
  */
 export function ProductCustomSections() {
   const [sections, setSections] = useState<CustomSection[]>([])
@@ -36,7 +40,7 @@ export function ProductCustomSections() {
   return (
     <div className="mt-6 space-y-4">
       {sections.map((s) => (
-        <CustomSectionRenderer key={s.id} section={s} />
+        <CustomSectionRenderer key={s.id} section={s} compact hideTitle />
       ))}
     </div>
   )

@@ -6,13 +6,20 @@ import type { CustomSection as CustomSectionType } from '@/lib/types'
 
 interface Props {
   section: CustomSectionType
+  /** Drop the max-width wrapper so the section fills its parent container (used on product page) */
+  compact?: boolean
+  /** Hide the section title heading (the section's own HTML still renders) */
+  hideTitle?: boolean
 }
 
 /**
  * Renders admin-authored HTML + CSS + JS in an isolated shadow root,
  * so the custom code cannot break the rest of the store UI.
+ *
+ * The outer wrapper does NOT add its own border — the section's CSS is
+ * responsible for any border styling. This avoids double borders.
  */
-export function CustomSectionRenderer({ section }: Props) {
+export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -62,16 +69,27 @@ export function CustomSectionRenderer({ section }: Props) {
     }
   }, [section.html, section.css, section.js, section.id])
 
+  // compact mode: no max-width wrapper, no title, no extra padding.
+  // The section's own CSS controls width, border, padding, etc.
+  if (compact) {
+    return (
+      <div className="w-full">
+        <div ref={hostRef} className="aurora-custom-host w-full" />
+      </div>
+    )
+  }
+
   return (
     <section className="relative w-full">
-      {section.title && (
+      {!hideTitle && section.title && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{section.title}</h2>
         </div>
       )}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        {/* Solid 2px brand-colored border, rounded, no overflow clipping issues */}
-        <div ref={hostRef} className="aurora-custom-host rounded-xl border-2 border-pink-200" />
+      <div className={compact ? 'px-4 sm:px-6 lg:px-8 py-4' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4'}>
+        {/* No outer border — the section's own CSS controls border styling.
+            This avoids the double-border issue. */}
+        <div ref={hostRef} className="aurora-custom-host w-full" />
       </div>
     </section>
   )
