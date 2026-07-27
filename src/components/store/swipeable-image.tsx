@@ -130,8 +130,8 @@ export function SwipeableImage({
         ))}
       </div>
 
-      {/* Desktop arrow controls (only if multiple images) */}
-      {images.length > 1 && (
+      {/* Desktop arrow controls (only on bar/product-page mode) */}
+      {images.length > 1 && indicator === 'bar' && (
         <>
           <button
             type="button"
