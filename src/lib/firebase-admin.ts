@@ -27,14 +27,23 @@ function init(): admin.app.App | null {
     const sa = JSON.parse(raw)
     // The private_key from JSON has literal \n sequences — convert to real newlines
     const privateKey = sa.private_key?.replace(/\\n/g, '\n') || sa.private_key
-    if (!admin?.credential?.cert) {
+
+    // firebase-admin's CJS export has `cert` directly on the module (admin.cert),
+    // not nested under admin.credential.cert (that's the TypeScript namespace type).
+    // When using require(), the runtime object exposes: initializeApp, cert,
+    // applicationDefault, refreshToken, etc. directly.
+    const certFn = (admin as unknown as { cert?: (creds: unknown) => unknown }).cert
+      || (admin as unknown as { credential?: { cert?: (creds: unknown) => unknown } }).credential?.cert
+
+    if (!certFn || typeof certFn !== 'function') {
       throw new Error(
-        'firebase-admin credential.cert is undefined. Got keys: ' +
+        'firebase-admin cert function not found. Available keys: ' +
           Object.keys(admin || {}).join(',')
       )
     }
+
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert({
+      credential: certFn({
         projectId: sa.project_id,
         privateKey,
         clientEmail: sa.client_email,
