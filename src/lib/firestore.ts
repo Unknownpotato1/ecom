@@ -1,17 +1,18 @@
 // Firestore database layer for Aurora.
 // Uses Firebase Admin SDK (already initialized in firebase-admin.ts).
 // Collections: products, orders, reviews, sections, customSections, users, settings
-//
-// Since Firestore is NoSQL, we store arrays (images, items, specs) directly
-// on the document instead of using separate tables. This simplifies the code
-// and matches the response shapes the frontend already expects.
 
 import { getAdmin } from './firebase-admin'
-import { Firestore, FieldValue } from 'firebase-admin/firestore'
 
-let dbInstance: Firestore | null = null
+// Use require for firebase-admin/firestore to avoid CJS/ESM interop issues on Vercel.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const firestoreMod = require('firebase-admin/firestore')
+const Firestore = firestoreMod.Firestore
+const FieldValue = firestoreMod.FieldValue
 
-function db(): Firestore | null {
+let dbInstance: ReturnType<ReturnType<typeof getAdmin>['firestore']> | null = null
+
+function db() {
   if (dbInstance) return dbInstance
   const app = getAdmin()
   if (!app) return null
@@ -22,6 +23,8 @@ function db(): Firestore | null {
 export function isDbAvailable(): boolean {
   return db() !== null
 }
+
+export { FieldValue }
 
 // --- Types (match what the frontend expects) ---
 
@@ -632,5 +635,3 @@ export async function clearAllData(): Promise<void> {
     await batch.commit()
   }
 }
-
-export { FieldValue }
