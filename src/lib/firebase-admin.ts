@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin'
+import admin from 'firebase-admin'
 
 /**
  * Server-side Firebase Admin SDK.
@@ -21,8 +21,18 @@ function init(): admin.app.App | null {
 
   try {
     const sa = JSON.parse(raw)
+    // The private_key from JSON has literal \n sequences — convert to real newlines
+    // (some env var stores mangle them). If already real newlines, no-op.
+    const privateKey = sa.private_key?.replace(/\\n/g, '\n') || sa.private_key
+    if (!admin?.credential?.cert) {
+      throw new Error('firebase-admin credential.cert is undefined. Package may not be bundled correctly.')
+    }
     adminApp = admin.initializeApp({
-      credential: admin.credential.cert(sa),
+      credential: admin.credential.cert({
+        projectId: sa.project_id,
+        privateKey,
+        clientEmail: sa.client_email,
+      }),
       projectId: sa.project_id,
       storageBucket: sa.project_id + '.firebasestorage.app',
     })

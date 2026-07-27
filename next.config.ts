@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  serverExternalPackages: ["firebase-admin", "cloudinary"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
