@@ -4,27 +4,65 @@
 
 import { getAdmin } from './firebase-admin'
 
-// Use require for firebase-admin/firestore to avoid CJS/ESM interop issues on Vercel.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const firestoreMod = require('firebase-admin/firestore')
-const Firestore = firestoreMod.Firestore
-const FieldValue = firestoreMod.FieldValue
+// On Vercel, the firebase-admin package's firestore() method is available
+// on the app instance directly (no separate import of firebase-admin/firestore
+// needed for basic usage). We just need to type-cast since the require()d
+// admin module's types are looser than the ESM import's.
 
-let dbInstance: ReturnType<ReturnType<typeof getAdmin>['firestore']> | null = null
+interface FirestoreLike {
+  collection(path: string): CollectionRefLike
+  batch(): BatchLike
+  settings(opts: Record<string, unknown>): void
+}
 
-function db() {
+interface CollectionRefLike {
+  doc(id?: string): DocRefLike
+  add(data: Record<string, unknown>): Promise<{ id: string }>
+  where(field: string, op: string, value: unknown): CollectionRefLike
+  orderBy(field: string, direction?: string): CollectionRefLike
+  limit(n: number): CollectionRefLike
+  get(): Promise<{ empty: boolean; docs: DocSnapLike[]; size: number }>
+}
+
+interface DocRefLike {
+  get(): Promise<DocSnapLike>
+  set(data: Record<string, unknown>): Promise<unknown>
+  update(data: Record<string, unknown>): Promise<unknown>
+  delete(): Promise<unknown>
+}
+
+interface DocSnapLike {
+  id: string
+  exists: boolean
+  data(): Record<string, unknown> | undefined
+  ref: { delete(): Promise<unknown> }
+}
+
+interface BatchLike {
+  set(ref: DocRefLike, data: Record<string, unknown>): BatchLike
+  update(ref: DocRefLike, data: Record<string, unknown>): BatchLike
+  delete(ref: DocRefLike): BatchLike
+  commit(): Promise<unknown>
+}
+
+let dbInstance: FirestoreLike | null = null
+
+function db(): FirestoreLike | null {
   if (dbInstance) return dbInstance
-  const app = getAdmin()
-  if (!app) return null
-  dbInstance = app.firestore()
-  return dbInstance
+  const app = getAdmin() as unknown as { firestore?: () => FirestoreLike } | null
+  if (!app?.firestore) return null
+  try {
+    dbInstance = app.firestore()
+    return dbInstance
+  } catch (e) {
+    console.error('Failed to get Firestore instance:', (e as Error).message)
+    return null
+  }
 }
 
 export function isDbAvailable(): boolean {
   return db() !== null
 }
-
-export { FieldValue }
 
 // --- Types (match what the frontend expects) ---
 
@@ -131,7 +169,7 @@ export interface SettingDoc {
 
 // --- Helpers ---
 
-function snapshotToProduct(snap: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot): ProductDoc | null {
+function snapshotToProduct(snap: DocSnapLike): ProductDoc | null {
   if (!snap.exists) return null
   const data = snap.data()!
   return {
@@ -171,7 +209,7 @@ export async function listProducts(opts: {
 } = {}): Promise<ProductDoc[]> {
   const database = db()
   if (!database) return []
-  let q: FirebaseFirestore.Query = database.collection('products')
+  let q: CollectionRefLike = database.collection('products')
   if (opts.category) q = q.where('category', '==', opts.category)
   if (opts.trending) q = q.where('isTrending', '==', true)
   if (opts.best) q = q.where('isBestSeller', '==', true)
@@ -402,7 +440,7 @@ export async function createOrder(input: {
 export async function listOrders(email?: string): Promise<OrderDoc[]> {
   const database = db()
   if (!database) return []
-  let q: FirebaseFirestore.Query = database.collection('orders')
+  let q: CollectionRefLike = database.collection('orders')
   if (email) q = q.where('customerEmail', '==', email)
   q = q.orderBy('createdAt', 'desc')
   const snap = await q.get()
@@ -435,7 +473,7 @@ export async function listOrders(email?: string): Promise<OrderDoc[]> {
 export async function listSections(all = false): Promise<SectionDoc[]> {
   const database = db()
   if (!database) return []
-  let q: FirebaseFirestore.Query = database.collection('sections')
+  let q: CollectionRefLike = database.collection('sections')
   if (!all) q = q.where('visible', '==', true)
   q = q.orderBy('position', 'asc')
   const snap = await q.get()
