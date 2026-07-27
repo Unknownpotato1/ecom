@@ -62,20 +62,33 @@ function db(): FirestoreLike | null {
   }
 
   try {
-    // Lazy require firebase-admin/firestore — this patches the app object
-    // to add the firestore() method. Using require() inside the function
-    // avoids the bundler trying to statically resolve the ESM import.
+    // firebase-admin/firestore exports getFirestore(app) which returns the
+    // Firestore instance directly — this avoids relying on prototype patching
+    // of the app object (which doesn't work reliably on Vercel Turbopack).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const firestoreMod = require('firebase-admin/firestore') as {
+      getFirestore?: (app: unknown) => FirestoreLike
+      Firestore?: new (opts?: unknown) => FirestoreLike
+    }
+
+    if (firestoreMod.getFirestore && typeof firestoreMod.getFirestore === 'function') {
+      dbInstance = firestoreMod.getFirestore(app)
+      return dbInstance
+    }
+
+    // Fallback: try app.firestore() (works when firebase-admin/firestore is
+    // imported at module-load time, which patches the app prototype)
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('firebase-admin/firestore')
-    // Now app.firestore() should be available
     const firestoreFn = (app as unknown as { firestore?: () => FirestoreLike }).firestore
-    if (!firestoreFn) {
-      dbInitError = 'firestore() method still not available after require(firebase-admin/firestore)'
-      console.error(dbInitError)
-      return null
+    if (firestoreFn) {
+      dbInstance = firestoreFn.call(app)
+      return dbInstance
     }
-    dbInstance = firestoreFn.call(app)
-    return dbInstance
+
+    dbInitError = `Neither getFirestore nor app.firestore() available. Module keys: ${Object.keys(firestoreMod).join(',')}`
+    console.error(dbInitError)
+    return null
   } catch (e) {
     dbInitError = `Failed to init Firestore: ${(e as Error).message}`
     console.error(dbInitError)
