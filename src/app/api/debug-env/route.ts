@@ -1,20 +1,16 @@
 import { NextResponse } from 'next/server'
 import { isAdminAvailable, getAdminInitError, getAdmin } from '@/lib/firebase-admin'
+import { isDbAvailable, getDbInitError } from '@/lib/firestore'
 
 /**
  * GET /api/debug-env
  * Returns boolean status of each required env var (never the values).
- * Use this to diagnose why Firebase Auth, Firestore, or Cloudinary isn't working on Vercel.
  */
 export async function GET() {
-  // Inspect the admin app object to see what methods are available
   const adminApp = getAdmin() as unknown as Record<string, unknown> | null
   let adminKeys: string[] = []
-  let firestoreType: string = 'no-app'
   if (adminApp) {
     adminKeys = Object.keys(adminApp)
-    const fs = (adminApp as { firestore?: unknown }).firestore
-    firestoreType = typeof fs
   }
 
   return NextResponse.json({
@@ -34,10 +30,13 @@ export async function GET() {
       adminSdkAvailable: isAdminAvailable(),
       adminSdkInitError: getAdminInitError(),
       adminAppKeys: adminKeys,
-      firestoreMethodType: firestoreType,
       clientApiKeySet: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       clientProjectIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       clientAppIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    },
+    firestore: {
+      available: isDbAvailable(),
+      initError: getDbInitError(),
     },
     cloudinary: {
       cloudNameSet: !!process.env.CLOUDINARY_CLOUD_NAME,

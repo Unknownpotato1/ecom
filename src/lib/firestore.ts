@@ -4,10 +4,13 @@
 
 import { getAdmin } from './firebase-admin'
 
-// On Vercel, the firebase-admin package's firestore() method is available
-// on the app instance directly (no separate import of firebase-admin/firestore
-// needed for basic usage). We just need to type-cast since the require()d
-// admin module's types are looser than the ESM import's.
+// firebase-admin's app object doesn't expose firestore() directly — it's added
+// when you import firebase-admin/firestore. On Vercel Turbopack, the ESM import
+// breaks the module. We use a lazy require() inside the db() function so it
+// only runs at call-time (server-side, not during bundling).
+
+// Local TypeScript interfaces so we don't need to import types from the
+// broken firebase-admin/firestore module.
 
 interface FirestoreLike {
   collection(path: string): CollectionRefLike
@@ -46,22 +49,47 @@ interface BatchLike {
 }
 
 let dbInstance: FirestoreLike | null = null
+let dbInitError: string | null = null
 
 function db(): FirestoreLike | null {
   if (dbInstance) return dbInstance
-  const app = getAdmin() as unknown as { firestore?: () => FirestoreLike } | null
-  if (!app?.firestore) return null
+  if (dbInitError) return null
+
+  const app = getAdmin()
+  if (!app) {
+    dbInitError = 'Admin app not available'
+    return null
+  }
+
   try {
-    dbInstance = app.firestore()
+    // Lazy require firebase-admin/firestore — this patches the app object
+    // to add the firestore() method. Using require() inside the function
+    // avoids the bundler trying to statically resolve the ESM import.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('firebase-admin/firestore')
+    // Now app.firestore() should be available
+    const firestoreFn = (app as unknown as { firestore?: () => FirestoreLike }).firestore
+    if (!firestoreFn) {
+      dbInitError = 'firestore() method still not available after require(firebase-admin/firestore)'
+      console.error(dbInitError)
+      return null
+    }
+    dbInstance = firestoreFn.call(app)
     return dbInstance
   } catch (e) {
-    console.error('Failed to get Firestore instance:', (e as Error).message)
+    dbInitError = `Failed to init Firestore: ${(e as Error).message}`
+    console.error(dbInitError)
     return null
   }
 }
 
 export function isDbAvailable(): boolean {
   return db() !== null
+}
+
+export function getDbInitError(): string | null {
+  db()
+  return dbInitError
 }
 
 // --- Types (match what the frontend expects) ---
