@@ -1,4 +1,8 @@
-import admin from 'firebase-admin'
+// Use require for firebase-admin to avoid CJS/ESM interop issues on Vercel.
+// The `import admin from 'firebase-admin'` default import doesn't correctly
+// expose admin.credential.cert when bundled by Next.js Turbopack.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const admin = require('firebase-admin') as typeof import('firebase-admin')
 
 /**
  * Server-side Firebase Admin SDK.
@@ -22,10 +26,12 @@ function init(): admin.app.App | null {
   try {
     const sa = JSON.parse(raw)
     // The private_key from JSON has literal \n sequences — convert to real newlines
-    // (some env var stores mangle them). If already real newlines, no-op.
     const privateKey = sa.private_key?.replace(/\\n/g, '\n') || sa.private_key
     if (!admin?.credential?.cert) {
-      throw new Error('firebase-admin credential.cert is undefined. Package may not be bundled correctly.')
+      throw new Error(
+        'firebase-admin credential.cert is undefined. Got keys: ' +
+          Object.keys(admin || {}).join(',')
+      )
     }
     adminApp = admin.initializeApp({
       credential: admin.credential.cert({
