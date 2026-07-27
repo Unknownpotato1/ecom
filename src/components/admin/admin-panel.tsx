@@ -131,7 +131,17 @@ function SortableCustomRow({
         <GripVertical className="h-5 w-5" />
       </button>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium">{section.title}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">{section.title}</p>
+          <span className={cn(
+            'px-1.5 py-0.5 text-[9px] font-semibold rounded-full uppercase tracking-wide',
+            section.location === 'product-below-actions'
+              ? 'bg-brand text-white'
+              : 'bg-brand-soft text-brand'
+          )}>
+            {section.location === 'product-below-actions' ? 'Product page' : 'Home page'}
+          </span>
+        </div>
         <p className="text-xs text-muted-foreground line-clamp-1">
           {section.html.substring(0, 80).replace(/<[^>]+>/g, '') || 'Empty section'}
         </p>
@@ -410,15 +420,20 @@ function AdminHero() {
   const set = (k: keyof HeroConfig, v: string) => setConfig((s) => ({ ...s, [k]: v }))
 
   const handleFile = async (file: File) => {
+    toast.info('Uploading image...')
     const fd = new FormData()
     fd.append('file', file)
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
-    const data = await res.json()
-    if (data.url) {
-      set('imageUrl', data.url)
-      toast.success('Hero image uploaded')
-    } else {
-      toast.error('Upload failed')
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (data.url) {
+        set('imageUrl', data.url)
+        toast.success('Image uploaded — click "Save changes" to apply')
+      } else {
+        toast.error('Upload failed: ' + (data.error || 'Unknown error'))
+      }
+    } catch (e) {
+      toast.error('Upload failed: ' + (e as Error).message)
     }
   }
 
@@ -447,25 +462,16 @@ function AdminHero() {
           <CardTitle className="text-base">Hero banner</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Preview */}
-          <div className="relative h-48 rounded-lg overflow-hidden bg-pink-50 border border-pink-100">
+          {/* Preview — clean image, no overlays, adaptive height */}
+          <div className="rounded-lg overflow-hidden bg-pink-50 border border-pink-100">
             {config.imageUrl ? (
                
-              <img src={config.imageUrl} alt="Hero" className="absolute inset-0 h-full w-full object-cover" />
+              <img src={config.imageUrl} alt="Hero" className="block w-full h-auto" style={{ display: 'block', width: '100%', height: 'auto' }} />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-                No hero image yet
+              <div className="flex items-center justify-center text-muted-foreground text-sm py-12">
+                No hero image yet — upload below
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/55 to-transparent flex flex-col justify-center px-6">
-              {config.badge && (
-                <span className="inline-block w-fit px-2 py-0.5 mb-1 rounded-full bg-white/20 text-white text-[10px]">
-                  {config.badge}
-                </span>
-              )}
-              <p className="text-white font-bold text-xl">{config.title || 'Your headline'}</p>
-              <p className="text-white/80 text-xs line-clamp-2">{config.subtitle}</p>
-            </div>
           </div>
 
           {/* Upload */}
@@ -477,7 +483,7 @@ function AdminHero() {
                 value={config.imageUrl}
                 onChange={(e) => set('imageUrl', e.target.value)}
               />
-              <label className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-brand text-white text-sm font-medium cursor-pointer hover:shadow-lg">
+              <label className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-brand text-white text-sm font-medium cursor-pointer hover:shadow-lg shrink-0">
                 <ImageIcon className="h-4 w-4 mr-1.5" /> Upload
                 <input
                   type="file"
@@ -486,30 +492,12 @@ function AdminHero() {
                   onChange={(e) => {
                     const f = e.target.files?.[0]
                     if (f) handleFile(f)
+                    e.target.value = ''
                   }}
                 />
               </label>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Recommended: 1600×600px, JPG/PNG/WebP, max 5MB.</p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="hero-badge" className="text-xs">Badge text</Label>
-              <Input id="hero-badge" value={config.badge || ''} onChange={(e) => set('badge', e.target.value)} className="mt-1" placeholder="e.g. New Spring Collection" />
-            </div>
-            <div>
-              <Label htmlFor="hero-cta" className="text-xs">Button text</Label>
-              <Input id="hero-cta" value={config.ctaText || ''} onChange={(e) => set('ctaText', e.target.value)} className="mt-1" placeholder="e.g. Shop Best Sellers" />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="hero-title" className="text-xs">Headline</Label>
-            <Input id="hero-title" value={config.title || ''} onChange={(e) => set('title', e.target.value)} className="mt-1" placeholder="e.g. Gifts that glow" />
-          </div>
-          <div>
-            <Label htmlFor="hero-sub" className="text-xs">Subtitle</Label>
-            <Textarea id="hero-sub" value={config.subtitle || ''} onChange={(e) => set('subtitle', e.target.value)} rows={2} className="mt-1" placeholder="Short description..." />
+            <p className="text-[11px] text-muted-foreground mt-1">Upload any image — vertical or horizontal. It displays at its natural aspect ratio (no cropping). JPG/PNG/WebP, max 10MB.</p>
           </div>
         </CardContent>
       </Card>
@@ -554,6 +542,7 @@ function AdminCustomSections() {
     js: '',
     position: 0,
     visible: true,
+    location: 'storefront',
     createdAt: '',
     updatedAt: '',
   }
@@ -627,7 +616,13 @@ function AdminCustomSections() {
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: draft.title, html: draft.html, css: draft.css, js: draft.js }),
+      body: JSON.stringify({
+        title: draft.title,
+        html: draft.html,
+        css: draft.css,
+        js: draft.js,
+        location: draft.location || 'storefront',
+      }),
     })
     setSaving(false)
     setOpen(false)
@@ -701,6 +696,24 @@ function AdminCustomSections() {
                 placeholder="e.g. Spring Festive Banner"
                 className="mt-1"
               />
+            </div>
+
+            {/* Location selector */}
+            <div>
+              <Label className="text-xs">Where should this section appear?</Label>
+              <select
+                value={draft.location || 'storefront'}
+                onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))}
+                className="mt-1 w-full h-10 rounded-md border border-pink-200 bg-white px-3 text-sm"
+              >
+                <option value="storefront">🏠 Home page (storefront)</option>
+                <option value="product-below-actions">🛍️ Product page — below Buy buttons</option>
+              </select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {draft.location === 'product-below-actions'
+                  ? 'This section will appear on every product detail page, right after the Add to bag / Buy now / Wishlist buttons.'
+                  : 'This section will appear on the home page among the other storefront sections.'}
+              </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-3">

@@ -13,7 +13,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { title, html, css, js, position, visible } = body
+  const { title, html, css, js, position, visible, location } = body
   if (!title || !html) {
     return NextResponse.json({ error: 'title and html required' }, { status: 400 })
   }
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
       js: js ?? null,
       position,
       visible,
+      location: location || 'storefront',
     })
     return NextResponse.json({ section })
   } catch (e) {

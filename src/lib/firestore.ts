@@ -189,6 +189,7 @@ export interface CustomSectionDoc {
   js?: string | null
   position: number
   visible: boolean
+  location?: string
   createdAt: string
   updatedAt: string
 }
@@ -599,8 +600,8 @@ export async function listCustomSections(): Promise<CustomSectionDoc[]> {
   const database = db()
   if (!database) return []
   const snap = await database.collection('customSections').orderBy('position', 'asc').get()
-  return snap.docs.map((d) => {
-    const data = d.data()
+  const sections = snap.docs.map((d) => {
+    const data = d.data()!
     return {
       id: d.id,
       title: data.title || '',
@@ -609,10 +610,14 @@ export async function listCustomSections(): Promise<CustomSectionDoc[]> {
       js: data.js || null,
       position: data.position ?? 0,
       visible: data.visible ?? true,
+      location: data.location || 'storefront',
       createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
       updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
     } as CustomSectionDoc
   })
+  // Sort in memory by position ascending
+  sections.sort((a, b) => a.position - b.position)
+  return sections
 }
 
 export async function createCustomSection(input: {
@@ -622,11 +627,12 @@ export async function createCustomSection(input: {
   js?: string | null
   position?: number
   visible?: boolean
+  location?: string
 }): Promise<CustomSectionDoc> {
   const database = db()
   if (!database) throw new Error('Database not available')
   const snap = await database.collection('customSections').orderBy('position', 'desc').limit(1).get()
-  const maxPos = snap.empty ? -1 : (snap.docs[0].data().position ?? 0)
+  const maxPos = snap.empty ? -1 : (snap.docs[0].data()!.position ?? 0)
   const now = new Date()
   const docData = {
     title: input.title,
@@ -635,6 +641,7 @@ export async function createCustomSection(input: {
     js: input.js ?? null,
     position: input.position ?? maxPos + 1,
     visible: input.visible ?? true,
+    location: input.location || 'storefront',
     createdAt: now,
     updatedAt: now,
   }

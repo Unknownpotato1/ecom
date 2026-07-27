@@ -70,7 +70,8 @@ export function CustomSectionRenderer({ section }: Props) {
         </div>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div ref={hostRef} className="aurora-custom-host rounded-xl border border-pink-100 overflow-hidden" />
+        {/* Solid 2px brand-colored border, rounded, no overflow clipping issues */}
+        <div ref={hostRef} className="aurora-custom-host rounded-xl border-2 border-pink-200" />
       </div>
     </section>
   )

@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { SwipeableImage } from './swipeable-image'
+import { ProductCustomSections } from './product-custom-sections'
 
 const TONE_STYLES: Record<string, string> = {
   trending: 'bg-brand text-white',
@@ -291,6 +292,9 @@ export function ProductDetail({ productId }: { productId: string }) {
                 <Heart className={cn('h-4 w-4', liked ? 'fill-brand text-brand' : '')} />
               </Button>
             </div>
+
+            {/* Custom sections targeted to product page (location: 'product-below-actions') */}
+            <ProductCustomSections />
 
             {/* Trust badges */}
             <div className="mt-6 grid grid-cols-3 gap-2 text-xs">

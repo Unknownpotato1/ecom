@@ -54,6 +54,8 @@ export interface CustomSection {
   js?: string | null
   position: number
   visible: boolean
+  /** Where the section renders: 'storefront' (home page) | 'product-below-actions' (product page, after Add to bag/Buy now/Wishlist) */
+  location?: string
   createdAt: string
   updatedAt: string
 }
