@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { clearAllData, createProduct, createSection, upsertSettings } from '@/lib/firestore'
 
 const SAMPLE_PRODUCTS = [
   {
@@ -150,64 +150,77 @@ const SAMPLE_PRODUCTS = [
 ]
 
 export async function POST() {
-  // Reset
-  await db.review.deleteMany()
-  await db.productImage.deleteMany()
-  await db.product.deleteMany()
-  await db.section.deleteMany()
-  await db.customSection.deleteMany()
-  await db.siteSetting.deleteMany()
+  try {
+    // Clear existing data
+    await clearAllData()
 
-  // Seed products
-  for (const p of SAMPLE_PRODUCTS) {
-    await db.product.create({
-      data: {
+    // Seed products
+    for (const p of SAMPLE_PRODUCTS) {
+      await createProduct({
         title: p.title,
-        slug: p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
         description: p.description,
         longDescription: p.longDescription,
         price: p.price,
         comparedPrice: p.comparedPrice,
-        rating: 4 + Math.random(),
-        reviewCount: Math.floor(Math.random() * 80) + 12,
         stock: 25,
         category: p.category,
         isTrending: p.isTrending,
         isBestSeller: p.isBestSeller,
         specifications: p.specifications,
         tags: p.tags,
-        images: {
-          create: [
-            { url: p.image, alt: p.title, position: 0 },
-            {
-              url: p.image.replace('w=800', 'w=1200'),
-              alt: p.title + ' - alt view',
-              position: 1,
-            },
-          ],
-        },
-      },
+        images: [
+          { url: p.image, alt: p.title },
+          { url: p.image.replace('w=800', 'w=1200'), alt: p.title + ' - alt view' },
+        ],
+      })
+    }
+
+    // Seed default sections
+    await createSection({
+      type: 'hero',
+      position: 0,
+      visible: true,
+      title: 'Hero Banner',
+      config: JSON.stringify({
+        imageUrl: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=1600&q=80&auto=format&fit=crop',
+        title: 'Gifts that glow',
+        subtitle: 'Thoughtfully curated hampers for every occasion — hand-packed with love.',
+        ctaText: 'Shop Best Sellers',
+        badge: 'New Spring Collection',
+      }),
     })
-  }
+    await createSection({
+      type: 'products',
+      position: 1,
+      visible: true,
+      title: 'Best Sellers',
+      config: JSON.stringify({ filter: 'best' }),
+    })
+    await createSection({
+      type: 'products',
+      position: 2,
+      visible: true,
+      title: 'Trending Now',
+      config: JSON.stringify({ filter: 'trending' }),
+    })
+    await createSection({
+      type: 'products',
+      position: 3,
+      visible: true,
+      title: 'All Hampers',
+      config: JSON.stringify({ filter: 'all' }),
+    })
 
-  // Seed default sections
-  await db.section.createMany({
-    data: [
-      { type: 'hero', position: 0, visible: true, title: 'Hero Banner', config: JSON.stringify({ imageUrl: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=1600&q=80&auto=format&fit=crop', title: 'Gifts that glow', subtitle: 'Thoughtfully curated hampers for every occasion — hand-packed with love.', ctaText: 'Shop Best Sellers', badge: 'New Spring Collection' }) },
-      { type: 'products', position: 1, visible: true, title: 'Best Sellers', config: JSON.stringify({ filter: 'best' }) },
-      { type: 'products', position: 2, visible: true, title: 'Trending Now', config: JSON.stringify({ filter: 'trending' }) },
-      { type: 'products', position: 3, visible: true, title: 'All Hampers', config: JSON.stringify({ filter: 'all' }) },
-    ],
-  })
-
-  // Seed site settings
-  await db.siteSetting.createMany({
-    data: [
+    // Seed site settings
+    await upsertSettings([
       { key: 'announcement', value: 'Free shipping on orders above ₹1,499 — hand-packed with love.' },
       { key: 'shippingFee', value: '99' },
       { key: 'freeShippingThreshold', value: '1499' },
-    ],
-  })
+    ])
 
-  return NextResponse.json({ ok: true, message: 'Seeded successfully' })
+    return NextResponse.json({ ok: true, message: 'Seeded successfully' })
+  } catch (e) {
+    console.error('Seed failed:', (e as Error).message)
+    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 })
+  }
 }

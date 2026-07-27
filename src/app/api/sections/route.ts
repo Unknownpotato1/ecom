@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { listSections, createSection, updateSection } from '@/lib/firestore'
 
 // GET /api/sections - list all visible (or all with ?all=1)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const all = searchParams.get('all') === '1'
-  const sections = await db.section.findMany({
-    orderBy: { position: 'asc' },
-    ...(all ? {} : { where: { visible: true } }),
-  })
-  return NextResponse.json({ sections })
+  try {
+    const sections = await listSections(all)
+    return NextResponse.json({ sections })
+  } catch (e) {
+    console.error('GET /api/sections failed:', (e as Error).message)
+    return NextResponse.json({ sections: [], error: (e as Error).message }, { status: 500 })
+  }
 }
 
 // POST /api/sections - create a new section
@@ -17,17 +19,19 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { type, title, position, visible, config } = body
   if (!type) return NextResponse.json({ error: 'type required' }, { status: 400 })
-  const maxPos = await db.section.aggregate({ _max: { position: true } })
-  const section = await db.section.create({
-    data: {
+  try {
+    const section = await createSection({
       type,
       title: title ?? null,
-      position: position ?? (maxPos._max.position ?? -1) + 1,
-      visible: visible ?? true,
+      position,
+      visible,
       config: config ?? null,
-    },
-  })
-  return NextResponse.json({ section })
+    })
+    return NextResponse.json({ section })
+  } catch (e) {
+    console.error('POST /api/sections failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }
 
 // PUT /api/sections - bulk update positions / visibility
@@ -39,16 +43,20 @@ export async function PUT(req: NextRequest) {
     title?: string
     config?: string | null
   }>
-  for (const item of body) {
-    await db.section.update({
-      where: { id: item.id },
-      data: {
-        ...(item.position !== undefined && { position: item.position }),
-        ...(item.visible !== undefined && { visible: item.visible }),
-        ...(item.title !== undefined && { title: item.title }),
-        ...(item.config !== undefined && { config: item.config }),
-      },
-    })
+  try {
+    for (const item of body) {
+      const updates: Record<string, unknown> = {}
+      if (item.position !== undefined) updates.position = item.position
+      if (item.visible !== undefined) updates.visible = item.visible
+      if (item.title !== undefined) updates.title = item.title
+      if (item.config !== undefined) updates.config = item.config
+      if (Object.keys(updates).length > 0) {
+        await updateSection(item.id, updates)
+      }
+    }
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('PUT /api/sections failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
-  return NextResponse.json({ ok: true })
 }

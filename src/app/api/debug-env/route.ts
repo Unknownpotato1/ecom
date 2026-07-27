@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { isAdminAvailable, getAdminInitError } from '@/lib/firebase-admin'
+import { isDbAvailable } from '@/lib/firestore'
 
 /**
  * GET /api/debug-env
  * Returns boolean status of each required env var (never the values).
- * Use this to diagnose why Firebase Auth or Cloudinary isn't working on Vercel.
+ * Use this to diagnose why Firebase Auth, Firestore, or Cloudinary isn't working on Vercel.
  */
 export async function GET() {
   return NextResponse.json({
@@ -18,35 +19,18 @@ export async function GET() {
           try {
             const parsed = JSON.parse(raw)
             return !!(parsed.project_id && parsed.private_key && parsed.client_email)
-          } catch (e) {
+          } catch {
             return false
           }
         })(),
-      serviceAccountPrivateKeyStartsWith: (() => {
-        const raw = process.env.FIREBASE_SERVICE_ACCOUNT
-        if (!raw) return null
-        try {
-          const parsed = JSON.parse(raw)
-          return parsed.private_key?.substring(0, 30) || null
-        } catch {
-          return null
-        }
-      })(),
-      serviceAccountPrivateKeyHasNewlines: (() => {
-        const raw = process.env.FIREBASE_SERVICE_ACCOUNT
-        if (!raw) return null
-        try {
-          const parsed = JSON.parse(raw)
-          return parsed.private_key?.includes('\n') || false
-        } catch {
-          return null
-        }
-      })(),
       adminSdkAvailable: isAdminAvailable(),
       adminSdkInitError: getAdminInitError(),
       clientApiKeySet: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       clientProjectIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       clientAppIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    },
+    firestore: {
+      available: isDbAvailable(),
     },
     cloudinary: {
       cloudNameSet: !!process.env.CLOUDINARY_CLOUD_NAME,
@@ -54,13 +38,9 @@ export async function GET() {
       apiSecretSet: !!process.env.CLOUDINARY_API_SECRET,
     },
     database: {
+      // Legacy — we now use Firestore, but keep for backwards compat
       urlSet: !!process.env.DATABASE_URL,
-      urlIsPostgres: (process.env.DATABASE_URL || '').startsWith('postgresql://'),
-      urlIsPlaceholder: (process.env.DATABASE_URL || '').includes('placeholder'),
-      hasVercelPostgres: !!process.env.POSTGRES_PRISMA_URL,
-      willAutoFallback: !!process.env.POSTGRES_PRISMA_URL && (
-        !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('placeholder')
-      ),
+      note: 'Using Firestore as primary database. DATABASE_URL is no longer required.',
     },
     nodeEnv: process.env.NODE_ENV,
     vercelEnv: process.env.VERCEL_ENV,

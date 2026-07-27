@@ -1,0 +1,636 @@
+// Firestore database layer for Aurora.
+// Uses Firebase Admin SDK (already initialized in firebase-admin.ts).
+// Collections: products, orders, reviews, sections, customSections, users, settings
+//
+// Since Firestore is NoSQL, we store arrays (images, items, specs) directly
+// on the document instead of using separate tables. This simplifies the code
+// and matches the response shapes the frontend already expects.
+
+import { getAdmin } from './firebase-admin'
+import { Firestore, FieldValue } from 'firebase-admin/firestore'
+
+let dbInstance: Firestore | null = null
+
+function db(): Firestore | null {
+  if (dbInstance) return dbInstance
+  const app = getAdmin()
+  if (!app) return null
+  dbInstance = app.firestore()
+  return dbInstance
+}
+
+export function isDbAvailable(): boolean {
+  return db() !== null
+}
+
+// --- Types (match what the frontend expects) ---
+
+export interface ProductDoc {
+  id: string
+  title: string
+  slug: string
+  description: string
+  longDescription?: string | null
+  price: number
+  comparedPrice?: number | null
+  rating: number
+  reviewCount: number
+  stock: number
+  category?: string | null
+  isTrending: boolean
+  isBestSeller: boolean
+  specifications?: string | null // JSON string
+  tags?: string | null // JSON string
+  createdAt: string
+  updatedAt: string
+  images: Array<{
+    id: string
+    url: string
+    alt?: string | null
+    position: number
+  }>
+  reviews?: ReviewDoc[]
+}
+
+export interface ReviewDoc {
+  id: string
+  productId: string
+  userId?: string | null
+  userName: string
+  rating: number
+  title?: string | null
+  comment?: string | null
+  createdAt: string
+}
+
+export interface OrderDoc {
+  id: string
+  orderNumber: string
+  userId?: string | null
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  shippingAddress: string // JSON string
+  subtotal: number
+  shipping: number
+  total: number
+  paymentMethod: string
+  paymentStatus: string
+  orderStatus: string
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
+  items: Array<{
+    id: string
+    productId?: string | null
+    title: string
+    price: number
+    quantity: number
+    image?: string | null
+  }>
+}
+
+export interface SectionDoc {
+  id: string
+  type: string
+  title?: string | null
+  position: number
+  visible: boolean
+  config?: string | null
+}
+
+export interface CustomSectionDoc {
+  id: string
+  title: string
+  html: string
+  css?: string | null
+  js?: string | null
+  position: number
+  visible: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserDoc {
+  id: string
+  email: string
+  name?: string | null
+  image?: string | null
+  role: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SettingDoc {
+  key: string
+  value: string
+}
+
+// --- Helpers ---
+
+function snapshotToProduct(snap: FirebaseFirestore.QueryDocumentSnapshot | FirebaseFirestore.DocumentSnapshot): ProductDoc | null {
+  if (!snap.exists) return null
+  const data = snap.data()!
+  return {
+    id: snap.id,
+    title: data.title || '',
+    slug: data.slug || '',
+    description: data.description || '',
+    longDescription: data.longDescription || null,
+    price: data.price || 0,
+    comparedPrice: data.comparedPrice ?? null,
+    rating: data.rating || 0,
+    reviewCount: data.reviewCount || 0,
+    stock: data.stock || 0,
+    category: data.category || null,
+    isTrending: !!data.isTrending,
+    isBestSeller: !!data.isBestSeller,
+    specifications: data.specifications || null,
+    tags: data.tags || null,
+    createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+    updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+    images: (data.images || []).map((img: Record<string, unknown>, i: number) => ({
+      id: img.id || `img-${i}`,
+      url: img.url || '',
+      alt: img.alt || null,
+      position: img.position ?? i,
+    })),
+  }
+}
+
+// --- Products ---
+
+export async function listProducts(opts: {
+  search?: string
+  category?: string
+  trending?: boolean
+  best?: boolean
+} = {}): Promise<ProductDoc[]> {
+  const database = db()
+  if (!database) return []
+  let q: FirebaseFirestore.Query = database.collection('products')
+  if (opts.category) q = q.where('category', '==', opts.category)
+  if (opts.trending) q = q.where('isTrending', '==', true)
+  if (opts.best) q = q.where('isBestSeller', '==', true)
+  q = q.orderBy('createdAt', 'desc')
+  const snap = await q.get()
+  let products = snap.docs.map(snapshotToProduct).filter(Boolean) as ProductDoc[]
+  if (opts.search) {
+    const s = opts.search.toLowerCase()
+    products = products.filter(
+      (p) => p.title.toLowerCase().includes(s) || p.description.toLowerCase().includes(s)
+    )
+  }
+  return products
+}
+
+export async function getProduct(id: string): Promise<ProductDoc | null> {
+  const database = db()
+  if (!database) return null
+  const snap = await database.collection('products').doc(id).get()
+  const product = snapshotToProduct(snap)
+  if (!product) return null
+  // Attach reviews
+  const reviewsSnap = await database
+    .collection('reviews')
+    .where('productId', '==', id)
+    .orderBy('createdAt', 'desc')
+    .get()
+  product.reviews = reviewsSnap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      productId: data.productId,
+      userId: data.userId || null,
+      userName: data.userName || '',
+      rating: data.rating || 5,
+      title: data.title || null,
+      comment: data.comment || null,
+      createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+    } as ReviewDoc
+  })
+  return product
+}
+
+export async function createProduct(input: {
+  title: string
+  description: string
+  longDescription?: string | null
+  price: number
+  comparedPrice?: number | null
+  stock: number
+  category?: string | null
+  isTrending: boolean
+  isBestSeller: boolean
+  specifications?: string | null
+  tags?: string | null
+  images: Array<{ url: string; alt?: string }>
+}): Promise<ProductDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const now = new Date()
+  const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  // Ensure unique slug
+  let finalSlug = slug
+  let counter = 1
+  while (true) {
+    const existing = await database.collection('products').where('slug', '==', finalSlug).limit(1).get()
+    if (existing.empty) break
+    finalSlug = `${slug}-${counter++}`
+  }
+  const docData = {
+    title: input.title,
+    slug: finalSlug,
+    description: input.description,
+    longDescription: input.longDescription ?? null,
+    price: Number(input.price),
+    comparedPrice: input.comparedPrice ? Number(input.comparedPrice) : null,
+    rating: 0,
+    reviewCount: 0,
+    stock: Number(input.stock),
+    category: input.category ?? null,
+    isTrending: !!input.isTrending,
+    isBestSeller: !!input.isBestSeller,
+    specifications: input.specifications ?? null,
+    tags: input.tags ?? null,
+    createdAt: now,
+    updatedAt: now,
+    images: input.images.map((img, i) => ({
+      id: `img-${i}-${Date.now()}`,
+      url: img.url,
+      alt: img.alt ?? null,
+      position: i,
+    })),
+  }
+  const ref = await database.collection('products').add(docData)
+  const snap = await ref.get()
+  return snapshotToProduct(snap)!
+}
+
+export async function updateProduct(id: string, updates: Record<string, unknown>): Promise<ProductDoc | null> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const updateData: Record<string, unknown> = {
+    ...updates,
+    updatedAt: new Date(),
+  }
+  // Normalize numeric fields
+  if (updateData.price !== undefined) updateData.price = Number(updateData.price)
+  if (updateData.comparedPrice !== undefined) updateData.comparedPrice = updateData.comparedPrice ? Number(updateData.comparedPrice) : null
+  if (updateData.stock !== undefined) updateData.stock = Number(updateData.stock)
+  if (updateData.rating !== undefined) updateData.rating = Number(updateData.rating)
+  if (updateData.reviewCount !== undefined) updateData.reviewCount = Number(updateData.reviewCount)
+  if (updateData.isTrending !== undefined) updateData.isTrending = !!updateData.isTrending
+  if (updateData.isBestSeller !== undefined) updateData.isBestSeller = !!updateData.isBestSeller
+  // Replace images if provided
+  if (Array.isArray(updateData.images)) {
+    updateData.images = (updateData.images as Array<{ url: string; alt?: string }>).map((img, i) => ({
+      id: `img-${i}-${Date.now()}`,
+      url: img.url,
+      alt: img.alt ?? null,
+      position: i,
+    }))
+  }
+  await database.collection('products').doc(id).update(updateData)
+  const snap = await database.collection('products').doc(id).get()
+  return snapshotToProduct(snap)
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  // Delete reviews for this product
+  const reviewsSnap = await database.collection('reviews').where('productId', '==', id).get()
+  const batch = database.batch()
+  reviewsSnap.docs.forEach((d) => batch.delete(d.ref))
+  batch.delete(database.collection('products').doc(id))
+  await batch.commit()
+}
+
+// --- Reviews ---
+
+export async function createReview(input: {
+  productId: string
+  userName: string
+  rating: number
+  title?: string | null
+  comment?: string | null
+}): Promise<ReviewDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const now = new Date()
+  const docData = {
+    productId: input.productId,
+    userName: input.userName,
+    rating: Number(input.rating),
+    title: input.title ?? null,
+    comment: input.comment ?? null,
+    createdAt: now,
+  }
+  const ref = await database.collection('reviews').add(docData)
+  // Update product aggregate
+  const allReviews = await database.collection('reviews').where('productId', '==', input.productId).get()
+  const count = allReviews.size
+  const avg = count > 0 ? allReviews.docs.reduce((sum, d) => sum + (d.data().rating || 0), 0) / count : 0
+  await database.collection('products').doc(input.productId).update({
+    rating: Math.round(avg * 10) / 10,
+    reviewCount: count,
+  })
+  return {
+    id: ref.id,
+    ...docData,
+    createdAt: now.toISOString(),
+  } as ReviewDoc
+}
+
+// --- Orders ---
+
+export async function createOrder(input: {
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  shippingAddress: Record<string, string>
+  items: Array<{ productId?: string; title: string; price: number; quantity: number; image?: string }>
+  subtotal: number
+  shipping: number
+  total: number
+  paymentMethod: string
+  notes?: string | null
+  userId?: string | null
+}): Promise<OrderDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const now = new Date()
+  const orderNumber = 'AUR-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1000)
+  const docData = {
+    orderNumber,
+    userId: input.userId ?? null,
+    customerName: input.customerName,
+    customerEmail: input.customerEmail,
+    customerPhone: input.customerPhone,
+    shippingAddress: JSON.stringify(input.shippingAddress),
+    subtotal: Number(input.subtotal),
+    shipping: Number(input.shipping),
+    total: Number(input.total),
+    paymentMethod: input.paymentMethod,
+    paymentStatus: input.paymentMethod === 'cod' ? 'pending' : 'paid',
+    orderStatus: 'placed',
+    notes: input.notes ?? null,
+    createdAt: now,
+    updatedAt: now,
+    items: input.items.map((it, i) => ({
+      id: `item-${i}-${Date.now()}`,
+      productId: it.productId ?? null,
+      title: it.title,
+      price: Number(it.price),
+      quantity: Number(it.quantity),
+      image: it.image ?? null,
+    })),
+  }
+  const ref = await database.collection('orders').add(docData)
+  return {
+    id: ref.id,
+    ...docData,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  } as OrderDoc
+}
+
+export async function listOrders(email?: string): Promise<OrderDoc[]> {
+  const database = db()
+  if (!database) return []
+  let q: FirebaseFirestore.Query = database.collection('orders')
+  if (email) q = q.where('customerEmail', '==', email)
+  q = q.orderBy('createdAt', 'desc')
+  const snap = await q.get()
+  return snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      orderNumber: data.orderNumber || '',
+      userId: data.userId || null,
+      customerName: data.customerName || '',
+      customerEmail: data.customerEmail || '',
+      customerPhone: data.customerPhone || '',
+      shippingAddress: data.shippingAddress || '{}',
+      subtotal: data.subtotal || 0,
+      shipping: data.shipping || 0,
+      total: data.total || 0,
+      paymentMethod: data.paymentMethod || '',
+      paymentStatus: data.paymentStatus || 'pending',
+      orderStatus: data.orderStatus || 'placed',
+      notes: data.notes || null,
+      createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+      items: data.items || [],
+    } as OrderDoc
+  })
+}
+
+// --- Sections ---
+
+export async function listSections(all = false): Promise<SectionDoc[]> {
+  const database = db()
+  if (!database) return []
+  let q: FirebaseFirestore.Query = database.collection('sections')
+  if (!all) q = q.where('visible', '==', true)
+  q = q.orderBy('position', 'asc')
+  const snap = await q.get()
+  return snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      type: data.type || '',
+      title: data.title || null,
+      position: data.position ?? 0,
+      visible: data.visible ?? true,
+      config: data.config || null,
+    } as SectionDoc
+  })
+}
+
+export async function createSection(input: {
+  type: string
+  title?: string | null
+  position?: number
+  visible?: boolean
+  config?: string | null
+}): Promise<SectionDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const snap = await database.collection('sections').orderBy('position', 'desc').limit(1).get()
+  const maxPos = snap.empty ? -1 : (snap.docs[0].data().position ?? 0)
+  const docData = {
+    type: input.type,
+    title: input.title ?? null,
+    position: input.position ?? maxPos + 1,
+    visible: input.visible ?? true,
+    config: input.config ?? null,
+  }
+  const ref = await database.collection('sections').add(docData)
+  return { id: ref.id, ...docData } as SectionDoc
+}
+
+export async function updateSection(id: string, updates: Record<string, unknown>): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const updateData: Record<string, unknown> = { ...updates }
+  if (updateData.position !== undefined) updateData.position = Number(updateData.position)
+  if (updateData.visible !== undefined) updateData.visible = !!updateData.visible
+  await database.collection('sections').doc(id).update(updateData)
+}
+
+export async function deleteSection(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('sections').doc(id).delete()
+}
+
+// --- Custom Sections ---
+
+export async function listCustomSections(): Promise<CustomSectionDoc[]> {
+  const database = db()
+  if (!database) return []
+  const snap = await database.collection('customSections').orderBy('position', 'asc').get()
+  return snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      title: data.title || '',
+      html: data.html || '',
+      css: data.css || null,
+      js: data.js || null,
+      position: data.position ?? 0,
+      visible: data.visible ?? true,
+      createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+    } as CustomSectionDoc
+  })
+}
+
+export async function createCustomSection(input: {
+  title: string
+  html: string
+  css?: string | null
+  js?: string | null
+  position?: number
+  visible?: boolean
+}): Promise<CustomSectionDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const snap = await database.collection('customSections').orderBy('position', 'desc').limit(1).get()
+  const maxPos = snap.empty ? -1 : (snap.docs[0].data().position ?? 0)
+  const now = new Date()
+  const docData = {
+    title: input.title,
+    html: input.html,
+    css: input.css ?? null,
+    js: input.js ?? null,
+    position: input.position ?? maxPos + 1,
+    visible: input.visible ?? true,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const ref = await database.collection('customSections').add(docData)
+  return {
+    id: ref.id,
+    ...docData,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  } as CustomSectionDoc
+}
+
+export async function updateCustomSection(id: string, updates: Record<string, unknown>): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const updateData: Record<string, unknown> = { ...updates, updatedAt: new Date() }
+  if (updateData.position !== undefined) updateData.position = Number(updateData.position)
+  if (updateData.visible !== undefined) updateData.visible = !!updateData.visible
+  await database.collection('customSections').doc(id).update(updateData)
+}
+
+export async function deleteCustomSection(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('customSections').doc(id).delete()
+}
+
+// --- Users ---
+
+export async function upsertUser(input: {
+  email: string
+  name?: string | null
+  image?: string | null
+  role: string
+}): Promise<{ email: string; name: string | null; image: string | null; role: string }> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const snap = await database.collection('users').where('email', '==', input.email).limit(1).get()
+  const now = new Date()
+  if (snap.empty) {
+    const docData = {
+      email: input.email,
+      name: input.name ?? null,
+      image: input.image ?? null,
+      role: input.role,
+      createdAt: now,
+      updatedAt: now,
+    }
+    await database.collection('users').add(docData)
+    return { email: input.email, name: input.name ?? null, image: input.image ?? null, role: input.role }
+  }
+  const doc = snap.docs[0]
+  await doc.ref.update({
+    name: input.name ?? null,
+    image: input.image ?? null,
+    role: input.role,
+    updatedAt: now,
+  })
+  return { email: input.email, name: input.name ?? null, image: input.image ?? null, role: input.role }
+}
+
+// --- Settings (key-value) ---
+
+export async function getAllSettings(): Promise<Record<string, string>> {
+  const database = db()
+  if (!database) return {}
+  const snap = await database.collection('settings').get()
+  const settings: Record<string, string> = {}
+  snap.docs.forEach((d) => {
+    const data = d.data()
+    settings[data.key || d.id] = data.value || ''
+  })
+  return settings
+}
+
+export async function upsertSettings(updates: Array<{ key: string; value: string }>): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const batch = database.batch()
+  for (const u of updates) {
+    const snap = await database.collection('settings').where('key', '==', u.key).limit(1).get()
+    if (snap.empty) {
+      const ref = database.collection('settings').doc()
+      batch.set(ref, { key: u.key, value: u.value })
+    } else {
+      batch.update(snap.docs[0].ref, { key: u.key, value: u.value })
+    }
+  }
+  await batch.commit()
+}
+
+// --- Seed helpers ---
+
+export async function clearAllData(): Promise<void> {
+  const database = db()
+  if (!database) return
+  const collections = ['products', 'orders', 'reviews', 'sections', 'customSections', 'users', 'settings']
+  for (const col of collections) {
+    const snap = await database.collection(col).get()
+    const batch = database.batch()
+    snap.docs.forEach((d) => batch.delete(d.ref))
+    await batch.commit()
+  }
+}
+
+export { FieldValue }

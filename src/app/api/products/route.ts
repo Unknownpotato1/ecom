@@ -1,35 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { listProducts, createProduct } from '@/lib/firestore'
 
-function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
-// GET /api/products - list all (with optional ?search=&category=)
+// GET /api/products - list all (with optional ?search=&category=&trending=1&best=1)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search')?.toLowerCase()
-  const category = searchParams.get('category')
+  const category = searchParams.get('category') || undefined
   const onlyTrending = searchParams.get('trending') === '1'
   const onlyBest = searchParams.get('best') === '1'
 
-  const where: Record<string, unknown> = {}
-  if (search) {
-    where.OR = [
-      { title: { contains: search } },
-      { description: { contains: search } },
-    ]
+  try {
+    const products = await listProducts({
+      search: search || undefined,
+      category,
+      trending: onlyTrending,
+      best: onlyBest,
+    })
+    return NextResponse.json({ products })
+  } catch (e) {
+    console.error('GET /api/products failed:', (e as Error).message)
+    return NextResponse.json({ products: [], error: (e as Error).message }, { status: 500 })
   }
-  if (category) where.category = category
-  if (onlyTrending) where.isTrending = true
-  if (onlyBest) where.isBestSeller = true
-
-  const products = await db.product.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    include: { images: { orderBy: { position: 'asc' } } },
-  })
-  return NextResponse.json({ products })
 }
 
 // POST /api/products - create (admin)
@@ -54,17 +45,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const baseSlug = slugify(title)
-  let slug = baseSlug
-  let counter = 1
-  while (await db.product.findUnique({ where: { slug } })) {
-    slug = `${baseSlug}-${counter++}`
-  }
-
-  const product = await db.product.create({
-    data: {
+  try {
+    const product = await createProduct({
       title,
-      slug,
       description,
       longDescription: longDescription ?? null,
       price: Number(price),
@@ -75,11 +58,11 @@ export async function POST(req: NextRequest) {
       isBestSeller: !!isBestSeller,
       specifications: specifications ?? null,
       tags: tags ?? null,
-      images: images?.length
-        ? { create: images.map((img: { url: string; alt?: string }, i: number) => ({ url: img.url, alt: img.alt ?? null, position: i })) }
-        : undefined,
-    },
-    include: { images: true },
-  })
-  return NextResponse.json({ product })
+      images: images?.length ? images : [],
+    })
+    return NextResponse.json({ product })
+  } catch (e) {
+    console.error('POST /api/products failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }

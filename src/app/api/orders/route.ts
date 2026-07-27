@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { listOrders, createOrder } from '@/lib/firestore'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const email = searchParams.get('email')
-  if (email) {
-    const orders = await db.order.findMany({
-      where: { customerEmail: email },
-      orderBy: { createdAt: 'desc' },
-      include: { items: true },
-    })
+  const email = searchParams.get('email') || undefined
+  try {
+    const orders = await listOrders(email)
     return NextResponse.json({ orders })
+  } catch (e) {
+    console.error('GET /api/orders failed:', (e as Error).message)
+    return NextResponse.json({ orders: [], error: (e as Error).message }, { status: 500 })
   }
-  const orders = await db.order.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { items: true },
-  })
-  return NextResponse.json({ orders })
 }
 
 export async function POST(req: NextRequest) {
@@ -39,33 +33,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const orderNumber = 'AUR-' + Date.now().toString(36).toUpperCase() + '-' + Math.floor(Math.random() * 1000)
-
-  const order = await db.order.create({
-    data: {
-      orderNumber,
+  try {
+    const order = await createOrder({
       customerName,
       customerEmail,
       customerPhone,
-      shippingAddress: JSON.stringify(shippingAddress),
+      shippingAddress,
+      items,
       subtotal: Number(subtotal),
       shipping: Number(shipping ?? 0),
       total: Number(total),
       paymentMethod,
-      paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
-      notes: notes ?? null,
-      userId: userId ?? null,
-      items: {
-        create: items.map((it: { productId?: string; title: string; price: number; quantity: number; image?: string }) => ({
-          productId: it.productId ?? null,
-          title: it.title,
-          price: Number(it.price),
-          quantity: Number(it.quantity),
-          image: it.image ?? null,
-        })),
-      },
-    },
-    include: { items: true },
-  })
-  return NextResponse.json({ order })
+      notes,
+      userId,
+    })
+    return NextResponse.json({ order })
+  } catch (e) {
+    console.error('POST /api/orders failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }

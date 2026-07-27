@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { listCustomSections, createCustomSection, updateCustomSection } from '@/lib/firestore'
 
 export async function GET() {
-  const sections = await db.customSection.findMany({
-    orderBy: { position: 'asc' },
-  })
-  return NextResponse.json({ sections })
+  try {
+    const sections = await listCustomSections()
+    return NextResponse.json({ sections })
+  } catch (e) {
+    console.error('GET /api/custom-sections failed:', (e as Error).message)
+    return NextResponse.json({ sections: [], error: (e as Error).message }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -14,18 +17,20 @@ export async function POST(req: NextRequest) {
   if (!title || !html) {
     return NextResponse.json({ error: 'title and html required' }, { status: 400 })
   }
-  const maxPos = await db.customSection.aggregate({ _max: { position: true } })
-  const section = await db.customSection.create({
-    data: {
+  try {
+    const section = await createCustomSection({
       title,
       html,
       css: css ?? null,
       js: js ?? null,
-      position: position ?? (maxPos._max.position ?? -1) + 1,
-      visible: visible ?? true,
-    },
-  })
-  return NextResponse.json({ section })
+      position,
+      visible,
+    })
+    return NextResponse.json({ section })
+  } catch (e) {
+    console.error('POST /api/custom-sections failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -34,14 +39,18 @@ export async function PUT(req: NextRequest) {
     position?: number
     visible?: boolean
   }>
-  for (const item of body) {
-    await db.customSection.update({
-      where: { id: item.id },
-      data: {
-        ...(item.position !== undefined && { position: item.position }),
-        ...(item.visible !== undefined && { visible: item.visible }),
-      },
-    })
+  try {
+    for (const item of body) {
+      const updates: Record<string, unknown> = {}
+      if (item.position !== undefined) updates.position = item.position
+      if (item.visible !== undefined) updates.visible = item.visible
+      if (Object.keys(updates).length > 0) {
+        await updateCustomSection(item.id, updates)
+      }
+    }
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('PUT /api/custom-sections failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
   }
-  return NextResponse.json({ ok: true })
 }

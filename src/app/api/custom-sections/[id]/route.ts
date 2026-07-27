@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { updateCustomSection, deleteCustomSection } from '@/lib/firestore'
 
 export async function PUT(
   req: NextRequest,
@@ -7,18 +7,13 @@ export async function PUT(
 ) {
   const { id } = await params
   const body = await req.json()
-  const section = await db.customSection.update({
-    where: { id },
-    data: {
-      ...(body.title !== undefined && { title: body.title }),
-      ...(body.html !== undefined && { html: body.html }),
-      ...(body.css !== undefined && { css: body.css }),
-      ...(body.js !== undefined && { js: body.js }),
-      ...(body.position !== undefined && { position: Number(body.position) }),
-      ...(body.visible !== undefined && { visible: !!body.visible }),
-    },
-  })
-  return NextResponse.json({ section })
+  try {
+    await updateCustomSection(id, body)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('PUT /api/custom-sections/[id] failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }
 
 export async function DELETE(
@@ -26,6 +21,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  await db.customSection.delete({ where: { id } })
-  return NextResponse.json({ ok: true })
+  try {
+    await deleteCustomSection(id)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('DELETE /api/custom-sections/[id] failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }

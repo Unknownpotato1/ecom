@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { updateSection, deleteSection } from '@/lib/firestore'
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  await db.section.delete({ where: { id } })
-  return NextResponse.json({ ok: true })
+  try {
+    await deleteSection(id)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('DELETE /api/sections/[id] failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }
 
 export async function PUT(
@@ -16,14 +21,11 @@ export async function PUT(
 ) {
   const { id } = await params
   const body = await req.json()
-  const section = await db.section.update({
-    where: { id },
-    data: {
-      ...(body.title !== undefined && { title: body.title }),
-      ...(body.visible !== undefined && { visible: !!body.visible }),
-      ...(body.position !== undefined && { position: Number(body.position) }),
-      ...(body.config !== undefined && { config: body.config }),
-    },
-  })
-  return NextResponse.json({ section })
+  try {
+    await updateSection(id, body)
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('PUT /api/sections/[id] failed:', (e as Error).message)
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
 }
