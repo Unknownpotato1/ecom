@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { isAdminAvailable } from '@/lib/firebase-admin'
+import { isAdminAvailable, getAdminInitError } from '@/lib/firebase-admin'
 
 /**
  * GET /api/debug-env
@@ -10,6 +10,7 @@ export async function GET() {
   return NextResponse.json({
     firebase: {
       serviceAccountSet: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+      serviceAccountLength: process.env.FIREBASE_SERVICE_ACCOUNT?.length || 0,
       serviceAccountValidJson:
         (() => {
           const raw = process.env.FIREBASE_SERVICE_ACCOUNT
@@ -17,11 +18,32 @@ export async function GET() {
           try {
             const parsed = JSON.parse(raw)
             return !!(parsed.project_id && parsed.private_key && parsed.client_email)
-          } catch {
+          } catch (e) {
             return false
           }
         })(),
+      serviceAccountPrivateKeyStartsWith: (() => {
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT
+        if (!raw) return null
+        try {
+          const parsed = JSON.parse(raw)
+          return parsed.private_key?.substring(0, 30) || null
+        } catch {
+          return null
+        }
+      })(),
+      serviceAccountPrivateKeyHasNewlines: (() => {
+        const raw = process.env.FIREBASE_SERVICE_ACCOUNT
+        if (!raw) return null
+        try {
+          const parsed = JSON.parse(raw)
+          return parsed.private_key?.includes('\n') || false
+        } catch {
+          return null
+        }
+      })(),
       adminSdkAvailable: isAdminAvailable(),
+      adminSdkInitError: getAdminInitError(),
       clientApiKeySet: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
       clientProjectIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
       clientAppIdSet: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID,

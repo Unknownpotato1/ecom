@@ -42,6 +42,12 @@ export function isAdminAvailable(): boolean {
   return init() !== null
 }
 
+export function getAdminInitError(): string | null {
+  // Force init attempt if not yet tried
+  init()
+  return initError
+}
+
 /**
  * Verify a Firebase ID token sent from the client.
  * Returns the decoded token (uid, email, name, picture) or null.
