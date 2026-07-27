@@ -141,7 +141,7 @@ export function Checkout() {
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-semibold">Your bag is empty</h1>
         <p className="mt-2 text-muted-foreground">Add some hampers before checking out.</p>
-        <Button className="mt-4 bg-brand text-white hover:bg-brand/90" onClick={goHome}>
+        <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to shop
         </Button>
       </div>
@@ -227,7 +227,7 @@ export function Checkout() {
                 <label
                   className={cn(
                     'flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors',
-                    payment === 'prepaid' ? 'border-brand bg-brand-soft/40' : 'border-pink-100 hover:border-brand/40'
+                    payment === 'prepaid' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
                   )}
                 >
                   <RadioGroupItem value="prepaid" className="mt-1" />
@@ -249,7 +249,7 @@ export function Checkout() {
                 <label
                   className={cn(
                     'flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors',
-                    payment === 'cod' ? 'border-brand bg-brand-soft/40' : 'border-pink-100 hover:border-brand/40'
+                    payment === 'cod' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
                   )}
                 >
                   <RadioGroupItem value="cod" className="mt-1" />
@@ -266,7 +266,7 @@ export function Checkout() {
               </div>
             </RadioGroup>
 
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-brand-soft/40 rounded-md p-3">
+            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-brand-soft rounded-md p-3">
               <ShieldCheck className="h-4 w-4 text-brand shrink-0" />
               <span>All transactions are secured. Aurora never stores your card details.</span>
             </div>
@@ -292,15 +292,15 @@ export function Checkout() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium line-clamp-2">{item.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs font-semibold">{formatPrice(item.price)}</span>
+                      <span className="text-xs font-semibold text-price">{formatPrice(item.price)}</span>
                       {item.comparedPrice && (
-                        <span className="text-[10px] text-muted-foreground line-through">
+                        <span className="text-[10px] text-compared-price line-through">
                           {formatPrice(item.comparedPrice)}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="text-xs font-medium">{formatPrice(item.price * item.quantity)}</div>
+                  <div className="text-xs font-medium text-price">{formatPrice(item.price * item.quantity)}</div>
                 </div>
               ))}
             </div>
@@ -328,7 +328,7 @@ export function Checkout() {
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>{formatPrice(sub)}</span>
+                <span className="text-price">{formatPrice(sub)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex justify-between text-emerald-600">
@@ -344,11 +344,11 @@ export function Checkout() {
             <Separator className="my-3" />
             <div className="flex justify-between text-base font-semibold">
               <span>Total</span>
-              <span>{formatPrice(total)}</span>
+              <span className="text-price">{formatPrice(total)}</span>
             </div>
 
             <Button
-              className="w-full mt-4 h-11 bg-brand text-white hover:bg-brand/90"
+              className="w-full mt-4 h-11 bg-brand text-white hover:shadow-lg"
               disabled={placing}
               onClick={placeOrder}
             >

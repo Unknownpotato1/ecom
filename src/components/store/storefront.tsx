@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 interface Props {
   heroFallback?: HeroConfig
-  announcement?: string
 }
 
 export function Storefront({ heroFallback }: Props) {

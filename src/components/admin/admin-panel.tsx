@@ -161,7 +161,7 @@ export function AdminPanel() {
         <p className="text-sm text-muted-foreground mt-2">
           The admin panel is restricted to <span className="font-mono text-brand">{ADMIN_EMAIL}</span>.
         </p>
-        <Button className="mt-4 bg-brand text-white hover:bg-brand/90" onClick={goHome}>
+        <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to store
         </Button>
       </div>
@@ -186,7 +186,7 @@ function AdminPanelInner() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-base sm:text-lg font-semibold">Admin Panel</h1>
-            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-brand-soft text-brand-deep text-[10px] font-semibold uppercase">
+            <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[10px] font-semibold uppercase">
               Aurora
             </span>
           </div>
@@ -336,7 +336,7 @@ function AdminSections() {
                 ].map((s) => (
                   <button
                     key={s.type}
-                    className="w-full text-left p-3 rounded-lg border border-pink-100 hover:bg-brand-soft/40"
+                    className="w-full text-left p-3 rounded-lg border border-pink-100 hover:bg-brand-soft"
                     onClick={() => addSection(s.type, s.label)}
                   >
                     <p className="text-sm font-medium">{s.label}</p>
@@ -346,7 +346,7 @@ function AdminSections() {
               </div>
             </DialogContent>
           </Dialog>
-          <Button size="sm" className="bg-brand text-white hover:bg-brand/90" disabled={saving} onClick={saveOrder}>
+          <Button size="sm" className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={saveOrder}>
             {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1" />}
             Save order
           </Button>
@@ -477,7 +477,7 @@ function AdminHero() {
                 value={config.imageUrl}
                 onChange={(e) => set('imageUrl', e.target.value)}
               />
-              <label className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-brand text-white text-sm font-medium cursor-pointer hover:bg-brand/90">
+              <label className="inline-flex items-center justify-center px-4 h-10 rounded-md bg-brand text-white text-sm font-medium cursor-pointer hover:shadow-lg">
                 <ImageIcon className="h-4 w-4 mr-1.5" /> Upload
                 <input
                   type="file"
@@ -525,7 +525,7 @@ function AdminHero() {
       </Card>
 
       <div className="flex justify-end">
-        <Button className="bg-brand text-white hover:bg-brand/90" disabled={saving} onClick={save}>
+        <Button className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={save}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save changes
         </Button>
@@ -648,7 +648,7 @@ function AdminCustomSections() {
           <Button size="sm" variant="outline" onClick={saveOrder} disabled={saving || sections.length === 0}>
             Save order
           </Button>
-          <Button size="sm" className="bg-brand text-white hover:bg-brand/90" onClick={() => openEditor(null)}>
+          <Button size="sm" className="bg-brand text-white hover:shadow-lg" onClick={() => openEditor(null)}>
             <Plus className="h-3.5 w-3.5 mr-1" /> New section
           </Button>
         </div>
@@ -663,7 +663,7 @@ function AdminCustomSections() {
             <p className="text-xs text-muted-foreground mt-1">
               Create one to embed widgets, banners, video embeds, calendars and more.
             </p>
-            <Button className="mt-3 bg-brand text-white hover:bg-brand/90" size="sm" onClick={() => openEditor(null)}>
+            <Button className="mt-3 bg-brand text-white hover:shadow-lg" size="sm" onClick={() => openEditor(null)}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Create first section
             </Button>
           </div>
@@ -745,7 +745,7 @@ function AdminCustomSections() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button className="bg-brand text-white hover:bg-brand/90" disabled={saving} onClick={saveDraft}>
+              <Button className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={saveDraft}>
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 {editing ? 'Save changes' : 'Create section'}
               </Button>
@@ -806,7 +806,7 @@ function AdminSettings() {
           <Input id="free-ship" value={freeThreshold} onChange={(e) => setFreeThreshold(e.target.value)} className="mt-1" />
           <p className="text-[11px] text-muted-foreground mt-1">Orders above this amount ship free.</p>
         </div>
-        <Button className="bg-brand text-white hover:bg-brand/90" disabled={saving} onClick={save}>
+        <Button className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={save}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save settings
         </Button>

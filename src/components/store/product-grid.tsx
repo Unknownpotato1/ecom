@@ -108,7 +108,7 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents }: P
             {filtered.length} hamper{filtered.length === 1 ? '' : 's'} • hand-packed with love
           </p>
         </div>
-        <Button variant="link" className="text-brand hover:text-brand-deep" onClick={() => useUI.getState().goSearch(overrideFilter || title)}>
+        <Button variant="link" className="text-brand hover:text-brand" onClick={() => useUI.getState().goSearch(overrideFilter || title)}>
           View all →
         </Button>
       </div>

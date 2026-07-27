@@ -52,7 +52,7 @@ export function SearchResults({ initialQuery }: { initialQuery: string }) {
       <h1 className="text-2xl font-bold mb-4">Search hampers</h1>
       <form onSubmit={submit} className="flex gap-2 mb-6 max-w-xl">
         <Input value={query} onChange={(e) => setQuery(e.target.value)} className="h-11" placeholder="Try 'chocolate', 'festive'..." />
-        <Button type="submit" className="h-11 bg-brand text-white hover:bg-brand/90 px-5">
+        <Button type="submit" className="h-11 bg-brand text-white hover:shadow-lg px-5">
           <Search className="h-4 w-4" />
         </Button>
       </form>
@@ -71,7 +71,7 @@ export function SearchResults({ initialQuery }: { initialQuery: string }) {
         <div className="text-center py-16 border border-dashed border-pink-200 rounded-xl">
           <p className="font-medium">No hampers found</p>
           <p className="text-sm text-muted-foreground mt-1">Try a different keyword or browse our categories.</p>
-          <Button className="mt-4 bg-brand text-white hover:bg-brand/90" onClick={goHome}>Back to home</Button>
+          <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>Back to home</Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

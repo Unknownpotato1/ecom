@@ -52,3 +52,17 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Local SQLite database & uploads
+/db/
+/public/uploads/
+/.zscripts/
+
+# Sandbox-only files
+/download/
+/examples/
+/tests/
+/mini-services/
+Caddyfile
+.z-ai-config
+

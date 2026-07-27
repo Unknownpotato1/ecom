@@ -44,7 +44,7 @@ export function CartDrawer() {
               </p>
             </div>
             <Button
-              className="bg-brand hover:bg-brand/90 text-white"
+              className="bg-brand hover:shadow-lg text-white"
               onClick={() => {
                 closeCart()
                 goHome()
@@ -67,9 +67,9 @@ export function CartDrawer() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium leading-snug line-clamp-2">{item.title}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm font-semibold text-brand">{formatPrice(item.price)}</span>
+                      <span className="text-sm font-semibold text-price">{formatPrice(item.price)}</span>
                       {item.comparedPrice && (
-                        <span className="text-xs text-muted-foreground line-through">
+                        <span className="text-xs text-compared-price line-through">
                           {formatPrice(item.comparedPrice)}
                         </span>
                       )}
@@ -110,7 +110,7 @@ export function CartDrawer() {
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium">{formatPrice(total)}</span>
+                  <span className="font-medium text-price">{formatPrice(total)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
@@ -119,11 +119,11 @@ export function CartDrawer() {
                 <Separator className="my-2" />
                 <div className="flex justify-between text-base">
                   <span className="font-semibold">Total</span>
-                  <span className="font-semibold">{formatPrice(total)}</span>
+                  <span className="font-semibold text-price">{formatPrice(total)}</span>
                 </div>
               </div>
               <Button
-                className="w-full h-11 bg-brand hover:bg-brand/90 text-white"
+                className="w-full h-11 bg-brand hover:shadow-lg text-white"
                 onClick={() => {
                   closeCart()
                   goCheckout()

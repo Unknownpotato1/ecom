@@ -41,7 +41,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-pink-100 bg-card transition-all hover:shadow-lg hover:border-brand/40 cursor-pointer"
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-pink-100 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer"
       onClick={() => goProduct(product.id)}
     >
       <div className="relative aspect-square overflow-hidden bg-pink-50">
@@ -123,9 +123,9 @@ export function ProductCard({ product }: { product: Product }) {
 
         <div className="mt-auto pt-3 flex items-end justify-between gap-2">
           <div className="flex flex-col">
-            <span className="text-base font-semibold text-foreground">{formatPrice(product.price)}</span>
+            <span className="text-base font-semibold text-price">{formatPrice(product.price)}</span>
             {product.comparedPrice && product.comparedPrice > product.price && (
-              <span className="text-xs text-muted-foreground line-through">{formatPrice(product.comparedPrice)}</span>
+              <span className="text-xs text-compared-price line-through">{formatPrice(product.comparedPrice)}</span>
             )}
           </div>
           <Button
@@ -133,7 +133,7 @@ export function ProductCard({ product }: { product: Product }) {
             onClick={handleAdd}
             className={cn(
               'h-9 px-3 text-xs shadow-sm transition-all',
-              added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:bg-brand/90 text-white'
+              added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
             )}
           >
             {added ? 'Added!' : (

@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShieldCheck, LogOut, ChevronRight, Package, User as UserIcon } from 'lucide-react'
+import { ShieldCheck, LogOut, ChevronRight, Package, User as UserIcon, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { isFirebaseClientAvailable, getFirebaseAuth } from '@/lib/firebase-client'
+import { signInWithCustomToken } from 'firebase/auth'
 
 // Real Google "G" logo SVG
 function GoogleIcon({ className }: { className?: string }) {
@@ -28,23 +30,48 @@ export function Profile() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [authMode, setAuthMode] = useState<'idle' | 'custom-token'>('idle')
 
-  const handleGoogleSignIn = async () => {
+  const firebaseAvailable = isFirebaseClientAvailable()
+
+  /**
+   * Sign-in flow:
+   * 1. If Firebase client + Google popup available → use signInWithPopup (real Google SSO)
+   * 2. Otherwise, demo email flow → POST /api/auth → server mints a Firebase custom token
+   *    → client calls signInWithCustomToken to establish a real Firebase session
+   * 3. Fallback: if custom token flow fails, just record the user locally (demo mode)
+   */
+  const handleSignIn = async () => {
     setLoading(true)
     try {
-      // Mock Google sign-in flow — replace with real Firebase signInWithPopup in production.
-      // If NEXT_PUBLIC_FIREBASE_API_KEY is set, you can wire up real firebase auth here.
       const useDemo = !email.trim()
       const demoEmail = email.trim() || 'guest@aurora.gifts'
+      const demoName = name.trim() || (useDemo ? 'Aurora Guest' : email.split('@')[0])
+
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: demoEmail,
-          name: name.trim() || (useDemo ? 'Aurora Guest' : email.split('@')[0]),
-        }),
+        body: JSON.stringify({ email: demoEmail, name: demoName }),
       })
       const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || 'Sign-in failed')
+        return
+      }
+
+      // If server returned a Firebase custom token, sign in client-side for a real Firebase session
+      if (data.customToken && firebaseAvailable) {
+        try {
+          setAuthMode('custom-token')
+          const { auth } = getFirebaseAuth()!
+          await signInWithCustomToken(auth, data.customToken)
+        } catch (e) {
+          console.warn('Custom token sign-in failed (continuing with local session):', (e as Error).message)
+          // Non-fatal — we still have the user record server-side
+        }
+      }
+
       signIn({
         email: data.user.email,
         name: data.user.name,
@@ -59,6 +86,52 @@ export function Profile() {
     } catch (e) {
       console.error(e)
       toast.error('Sign-in failed')
+    } finally {
+      setLoading(false)
+      setAuthMode('idle')
+    }
+  }
+
+  const handleGooglePopup = async () => {
+    // Reserved for when Google Sign-In provider is enabled in Firebase Console.
+    // The popup flow will call /api/auth with the resulting ID token.
+    const fb = getFirebaseAuth()
+    if (!fb) {
+      toast.info('Firebase client not configured. Using email sign-in.')
+      handleSignIn()
+      return
+    }
+    setLoading(true)
+    try {
+      const { signInWithPopup } = await import('firebase/auth')
+      const cred = await signInWithPopup(fb.auth, fb.googleProvider)
+      const idToken = await cred.user.getIdToken()
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Google sign-in failed')
+        return
+      }
+      signIn({
+        email: data.user.email,
+        name: data.user.name,
+        image: data.user.image,
+      })
+      toast.success(`Signed in as ${data.user.email}`)
+      if (data.isAdmin) {
+        setTimeout(() => goAdmin(), 600)
+      } else {
+        setTimeout(() => goHome(), 600)
+      }
+    } catch (e) {
+      console.error('Google popup failed:', e)
+      // Likely "auth/configuration-not-found" — Google provider not enabled in Firebase Console
+      toast.info('Google popup sign-in needs to be enabled in your Firebase Console (Authentication → Sign-in method → Google). Falling back to email sign-in.')
+      handleSignIn()
     } finally {
       setLoading(false)
     }
@@ -80,7 +153,7 @@ export function Profile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-soft/40">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-soft">
               <div className="h-12 w-12 rounded-full bg-brand text-white font-bold inline-flex items-center justify-center text-lg">
                 {(user.name || user.email)[0]?.toUpperCase()}
               </div>
@@ -98,7 +171,7 @@ export function Profile() {
             <div className="space-y-2">
               <button
                 onClick={goOrders}
-                className="w-full flex items-center justify-between p-3 rounded-lg border border-pink-100 hover:bg-brand-soft/40"
+                className="w-full flex items-center justify-between p-3 rounded-lg border border-pink-100 hover:bg-brand-soft"
               >
                 <span className="flex items-center gap-2 text-sm font-medium">
                   <Package className="h-4 w-4 text-brand" /> My Orders
@@ -109,7 +182,7 @@ export function Profile() {
               {isAdmin() && (
                 <button
                   onClick={goAdmin}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-brand bg-brand-soft/40 hover:bg-brand-soft"
+                  className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-brand bg-brand-soft hover:bg-brand-soft"
                 >
                   <span className="flex items-center gap-2 text-sm font-semibold text-brand">
                     <ShieldCheck className="h-4 w-4" /> Admin Panel
@@ -149,12 +222,16 @@ export function Profile() {
         <CardContent className="space-y-4">
           <Button
             type="button"
-            onClick={handleGoogleSignIn}
+            onClick={handleGooglePopup}
             disabled={loading}
             className="w-full h-11 bg-white text-foreground border border-pink-200 hover:bg-brand-soft"
           >
-            <GoogleIcon className="h-5 w-5 mr-2" />
-            {loading ? 'Signing in...' : 'Continue with Google'}
+            {loading && authMode === 'idle' ? (
+              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            ) : (
+              <GoogleIcon className="h-5 w-5 mr-2" />
+            )}
+            {loading && authMode === 'idle' ? 'Signing in...' : 'Continue with Google'}
           </Button>
 
           <div className="relative my-4">
@@ -162,7 +239,7 @@ export function Profile() {
               <div className="w-full border-t border-pink-100" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-card px-2 text-xs text-muted-foreground">or sign in with email (demo)</span>
+              <span className="bg-card px-2 text-xs text-muted-foreground">or sign in with email</span>
             </div>
           </div>
 
@@ -177,11 +254,19 @@ export function Profile() {
             </div>
             <Button
               type="button"
-              onClick={handleGoogleSignIn}
+              onClick={handleSignIn}
               disabled={loading || !email}
-              className="w-full h-11 bg-brand text-white hover:bg-brand/90"
+              className="w-full h-11 bg-brand text-white hover:shadow-lg"
             >
-              {loading ? 'Please wait...' : 'Sign in'}
+              {loading && authMode === 'custom-token' ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Connecting to Firebase...
+                </>
+              ) : loading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {!loading && 'Sign in'}
+              {loading && authMode === 'custom-token' && 'Connecting...'}
             </Button>
           </div>
 
@@ -195,10 +280,15 @@ export function Profile() {
 
           <p className="text-[11px] text-muted-foreground text-center mt-4">
             By continuing you agree to Aurora's Terms of Service and Privacy Policy.
-            <br />
-            <span className="text-muted-foreground/70">
-              Note: This is a demo sign-in flow. Connect Firebase credentials in production to enable real Google authentication.
-            </span>
+            {firebaseAvailable ? (
+              <span className="block mt-1 text-emerald-600">
+                Firebase Auth connected ({process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}).
+              </span>
+            ) : (
+              <span className="block mt-1 text-amber-600">
+                Demo mode — Firebase client config not set. Users are stored in the app database.
+              </span>
+            )}
           </p>
         </CardContent>
       </Card>

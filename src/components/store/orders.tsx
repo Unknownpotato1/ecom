@@ -64,7 +64,7 @@ export function Orders() {
               placeholder="your@email.com"
               className="flex-1 h-10 rounded-md border border-pink-200 px-3 text-sm"
             />
-            <Button className="bg-brand text-white hover:bg-brand/90" onClick={() => setQueriedEmail(lookupEmail)}>
+            <Button className="bg-brand text-white hover:shadow-lg" onClick={() => setQueriedEmail(lookupEmail)}>
               Find orders
             </Button>
           </div>
@@ -84,13 +84,13 @@ export function Orders() {
           <p className="text-sm text-muted-foreground mt-1">
             {queriedEmail ? `We couldn't find any orders for ${queriedEmail}.` : 'Start shopping to place your first order.'}
           </p>
-          <Button className="mt-4 bg-brand text-white hover:bg-brand/90" onClick={goHome}>Browse hampers</Button>
+          <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>Browse hampers</Button>
         </div>
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
             <div key={o.id} className="rounded-xl border border-pink-100 overflow-hidden">
-              <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 bg-brand-soft/30">
+              <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-3 bg-brand-soft">
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">Order</span>
                   <span className="font-semibold text-sm">{o.orderNumber}</span>
@@ -100,7 +100,7 @@ export function Orders() {
                   <span className={cn('px-2 py-0.5 rounded-full font-medium capitalize', STATUS_COLORS[o.orderStatus] || 'bg-muted')}>
                     {o.orderStatus}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full font-medium bg-brand-soft text-brand-deep uppercase">
+                  <span className="px-2 py-0.5 rounded-full font-medium bg-brand-soft text-brand uppercase">
                     {o.paymentMethod}
                   </span>
                 </div>
@@ -116,15 +116,15 @@ export function Orders() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium line-clamp-1">{it.title}</p>
-                      <p className="text-xs text-muted-foreground">Qty {it.quantity} • {formatPrice(it.price)}</p>
+                      <p className="text-xs text-muted-foreground">Qty {it.quantity} • <span className="text-price">{formatPrice(it.price)}</span></p>
                     </div>
-                    <span className="text-sm font-medium">{formatPrice(it.price * it.quantity)}</span>
+                    <span className="text-sm font-medium text-price">{formatPrice(it.price * it.quantity)}</span>
                   </div>
                 ))}
               </div>
               <div className="px-4 py-2 border-t border-pink-100 flex justify-between text-sm">
                 <span className="text-muted-foreground">Total ({o.items.length} item{o.items.length === 1 ? '' : 's'})</span>
-                <span className="font-semibold">{formatPrice(o.total)}</span>
+                <span className="font-semibold text-price">{formatPrice(o.total)}</span>
               </div>
             </div>
           ))}

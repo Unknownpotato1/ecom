@@ -141,7 +141,7 @@ export function ProductDetail({ productId }: { productId: string }) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <p className="text-lg font-medium">Product not found.</p>
-        <Button className="mt-4 bg-brand text-white hover:bg-brand/90" onClick={goHome}>
+        <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>
           Back to home
         </Button>
       </div>
@@ -237,13 +237,13 @@ export function ProductDetail({ productId }: { productId: string }) {
           </div>
 
           <div className="flex items-end gap-3 mt-4">
-            <span className="text-3xl font-bold">{formatPrice(product.price)}</span>
+            <span className="text-3xl font-bold text-price">{formatPrice(product.price)}</span>
             {product.comparedPrice && product.comparedPrice > product.price && (
               <>
-                <span className="text-base text-muted-foreground line-through mb-1">
+                <span className="text-base text-compared-price line-through mb-1">
                   {formatPrice(product.comparedPrice)}
                 </span>
-                <span className="text-sm text-emerald-600 font-medium mb-1">
+                <span className="text-sm text-price font-medium mb-1">
                   Save {formatPrice(product.comparedPrice - product.price)}
                 </span>
               </>
@@ -280,7 +280,7 @@ export function ProductDetail({ productId }: { productId: string }) {
               onClick={handleAdd}
               className={cn(
                 'flex-1 min-w-[180px] h-11',
-                added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:bg-brand/90 text-white'
+                added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
               )}
             >
               {added ? (
@@ -324,7 +324,7 @@ export function ProductDetail({ productId }: { productId: string }) {
               { icon: Shield, label: 'Secure packing', sub: 'tamper-proof' },
               { icon: RefreshCw, label: 'Easy returns', sub: 'within 7 days' },
             ].map((b, i) => (
-              <div key={i} className="rounded-lg border border-pink-100 bg-brand-soft/40 p-3 text-center">
+              <div key={i} className="rounded-lg border border-pink-100 bg-brand-soft p-3 text-center">
                 <b.icon className="h-4 w-4 mx-auto mb-1 text-brand" />
                 <div className="font-medium">{b.label}</div>
                 <div className="text-muted-foreground text-[10px]">{b.sub}</div>
@@ -375,7 +375,7 @@ export function ProductDetail({ productId }: { productId: string }) {
                         key={i}
                         className={cn(
                           'grid grid-cols-2 gap-2 px-4 py-2.5 text-sm',
-                          i % 2 === 1 && 'bg-brand-soft/40'
+                          i % 2 === 1 && 'bg-brand-soft'
                         )}
                       >
                         <span className="text-muted-foreground">{s.key}</span>
@@ -463,7 +463,7 @@ export function ProductDetail({ productId }: { productId: string }) {
                       placeholder="Share your experience..."
                       rows={3}
                     />
-                    <Button type="submit" className="bg-brand text-white hover:bg-brand/90">
+                    <Button type="submit" className="bg-brand text-white hover:shadow-lg">
                       Submit review
                     </Button>
                   </form>

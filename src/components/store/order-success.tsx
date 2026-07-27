@@ -40,14 +40,14 @@ export function OrderSuccess() {
 
       {order && (
         <div className="rounded-xl border border-pink-100 overflow-hidden">
-          <div className="bg-brand-soft/40 px-5 py-4 flex items-center justify-between flex-wrap gap-3">
+          <div className="bg-brand-soft px-5 py-4 flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className="text-xs text-muted-foreground">Order number</p>
               <p className="text-lg font-bold tracking-wide">{order.orderNumber}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-lg font-bold">{formatPrice(order.total)}</p>
+              <p className="text-lg font-bold text-price">{formatPrice(order.total)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Payment</p>
@@ -66,9 +66,9 @@ export function OrderSuccess() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium line-clamp-1">{it.title}</p>
-                  <p className="text-xs text-muted-foreground">Qty {it.quantity} • {formatPrice(it.price)}</p>
+                  <p className="text-xs text-muted-foreground">Qty {it.quantity} • <span className="text-price">{formatPrice(it.price)}</span></p>
                 </div>
-                <span className="text-sm font-medium">{formatPrice(it.price * it.quantity)}</span>
+                <span className="text-sm font-medium text-price">{formatPrice(it.price * it.quantity)}</span>
               </div>
             ))}
           </div>
@@ -88,7 +88,7 @@ export function OrderSuccess() {
 
       <div className="flex justify-center gap-3 mt-6">
         <Button variant="outline" onClick={goOrders}>View my orders</Button>
-        <Button className="bg-brand text-white hover:bg-brand/90" onClick={goHome}>
+        <Button className="bg-brand text-white hover:shadow-lg" onClick={goHome}>
           Continue shopping <ArrowRight className="h-4 w-4 ml-1" />
         </Button>
       </div>

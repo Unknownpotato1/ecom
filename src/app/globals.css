@@ -65,7 +65,7 @@
   --muted: oklch(0.97 0.005 350);
   --muted-foreground: oklch(0.52 0.02 350);
   --accent: #fff1f4;
-  --accent-foreground: #b54361;
+  --accent-foreground: #f9758d;
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.92 0.008 350);
   --input: oklch(0.92 0.008 350);
@@ -102,7 +102,7 @@
   --muted: oklch(0.27 0.01 350);
   --muted-foreground: oklch(0.71 0.015 350);
   --accent: #3a1a23;
-  --accent-foreground: #fbb4c0;
+  --accent-foreground: #f9758d;
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
@@ -133,7 +133,15 @@
   background-color: #fff1f4;
 }
 .text-brand-deep {
-  color: #b54361;
+  color: #f9758d;
+}
+
+/* Price colors */
+.text-price {
+  color: #5bb450;
+}
+.text-compared-price {
+  color: #ef4444;
 }
 
 /* Hide scrollbar but keep scrollable */

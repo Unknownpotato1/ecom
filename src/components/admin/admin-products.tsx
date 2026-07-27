@@ -235,7 +235,7 @@ export function AdminProducts() {
               className="pl-7 h-9 w-48"
             />
           </div>
-          <Button size="sm" className="bg-brand text-white hover:bg-brand/90" onClick={openNew}>
+          <Button size="sm" className="bg-brand text-white hover:shadow-lg" onClick={openNew}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Add product
           </Button>
         </div>
@@ -247,7 +247,7 @@ export function AdminProducts() {
           <div className="text-center py-12 border border-dashed border-pink-200 rounded-lg">
             <p className="text-sm font-medium">No products yet</p>
             <p className="text-xs text-muted-foreground mt-1">Add your first hamper to start selling.</p>
-            <Button size="sm" className="mt-3 bg-brand text-white hover:bg-brand/90" onClick={openNew}>
+            <Button size="sm" className="mt-3 bg-brand text-white hover:shadow-lg" onClick={openNew}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Add product
             </Button>
           </div>
@@ -268,8 +268,8 @@ export function AdminProducts() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium line-clamp-1">{p.title}</p>
                   <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground mt-0.5">
-                    <span className="font-semibold text-foreground">{formatPrice(p.price)}</span>
-                    {p.comparedPrice && <span className="line-through">{formatPrice(p.comparedPrice)}</span>}
+                    <span className="font-semibold text-price">{formatPrice(p.price)}</span>
+                    {p.comparedPrice && <span className="line-through text-compared-price">{formatPrice(p.comparedPrice)}</span>}
                     <span className="inline-flex items-center gap-0.5">
                       <Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)} ({p.reviewCount})
                     </span>
@@ -334,7 +334,7 @@ export function AdminProducts() {
                     </div>
                   </div>
                 ))}
-                <label className="aspect-square rounded-md border-2 border-dashed border-pink-200 flex flex-col items-center justify-center cursor-pointer hover:bg-brand-soft/40 text-muted-foreground text-xs gap-1">
+                <label className="aspect-square rounded-md border-2 border-dashed border-pink-200 flex flex-col items-center justify-center cursor-pointer hover:bg-brand-soft text-muted-foreground text-xs gap-1">
                   <ImageIcon className="h-5 w-5" />
                   <span>Upload</span>
                   <input
@@ -425,7 +425,7 @@ export function AdminProducts() {
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button className="bg-brand text-white hover:bg-brand/90" disabled={saving} onClick={save}>
+              <Button className="bg-brand text-white hover:shadow-lg" disabled={saving} onClick={save}>
                 {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 {editing ? 'Save changes' : 'Create product'}
               </Button>

@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Header } from '@/components/store/header'
 import { Footer } from '@/components/store/footer'
 import { Storefront } from '@/components/store/storefront'
@@ -26,18 +25,6 @@ const DEFAULT_HERO: HeroConfig = {
 
 export default function Home() {
   const { view, selectedProductId, searchQuery } = useUI()
-  const [announcement, setAnnouncement] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.settings?.announcement) setAnnouncement(d.settings.announcement)
-      })
-      .catch(() => {
-        /* ignore */
-      })
-  }, [])
 
   // Admin panel is full-screen — no header/footer
   if (view === 'admin') {
@@ -51,11 +38,11 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col bg-background">
-      <Header announcement={announcement} />
+      <Header />
 
       <div className="flex-1">
         {view === 'home' && (
-          <Storefront heroFallback={DEFAULT_HERO} announcement={announcement} />
+          <Storefront heroFallback={DEFAULT_HERO} />
         )}
         {view === 'product' && selectedProductId && (
           <ProductDetail key={selectedProductId} productId={selectedProductId} />

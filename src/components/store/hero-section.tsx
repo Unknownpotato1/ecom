@@ -26,7 +26,7 @@ export function HeroSection({ config }: { config: HeroConfig }) {
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-soft via-pink-50 to-white" />
+          <div className="absolute inset-0 bg-brand-soft" />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent" />
 
@@ -50,7 +50,7 @@ export function HeroSection({ config }: { config: HeroConfig }) {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button
                   size="lg"
-                  className="bg-brand hover:bg-brand/90 text-white shadow-lg px-6"
+                  className="bg-brand hover:shadow-lg text-white shadow-lg px-6"
                   onClick={() => {
                     goHome()
                     if (typeof window !== 'undefined') {

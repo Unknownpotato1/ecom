@@ -35,7 +35,7 @@ const MENU_LINKS = [
   { label: 'Anniversary', view: 'home', filter: 'anniversary' },
 ] as const
 
-export function Header({ announcement }: { announcement?: string }) {
+export function Header() {
   const itemCount = useCart((s) => s.items.reduce((a, i) => a + i.quantity, 0))
   const openCart = useCart((s) => s.openCart)
   const { goHome, goAdmin, goOrders, searchOpen, setSearchOpen, mobileMenuOpen, setMobileMenuOpen, goSearch } = useUI()
@@ -57,67 +57,38 @@ export function Header({ announcement }: { announcement?: string }) {
 
   return (
     <>
-      {announcement && (
-        <div className="bg-brand text-white text-xs sm:text-sm">
-          <div className="max-w-7xl mx-auto px-4 py-2 text-center font-medium tracking-wide overflow-hidden whitespace-nowrap">
-            <span className="inline-block">{announcement}</span>
-          </div>
-        </div>
-      )}
-      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-pink-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
-          {/* Left: menu + brand */}
-          <div className="flex items-center gap-2 sm:gap-3">
+      <header className="sticky top-0 z-40 bg-brand text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 grid grid-cols-3 items-center">
+          {/* Left: menu */}
+          <div className="flex items-center justify-start">
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full hover:bg-brand-soft"
+              className="rounded-full text-white hover:bg-white/15"
               aria-label="Open menu"
               onClick={() => setMobileMenuOpen(true)}
             >
               <Menu className="h-5 w-5" />
             </Button>
+          </div>
+
+          {/* Center: logo only */}
+          <div className="flex items-center justify-center">
             <button
               onClick={goHome}
-              className="flex items-center gap-2 group"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand font-bold text-xl shadow-sm hover:scale-105 transition-transform"
               aria-label="Aurora home"
             >
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand text-white font-bold text-lg shadow-sm">
-                A
-              </span>
-              <span className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground group-hover:text-brand transition-colors">
-                Aurora
-              </span>
+              A
             </button>
           </div>
 
-          {/* Center: nav (desktop) */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {MENU_LINKS.map((l) => (
-              <Button
-                key={l.label}
-                variant="ghost"
-                size="sm"
-                className="text-sm font-medium text-foreground/80 hover:text-brand hover:bg-brand-soft"
-                onClick={() => {
-                  goHome()
-                  // Reaching into the home page filter via custom event
-                  if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('aurora:filter', { detail: l.filter }))
-                  }
-                }}
-              >
-                {l.label}
-              </Button>
-            ))}
-          </nav>
-
           {/* Right: actions */}
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center justify-end gap-1 sm:gap-2">
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full hover:bg-brand-soft"
+              className="rounded-full text-white hover:bg-white/15"
               aria-label="Search"
               onClick={() => setSearchOpen(true)}
             >
@@ -129,7 +100,7 @@ export function Header({ announcement }: { announcement?: string }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full hover:bg-brand-soft"
+                  className="rounded-full text-white hover:bg-white/15"
                   aria-label="Account"
                 >
                   <User className="h-5 w-5" />
@@ -181,13 +152,13 @@ export function Header({ announcement }: { announcement?: string }) {
             <Button
               variant="ghost"
               size="icon"
-              className="relative rounded-full hover:bg-brand-soft"
+              className="relative rounded-full text-white hover:bg-white/15"
               aria-label="Open bag"
               onClick={openCart}
             >
               <ShoppingBag className="h-5 w-5" />
               {mounted && itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 inline-flex items-center justify-center rounded-full bg-brand text-white text-[10px] font-bold">
+                <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 inline-flex items-center justify-center rounded-full bg-white text-brand text-[10px] font-bold">
                   {itemCount}
                 </span>
               )}
@@ -297,7 +268,7 @@ export function Header({ announcement }: { announcement?: string }) {
                   placeholder="Try 'chocolate', 'festive', 'coffee'..."
                   className="h-12 text-base"
                 />
-                <Button type="submit" size="lg" className="bg-brand hover:bg-brand/90 text-white h-12 px-6">
+                <Button type="submit" size="lg" className="bg-brand hover:bg-brand text-white h-12 px-6">
                   <Search className="h-5 w-5" />
                 </Button>
               </form>
@@ -309,7 +280,7 @@ export function Header({ announcement }: { announcement?: string }) {
                       goSearch(s)
                       setSearchOpen(false)
                     }}
-                    className="px-3 py-1.5 text-xs rounded-full bg-brand-soft text-brand-deep hover:bg-brand hover:text-white transition-colors"
+                    className="px-3 py-1.5 text-xs rounded-full bg-brand-soft text-brand hover:bg-brand hover:text-white transition-colors"
                   >
                     {s}
                   </button>
