@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  role      String   @default("customer") // "admin" | "customer"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  title          String
+  slug           String   @unique
+  description    String
+  longDescription String?
+  price          Float
+  comparedPrice  Float?
+  rating         Float    @default(0)
+  reviewCount    Int      @default(0)
+  stock          Int      @default(0)
+  category       String?
+  isTrending     Boolean  @default(false)
+  isBestSeller   Boolean  @default(false)
+  specifications String?  // JSON string of spec key-values
+  tags           String?  // JSON string of tag array
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  images ProductImage[]
+  reviews Review[]
+  orderItems OrderItem[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  position  Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String?
+  userName  String
+  rating    Int
+  title     String?
+  comment   String?
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Section {
+  id       String @id @default(cuid())
+  type     String // "hero" | "products" | "custom" | "categories" | "text"
+  title    String?
+  position Int    @default(0)
+  visible  Boolean @default(true)
+  config   String? // JSON string for section-specific config
+}
+
+model CustomSection {
+  id        String   @id @default(cuid())
+  title     String
+  html      String
+  css       String?
+  js        String?
+  position  Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  userId          String?
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  shippingAddress String   // JSON string
+  subtotal        Float
+  shipping        Float    @default(0)
+  total           Float
+  paymentMethod   String   // "prepaid" | "cod"
+  paymentStatus   String   @default("pending") // "pending" | "paid" | "failed"
+  orderStatus     String   @default("placed") // "placed" | "confirmed" | "shipped" | "delivered" | "cancelled"
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String?
+  title     String
+  price     Float
+  quantity  Int
+  image     String?
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product? @relation(fields: [productId], references: [id])
+}
+
+model SiteSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
