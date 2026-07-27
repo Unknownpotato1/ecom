@@ -57,6 +57,10 @@ export async function GET() {
       urlSet: !!process.env.DATABASE_URL,
       urlIsPostgres: (process.env.DATABASE_URL || '').startsWith('postgresql://'),
       urlIsPlaceholder: (process.env.DATABASE_URL || '').includes('placeholder'),
+      hasVercelPostgres: !!process.env.POSTGRES_PRISMA_URL,
+      willAutoFallback: !!process.env.POSTGRES_PRISMA_URL && (
+        !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('placeholder')
+      ),
     },
     nodeEnv: process.env.NODE_ENV,
     vercelEnv: process.env.VERCEL_ENV,
