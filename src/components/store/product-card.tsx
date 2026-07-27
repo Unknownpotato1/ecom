@@ -1,12 +1,13 @@
 'use client'
 
-import { Star, ShoppingBag, Eye, Heart } from 'lucide-react'
+import { Star, ShoppingBag, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
 import { formatPrice, productTags, type Product } from '@/lib/types'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { SwipeableImage } from './swipeable-image'
 
 const TONE_STYLES: Record<string, string> = {
   trending: 'bg-brand text-white',
@@ -22,7 +23,9 @@ export function ProductCard({ product }: { product: Product }) {
   const [liked, setLiked] = useState(false)
 
   const tags = productTags(product)
-  const image = product.images[0]?.url
+  const images = product.images.length > 0
+    ? product.images
+    : [{ url: '', alt: product.title, id: 'placeholder', position: 0 }]
 
   const handleAdd = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -32,7 +35,7 @@ export function ProductCard({ product }: { product: Product }) {
       title: product.title,
       price: product.price,
       comparedPrice: product.comparedPrice ?? undefined,
-      image: image ?? '',
+      image: product.images[0]?.url ?? '',
       maxStock: product.stock || 99,
     })
     setAdded(true)
@@ -45,27 +48,22 @@ export function ProductCard({ product }: { product: Product }) {
       onClick={() => goProduct(product.id)}
     >
       <div className="relative aspect-square overflow-hidden bg-pink-50">
-        {image ? (
-           
-          <img
-            src={image}
-            alt={product.images[0]?.alt || product.title}
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-            <ShoppingBag className="h-10 w-10" />
-          </div>
-        )}
+        <SwipeableImage
+          images={images}
+          className="absolute inset-0 h-full w-full"
+          imageClassName="transition-transform duration-500 group-hover:scale-105"
+          objectFit="cover"
+          indicator="dots"
+          threshold={30}
+        />
 
         {/* Tags */}
-        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10 pointer-events-none">
           {tags.slice(0, 3).map((t, i) => (
             <span
               key={i}
               className={cn(
-                'px-2 py-0.5 text-[10px] font-semibold rounded-full tracking-wide',
+                'px-2 py-0.5 text-[10px] font-semibold rounded-full tracking-wide shadow-sm',
                 TONE_STYLES[t.tone] || TONE_STYLES.new
               )}
             >
@@ -80,22 +78,10 @@ export function ProductCard({ product }: { product: Product }) {
             e.stopPropagation()
             setLiked((v) => !v)
           }}
-          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm hover:bg-white"
+          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm hover:bg-white z-10"
           aria-label="Save to wishlist"
         >
           <Heart className={cn('h-4 w-4', liked ? 'fill-brand text-brand' : 'text-muted-foreground')} />
-        </button>
-
-        {/* Quick view */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            goProduct(product.id)
-          }}
-          className="absolute bottom-2 right-2 h-9 w-9 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
-          aria-label="Quick view"
-        >
-          <Eye className="h-4 w-4 text-foreground" />
         </button>
       </div>
 
