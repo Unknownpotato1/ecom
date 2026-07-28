@@ -228,12 +228,14 @@ export function ProductDetail({ productId }: { productId: string }) {
                 </>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Inclusive of all taxes</p>
+
+            {/* Pincode delivery check — between price and quantity picker */}
+            <PincodeChecker />
 
             {/* Row 1: Quantity picker + Wishlist + Add to bag */}
-            <div className="mt-6 flex items-center gap-2">
-              {/* Quantity picker — black border */}
-              <div className="inline-flex items-center rounded-md border-2 border-black overflow-hidden shrink-0">
+            <div className="mt-5 flex items-center gap-2">
+              {/* Quantity picker — thin black border */}
+              <div className="inline-flex items-center rounded-md border border-black overflow-hidden shrink-0">
                 <button
                   className="h-11 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
@@ -241,7 +243,7 @@ export function ProductDetail({ productId }: { productId: string }) {
                 >
                   <Minus className="h-4 w-4" />
                 </button>
-                <span className="h-11 min-w-[2.5rem] inline-flex items-center justify-center text-sm font-semibold border-x-2 border-black">
+                <span className="h-11 min-w-[2.5rem] inline-flex items-center justify-center text-sm font-semibold border-x border-black">
                   {qty}
                 </span>
                 <button
@@ -253,11 +255,11 @@ export function ProductDetail({ productId }: { productId: string }) {
                 </button>
               </div>
 
-              {/* Wishlist heart — black border */}
+              {/* Wishlist heart — thin black border */}
               <Button
                 size="icon"
                 variant="outline"
-                className="h-11 w-11 border-2 border-black rounded-md hover:bg-black hover:text-white shrink-0"
+                className="h-11 w-11 border border-black rounded-md hover:bg-black hover:text-white shrink-0"
                 onClick={() => setLiked((v) => !v)}
                 aria-label="Wishlist"
               >
@@ -296,9 +298,6 @@ export function ProductDetail({ productId }: { productId: string }) {
             >
               Buy now
             </Button>
-
-            {/* Pincode delivery check — product page only */}
-            <PincodeChecker />
 
             {/* Custom sections targeted to product page (location: 'product-below-actions') */}
             <ProductCustomSections />
