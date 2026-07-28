@@ -15,24 +15,18 @@ interface Props {
  * Extracts <style>...</style> blocks → CSS,
  * <script>...</script> blocks → JS,
  * remaining content → HTML.
- *
- * Supports the new single-box format (code field) and falls back to
- * legacy separate fields (html, css, js) if code is empty.
  */
 function parseCode(section: CustomSectionType): { html: string; css: string; js: string } {
-  // New format: single code box
   if (section.code) {
     let css = ''
     let js = ''
     let html = section.code
 
-    // Extract <style> blocks
     html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (_, content) => {
       css += content + '\n'
       return ''
     })
 
-    // Extract <script> blocks
     html = html.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, (_, content) => {
       js += content + '\n'
       return ''
@@ -41,7 +35,6 @@ function parseCode(section: CustomSectionType): { html: string; css: string; js:
     return { html: html.trim(), css: css.trim(), js: js.trim() }
   }
 
-  // Legacy format: separate fields
   return {
     html: section.html || '',
     css: section.css || '',
@@ -50,8 +43,58 @@ function parseCode(section: CustomSectionType): { html: string; css: string; js:
 }
 
 /**
+ * Creates a proxy of `document` that delegates element-finding methods
+ * (getElementById, querySelector, querySelectorAll, getElementsByClassName,
+ * getElementsByTagName, getElementsByName, createElement) to the shadow root.
+ *
+ * This lets user JS code like `document.getElementById("myBtn")` work
+ * correctly inside a Shadow DOM — without the proxy, it would search the
+ * main document and return null.
+ *
+ * Non-element methods (addEventListener, etc.) still delegate to the real
+ * document so global events still work.
+ */
+function createDocumentProxy(shadow: ShadowRoot, root: HTMLElement): Document {
+  const realDoc = document
+  return new Proxy(realDoc, {
+    get(target, prop, receiver) {
+      // Element-finding methods → search shadow root
+      if (prop === 'getElementById') {
+        return (id: string) => shadow.getElementById(id) || root.querySelector(`#${id}`)
+      }
+      if (prop === 'querySelector') {
+        return (selector: string) => shadow.querySelector(selector) || root.querySelector(selector)
+      }
+      if (prop === 'querySelectorAll') {
+        return (selector: string) => shadow.querySelectorAll(selector)
+      }
+      if (prop === 'getElementsByClassName') {
+        return (className: string) => shadow.getElementsByClassName(className)
+      }
+      if (prop === 'getElementsByTagName') {
+        return (tagName: string) => shadow.getElementsByTagName(tagName)
+      }
+      if (prop === 'getElementsByName') {
+        return (name: string) => shadow.querySelectorAll(`[name="${name}"]`)
+      }
+      if (prop === 'createElement') {
+        return (tagName: string, options?: ElementCreationOptions) => realDoc.createElement(tagName, options)
+      }
+      if (prop === 'createTextNode') {
+        return (data: string) => realDoc.createTextNode(data)
+      }
+      if (prop === 'createEvent') {
+        return (type: string) => realDoc.createEvent(type)
+      }
+      // Everything else → real document
+      const value = Reflect.get(target, prop, receiver)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  })
+}
+
+/**
  * Renders admin-authored code in an isolated shadow root.
- * The code is a single box containing HTML with inline <style> and <script> tags.
  */
 export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -85,6 +128,7 @@ export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
 
     if (js) {
       try {
+        const docProxy = createDocumentProxy(shadow, wrapper)
         const fn = new Function(
           'root',
           'shadow',
@@ -92,7 +136,7 @@ export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
           'window',
           `"use strict";\n${js}`
         )
-        fn(wrapper, shadow, document, window)
+        fn(wrapper, shadow, docProxy, window)
       } catch (e) {
         console.error('Custom section JS error:', e)
       }
@@ -144,8 +188,9 @@ export function CustomSectionPreview({ section }: { section: Partial<CustomSecti
     shadow.appendChild(wrapper)
     if (js) {
       try {
+        const docProxy = createDocumentProxy(shadow, wrapper)
         const fn = new Function('root', 'shadow', 'document', 'window', `"use strict";\n${js}`)
-        fn(wrapper, shadow, document, window)
+        fn(wrapper, shadow, docProxy, window)
       } catch (e) {
         console.error('Preview JS error:', e)
       }
