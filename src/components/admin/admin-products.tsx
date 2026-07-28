@@ -404,9 +404,9 @@ export function AdminProducts() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="p-tags" className="text-xs font-medium">Tags (shown on product image — comma separated)</Label>
-                <Input id="p-tags" value={draft.tags} onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value }))} className="mt-1" placeholder="e.g. New Arrival, Limited Edition, 20% OFF" />
-                <p className="text-[11px] text-muted-foreground mt-1">Only these tags will appear on the product image. Enter any custom tags you want — they show as pink badges on the product photo.</p>
+                <Label htmlFor="p-tags" className="text-xs font-medium">Custom tags (max 3 — comma separated)</Label>
+                <Input id="p-tags" value={draft.tags} onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value }))} className="mt-1" placeholder="e.g. New Arrival, Limited Edition, Bestseller" />
+                <p className="text-[11px] text-muted-foreground mt-1">Up to 3 custom tags appear on the product image — each gets a different color (pink, amber, blue). A green "X% OFF" tag is auto-added when a compared price is set. Max 4 tags total per product.</p>
               </div>
               <div className="sm:col-span-2 flex items-center gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">

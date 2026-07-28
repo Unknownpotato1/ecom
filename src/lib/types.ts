@@ -127,11 +127,29 @@ export function discountPct(price: number, compared?: number | null): number {
 }
 
 /**
- * Returns ONLY the custom tags the admin added to the product (via the "Tags" field).
- * No auto-generated tags (Trending, Best Seller, X% OFF) — only what the admin explicitly enters.
- * All custom tags use the brand color for consistency.
+ * Returns up to 4 tags for a product:
+ * - Slot 1 (always first, if discount exists): "X% OFF" — GREEN background
+ * - Slots 2-4: up to 3 custom admin tags, each with a DISTINCT color
+ *   (pink, amber, blue) in the order they were added
+ *
+ * The admin enters custom tags in the "Tags" field (comma separated).
+ * Only the first 3 custom tags are shown (plus the auto X% OFF = max 4 total).
  */
-export function productTags(p: Product): { label: string; tone: 'custom' }[] {
+export function productTags(p: Product): { label: string; tone: string }[] {
+  const tags: { label: string; tone: string }[] = []
+
+  // Slot 1: auto X% OFF tag with green background (always first if discount exists)
+  const off = discountPct(p.price, p.comparedPrice)
+  if (off > 0) {
+    tags.push({ label: `${off}% OFF`, tone: 'discount' })
+  }
+
+  // Slots 2-4: up to 3 custom tags with distinct colors
   const parsedTags = parseJson<string[]>(p.tags, [])
-  return parsedTags.map((t) => ({ label: t, tone: 'custom' as const }))
+  const customColors = ['trending', 'best', 'info']
+  parsedTags.slice(0, 3).forEach((t, i) => {
+    tags.push({ label: t, tone: customColors[i] })
+  })
+
+  return tags.slice(0, 4)
 }

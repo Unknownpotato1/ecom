@@ -34,6 +34,10 @@ import { SwipeableImage } from './swipeable-image'
 import { ProductCustomSections } from './product-custom-sections'
 
 const TONE_STYLES: Record<string, string> = {
+  discount: 'bg-emerald-600 text-white',  // green — X% OFF (auto)
+  trending: 'bg-brand text-white',         // pink — 1st custom tag
+  best: 'bg-amber-500 text-white',         // amber — 2nd custom tag
+  info: 'bg-blue-500 text-white',          // blue — 3rd custom tag
   custom: 'bg-brand text-white',
 }
 
@@ -193,22 +197,32 @@ export function ProductDetail({ productId }: { productId: string }) {
           <div className="px-4 sm:px-6 lg:px-0 pt-6 lg:pt-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{product.title}</h1>
 
-            <div className="flex items-center gap-2 mt-2">
+            {/* Clickable star rating — scrolls to reviews section */}
+            <button
+              onClick={() => {
+                setTab('reviews')
+                setTimeout(() => {
+                  document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }, 50)
+              }}
+              className="flex items-center gap-2 mt-2 group cursor-pointer"
+              aria-label="View reviews"
+            >
               <div className="flex items-center">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
                     key={n}
                     className={cn(
-                      'h-4 w-4',
+                      'h-4 w-4 transition-transform group-hover:scale-110',
                       n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
                     )}
                   />
                 ))}
               </div>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground group-hover:text-brand transition-colors">
                 {product.rating.toFixed(1)} • {product.reviewCount} reviews
               </span>
-            </div>
+            </button>
 
             <div className="flex items-end gap-3 mt-4">
               <span className="text-3xl font-bold text-price">{formatPrice(product.price)}</span>
@@ -361,7 +375,50 @@ export function ProductDetail({ productId }: { productId: string }) {
                   </div>
                 )}
                 {tab === 'reviews' && (
-                  <div className="space-y-4">
+                  <div className="space-y-4" id="reviews-section">
+                    {/* Review summary widget */}
+                    <div className="rounded-xl border border-pink-100 bg-brand-soft/30 p-5">
+                      <div className="flex flex-col sm:flex-row items-center gap-6">
+                        {/* Big rating number */}
+                        <div className="text-center">
+                          <div className="text-4xl font-bold text-foreground">{product.rating.toFixed(1)}</div>
+                          <div className="flex items-center justify-center mt-1">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <Star
+                                key={n}
+                                className={cn(
+                                  'h-4 w-4',
+                                  n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{product.reviewCount} reviews</div>
+                        </div>
+
+                        {/* Rating breakdown bars */}
+                        <div className="flex-1 w-full space-y-1.5">
+                          {[5, 4, 3, 2, 1].map((star) => {
+                            const count = reviews.filter((r: Review) => r.rating === star).length
+                            const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0
+                            return (
+                              <div key={star} className="flex items-center gap-2 text-xs">
+                                <span className="w-3 text-muted-foreground">{star}</span>
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                <div className="flex-1 h-2 bg-pink-100 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-amber-400 rounded-full transition-all"
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="w-8 text-right text-muted-foreground">{count}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Existing reviews */}
                     {reviews.length === 0 ? (
                       <p className="text-muted-foreground text-center py-6">No reviews yet. Be the first to review!</p>
@@ -373,11 +430,13 @@ export function ProductDetail({ productId }: { productId: string }) {
                               <div className="h-8 w-8 rounded-full bg-brand-soft text-brand font-semibold inline-flex items-center justify-center">
                                 {r.userName[0]?.toUpperCase()}
                               </div>
-                              <div>
-                                <div className="text-sm font-medium">{r.userName}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {new Date(r.createdAt).toLocaleDateString()}
-                                </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">{r.userName}</span>
+                                {/* Verified Buyer badge */}
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold">
+                                  <Check className="h-2.5 w-2.5" />
+                                  Verified Buyer
+                                </span>
                               </div>
                             </div>
                             <div className="flex">

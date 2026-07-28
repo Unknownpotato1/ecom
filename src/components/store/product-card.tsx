@@ -10,6 +10,10 @@ import { cn } from '@/lib/utils'
 import { SwipeableImage } from './swipeable-image'
 
 const TONE_STYLES: Record<string, string> = {
+  discount: 'bg-emerald-600 text-white',  // green — X% OFF (auto)
+  trending: 'bg-brand text-white',         // pink — 1st custom tag
+  best: 'bg-amber-500 text-white',         // amber — 2nd custom tag
+  info: 'bg-blue-500 text-white',          // blue — 3rd custom tag
   custom: 'bg-brand text-white',
 }
 
