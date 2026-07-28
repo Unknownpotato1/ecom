@@ -46,7 +46,7 @@ export function Footer() {
           </p>
           <div className="mt-4 space-y-2 text-sm text-white/90">
             <div className="flex items-start gap-2">
-              <MapPin className="h-4 w-4 mt-0.5" /> <span>Koramangala, Bengaluru 560034, India</span>
+              <MapPin className="h-4 w-4 mt-0.5" /> <span>Koramangala, Bengaluru 226026, USA</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4" /> <span>+91 80 4567 8910</span>
