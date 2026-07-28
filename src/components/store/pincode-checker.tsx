@@ -64,14 +64,13 @@ export function PincodeChecker() {
 
   return (
     <div className="mt-4">
-      {/* Compact inline row: icon + label + input + button */}
+      {/* Label so people know what the box is for */}
+      <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+        <Truck className="h-3.5 w-3.5 text-brand" />
+        Check delivery date
+      </p>
+      {/* Compact inline row: input + button */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Truck className="h-4 w-4 text-brand" />
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap hidden sm:inline">
-            Check delivery
-          </span>
-        </div>
         <Input
           value={pincode}
           onChange={(e) => {
@@ -85,7 +84,7 @@ export function PincodeChecker() {
               checkPincode()
             }
           }}
-          placeholder="Enter PIN code"
+          placeholder="Enter 6-digit PIN code"
           className="flex-1 h-9 text-sm"
           maxLength={6}
           inputMode="numeric"

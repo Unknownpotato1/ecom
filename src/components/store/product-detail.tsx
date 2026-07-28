@@ -33,6 +33,8 @@ import { toast } from 'sonner'
 import { SwipeableImage } from './swipeable-image'
 import { ProductCustomSections } from './product-custom-sections'
 import { PincodeChecker } from './pincode-checker'
+import { YouMayAlsoLike } from './you-may-also-like'
+import { StickyActionBar } from './sticky-action-bar'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -234,7 +236,7 @@ export function ProductDetail({ productId }: { productId: string }) {
 
             {/* Row 1: Quantity picker + Wishlist + Add to bag */}
             <div className="mt-5 flex items-center gap-2">
-              {/* Quantity picker — thin black border */}
+              {/* Quantity picker — thin black border, no internal dividers */}
               <div className="inline-flex items-center rounded-md border border-black overflow-hidden shrink-0">
                 <button
                   className="h-11 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
@@ -243,7 +245,7 @@ export function ProductDetail({ productId }: { productId: string }) {
                 >
                   <Minus className="h-4 w-4" />
                 </button>
-                <span className="h-11 min-w-[2.5rem] inline-flex items-center justify-center text-sm font-semibold border-x border-black">
+                <span className="h-11 min-w-[2.5rem] inline-flex items-center justify-center text-sm font-semibold">
                   {qty}
                 </span>
                 <button
@@ -289,6 +291,7 @@ export function ProductDetail({ productId }: { productId: string }) {
 
             {/* Row 2: Buy now — full width, #f9758d */}
             <Button
+              id="inline-buy-now"
               size="lg"
               className="w-full h-11 mt-2 bg-brand hover:shadow-lg text-white"
               onClick={() => {
@@ -504,6 +507,20 @@ export function ProductDetail({ productId }: { productId: string }) {
           </div>
         </div>
       </div>
+
+      {/* You may also like — other products */}
+      <YouMayAlsoLike currentProductId={productId} />
+
+      {/* Sticky Add to bag / Buy now bar (mobile only) */}
+      <StickyActionBar
+        qty={qty}
+        added={added}
+        onAdd={handleAdd}
+        onBuyNow={() => {
+          handleAdd()
+          setTimeout(() => openCart(), 200)
+        }}
+      />
     </div>
   )
 }
