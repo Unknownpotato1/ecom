@@ -128,28 +128,47 @@ export function discountPct(price: number, compared?: number | null): number {
 
 /**
  * Returns up to 4 tags for a product:
- * - Slot 1 (always first, if discount exists): "X% OFF" — GREEN background
- * - Slots 2-4: up to 3 custom admin tags, each with a DISTINCT color
- *   (pink, amber, blue) in the order they were added
+ * - Slot 1 (always first, if discount exists): "X% OFF" — GREEN (#5bb450)
+ * - Slots 2-4: up to 3 custom admin tags, each with its own custom color
+ *   (set by the admin via the color picker in the product form)
  *
- * The admin enters custom tags in the "Tags" field (comma separated).
- * Only the first 3 custom tags are shown (plus the auto X% OFF = max 4 total).
+ * Tags are stored as JSON: [{label, color}, ...]
+ * If the old format (string array) is found, it's handled gracefully.
  */
-export function productTags(p: Product): { label: string; tone: string }[] {
-  const tags: { label: string; tone: string }[] = []
+export interface ProductTag {
+  label: string
+  color: string // hex color, e.g. "#f9758d"
+}
+
+export function productTags(p: Product): ProductTag[] {
+  const tags: ProductTag[] = []
 
   // Slot 1: auto X% OFF tag with green background (always first if discount exists)
   const off = discountPct(p.price, p.comparedPrice)
   if (off > 0) {
-    tags.push({ label: `${off}% OFF`, tone: 'discount' })
+    tags.push({ label: `${off}% OFF`, color: '#5bb450' })
   }
 
-  // Slots 2-4: up to 3 custom tags with distinct colors
-  const parsedTags = parseJson<string[]>(p.tags, [])
-  const customColors = ['trending', 'best', 'info']
-  parsedTags.slice(0, 3).forEach((t, i) => {
-    tags.push({ label: t, tone: customColors[i] })
-  })
+  // Slots 2-4: up to 3 custom tags with admin-set colors
+  const raw = p.tags
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        parsed.slice(0, 3).forEach((t: unknown) => {
+          if (typeof t === 'string') {
+            // Old format: string array → default to brand color
+            tags.push({ label: t, color: '#f9758d' })
+          } else if (t && typeof t === 'object' && 'label' in t) {
+            const tag = t as { label: string; color?: string }
+            tags.push({ label: tag.label, color: tag.color || '#f9758d' })
+          }
+        })
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
 
   return tags.slice(0, 4)
 }

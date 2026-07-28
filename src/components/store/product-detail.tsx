@@ -32,14 +32,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { SwipeableImage } from './swipeable-image'
 import { ProductCustomSections } from './product-custom-sections'
-
-const TONE_STYLES: Record<string, string> = {
-  discount: 'bg-emerald-600 text-white',  // green — X% OFF (auto)
-  trending: 'bg-brand text-white',         // pink — 1st custom tag
-  best: 'bg-amber-500 text-white',         // amber — 2nd custom tag
-  info: 'bg-blue-500 text-white',          // blue — 3rd custom tag
-  custom: 'bg-brand text-white',
-}
+import { PincodeChecker } from './pincode-checker'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -179,13 +172,11 @@ export function ProductDetail({ productId }: { productId: string }) {
             />
             {/* Tags overlay (positioned over the image) */}
             <div className="absolute top-3 left-3 flex flex-col gap-1 items-start z-10">
-              {tags.slice(0, 3).map((t, i) => (
+              {tags.slice(0, 4).map((t, i) => (
                 <span
                   key={i}
-                  className={cn(
-                    'px-2 py-0.5 text-[11px] font-semibold rounded-full tracking-wide shadow-sm',
-                    TONE_STYLES[t.tone] || TONE_STYLES.new
-                  )}
+                  className="px-2 py-0.5 text-[11px] font-semibold rounded-full tracking-wide shadow-sm text-white"
+                  style={{ backgroundColor: t.color }}
                 >
                   {t.label}
                 </span>
@@ -239,21 +230,22 @@ export function ProductDetail({ productId }: { productId: string }) {
             </div>
             <p className="text-xs text-muted-foreground mt-1">Inclusive of all taxes</p>
 
-            {/* Quantity + Add */}
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <div className="inline-flex items-center rounded-md border border-pink-200 overflow-hidden">
+            {/* Row 1: Quantity picker + Wishlist + Add to bag */}
+            <div className="mt-6 flex items-center gap-2">
+              {/* Quantity picker — black border */}
+              <div className="inline-flex items-center rounded-md border-2 border-black overflow-hidden shrink-0">
                 <button
-                  className="h-10 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
+                  className="h-11 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
                   aria-label="Decrease"
                 >
                   <Minus className="h-4 w-4" />
                 </button>
-                <span className="h-10 min-w-[3rem] inline-flex items-center justify-center text-sm font-medium border-x border-pink-100">
+                <span className="h-11 min-w-[2.5rem] inline-flex items-center justify-center text-sm font-semibold border-x-2 border-black">
                   {qty}
                 </span>
                 <button
-                  className="h-10 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
+                  className="h-11 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
                   onClick={() => setQty((q) => q + 1)}
                   aria-label="Increase"
                 >
@@ -261,11 +253,23 @@ export function ProductDetail({ productId }: { productId: string }) {
                 </button>
               </div>
 
+              {/* Wishlist heart — black border */}
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-11 w-11 border-2 border-black rounded-md hover:bg-black hover:text-white shrink-0"
+                onClick={() => setLiked((v) => !v)}
+                aria-label="Wishlist"
+              >
+                <Heart className={cn('h-5 w-5', liked ? 'fill-brand text-brand' : '')} />
+              </Button>
+
+              {/* Add to bag — fills remaining space */}
               <Button
                 size="lg"
                 onClick={handleAdd}
                 className={cn(
-                  'flex-1 min-w-[180px] h-11',
+                  'flex-1 h-11',
                   added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
                 )}
               >
@@ -279,29 +283,22 @@ export function ProductDetail({ productId }: { productId: string }) {
                   </>
                 )}
               </Button>
-
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-11 border-pink-200 hover:bg-brand-soft hover:text-brand"
-                onClick={() => {
-                  handleAdd()
-                  setTimeout(() => openCart(), 200)
-                }}
-              >
-                Buy now
-              </Button>
-
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-11 w-11 border-pink-200"
-                onClick={() => setLiked((v) => !v)}
-                aria-label="Wishlist"
-              >
-                <Heart className={cn('h-4 w-4', liked ? 'fill-brand text-brand' : '')} />
-              </Button>
             </div>
+
+            {/* Row 2: Buy now — full width, #f9758d */}
+            <Button
+              size="lg"
+              className="w-full h-11 mt-2 bg-brand hover:shadow-lg text-white"
+              onClick={() => {
+                handleAdd()
+                setTimeout(() => openCart(), 200)
+              }}
+            >
+              Buy now
+            </Button>
+
+            {/* Pincode delivery check — product page only */}
+            <PincodeChecker />
 
             {/* Custom sections targeted to product page (location: 'product-below-actions') */}
             <ProductCustomSections />

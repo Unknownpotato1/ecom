@@ -45,7 +45,7 @@ interface Draft {
   isTrending: boolean
   isBestSeller: boolean
   specifications: string // raw spec text - one per line "Key: Value"
-  tags: string // comma separated
+  tagItems: Array<{ label: string; color: string }> // up to 3 custom tags with colors
   images: DraftImage[]
 }
 
@@ -60,7 +60,7 @@ const EMPTY: Draft = {
   isTrending: false,
   isBestSeller: false,
   specifications: '',
-  tags: '',
+  tagItems: [],
   images: [],
 }
 
@@ -102,7 +102,12 @@ export function AdminProducts() {
   const openEdit = (p: Product) => {
     setEditing(p)
     const specs = parseJson<Array<{ key: string; value: string }>>(p.specifications, [])
-    const tags = parseJson<string[]>(p.tags, [])
+    // Parse tags — supports both old format (string[]) and new format ({label, color}[])
+    const rawTags = parseJson<Array<{ label: string; color?: string } | string>>(p.tags, [])
+    const tagItems: Array<{ label: string; color: string }> = rawTags.map((t) => {
+      if (typeof t === 'string') return { label: t, color: '#f9758d' }
+      return { label: t.label, color: t.color || '#f9758d' }
+    })
     setDraft({
       id: p.id,
       title: p.title,
@@ -115,7 +120,7 @@ export function AdminProducts() {
       isTrending: p.isTrending,
       isBestSeller: p.isBestSeller,
       specifications: specs.map((s) => `${s.key}: ${s.value}`).join('\n'),
-      tags: tags.join(', '),
+      tagItems,
       images: p.images.map((img) => ({ url: img.url, alt: img.alt || undefined })),
     })
     setOpen(true)
@@ -169,11 +174,6 @@ export function AdminProducts() {
         if (idx === -1) return { key: l, value: '' }
         return { key: l.slice(0, idx).trim(), value: l.slice(idx + 1).trim() }
       })
-    const tags = draft.tags
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
-
     const body = {
       title: draft.title,
       description: draft.description || '',
@@ -185,7 +185,7 @@ export function AdminProducts() {
       isTrending: draft.isTrending,
       isBestSeller: draft.isBestSeller,
       specifications: JSON.stringify(specs),
-      tags: JSON.stringify(tags),
+      tags: JSON.stringify(draft.tagItems.slice(0, 3)),
       images: draft.images,
     }
 
@@ -403,10 +403,78 @@ export function AdminProducts() {
                   placeholder={'Items: 6 chocolates, 1 candle\nWeight: 650 g\nShelf life: 6 months\nVeg: Yes'}
                 />
               </div>
+              {/* Custom tags with color picker (max 3) */}
               <div className="sm:col-span-2">
-                <Label htmlFor="p-tags" className="text-xs font-medium">Custom tags (max 3 — comma separated)</Label>
-                <Input id="p-tags" value={draft.tags} onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value }))} className="mt-1" placeholder="e.g. New Arrival, Limited Edition, Bestseller" />
-                <p className="text-[11px] text-muted-foreground mt-1">Up to 3 custom tags appear on the product image — each gets a different color (pink, amber, blue). A green "X% OFF" tag is auto-added when a compared price is set. Max 4 tags total per product.</p>
+                <Label className="text-xs font-medium">Custom tags (max 3 — each with its own color)</Label>
+                <div className="mt-2 space-y-2">
+                  {/* Existing tags */}
+                  {draft.tagItems.map((tag, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={tag.color}
+                        onChange={(e) => {
+                          setDraft((d) => ({
+                            ...d,
+                            tagItems: d.tagItems.map((t, idx) => idx === i ? { ...t, color: e.target.value } : t),
+                          }))
+                        }}
+                        className="h-9 w-12 rounded border border-pink-200 cursor-pointer bg-white p-0.5"
+                        aria-label="Tag color"
+                      />
+                      <Input
+                        value={tag.label}
+                        onChange={(e) => {
+                          setDraft((d) => ({
+                            ...d,
+                            tagItems: d.tagItems.map((t, idx) => idx === i ? { ...t, label: e.target.value } : t),
+                          }))
+                        }}
+                        className="flex-1"
+                        placeholder="Tag label e.g. New Arrival"
+                      />
+                      {/* Live preview */}
+                      <span
+                        className="px-2 py-1 text-[10px] font-semibold rounded-full text-white whitespace-nowrap shrink-0"
+                        style={{ backgroundColor: tag.color }}
+                      >
+                        {tag.label || 'Preview'}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-destructive shrink-0"
+                        onClick={() => {
+                          setDraft((d) => ({ ...d, tagItems: d.tagItems.filter((_, idx) => idx !== i) }))
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {/* Add tag button */}
+                  {draft.tagItems.length < 3 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-pink-200 text-brand hover:bg-brand-soft"
+                      onClick={() => {
+                        const defaultColors = ['#f9758d', '#f59e0b', '#3b82f6']
+                        setDraft((d) => ({
+                          ...d,
+                          tagItems: [...d.tagItems, { label: '', color: defaultColors[d.tagItems.length % 3] }],
+                        }))
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1" /> Add tag
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  Each tag shows on the product image with the color you pick. A green "X% OFF" tag is auto-added when a compared price is set. Max 4 tags total per product.
+                </p>
               </div>
               <div className="sm:col-span-2 flex items-center gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">

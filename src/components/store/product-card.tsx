@@ -9,14 +9,6 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { SwipeableImage } from './swipeable-image'
 
-const TONE_STYLES: Record<string, string> = {
-  discount: 'bg-emerald-600 text-white',  // green — X% OFF (auto)
-  trending: 'bg-brand text-white',         // pink — 1st custom tag
-  best: 'bg-amber-500 text-white',         // amber — 2nd custom tag
-  info: 'bg-blue-500 text-white',          // blue — 3rd custom tag
-  custom: 'bg-brand text-white',
-}
-
 export function ProductCard({ product }: { product: Product }) {
   const addItem = useCart((s) => s.addItem)
   const { goProduct } = useUI()
@@ -60,13 +52,11 @@ export function ProductCard({ product }: { product: Product }) {
 
         {/* Tags */}
         <div className="absolute top-2 left-2 flex flex-col gap-1 items-start z-10 pointer-events-none">
-          {tags.slice(0, 3).map((t, i) => (
+          {tags.slice(0, 4).map((t, i) => (
             <span
               key={i}
-              className={cn(
-                'px-2 py-0.5 text-[10px] font-semibold rounded-full tracking-wide shadow-sm',
-                TONE_STYLES[t.tone] || TONE_STYLES.new
-              )}
+              className="px-2 py-0.5 text-[10px] font-semibold rounded-full tracking-wide shadow-sm text-white"
+              style={{ backgroundColor: t.color }}
             >
               {t.label}
             </span>
