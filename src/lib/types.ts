@@ -126,13 +126,12 @@ export function discountPct(price: number, compared?: number | null): number {
   return Math.round(((compared - price) / compared) * 100)
 }
 
-export function productTags(p: Product): { label: string; tone: 'trending' | 'best' | 'discount' | 'new' }[] {
-  const tags: { label: string; tone: 'trending' | 'best' | 'discount' | 'new' }[] = []
-  const off = discountPct(p.price, p.comparedPrice)
-  if (off > 0) tags.push({ label: `${off}% OFF`, tone: 'discount' })
-  if (p.isTrending) tags.push({ label: 'Trending', tone: 'trending' })
-  if (p.isBestSeller) tags.push({ label: 'Best Seller', tone: 'best' })
+/**
+ * Returns ONLY the custom tags the admin added to the product (via the "Tags" field).
+ * No auto-generated tags (Trending, Best Seller, X% OFF) — only what the admin explicitly enters.
+ * All custom tags use the brand color for consistency.
+ */
+export function productTags(p: Product): { label: string; tone: 'custom' }[] {
   const parsedTags = parseJson<string[]>(p.tags, [])
-  parsedTags.forEach((t) => tags.push({ label: t, tone: 'new' }))
-  return tags
+  return parsedTags.map((t) => ({ label: t, tone: 'custom' as const }))
 }

@@ -404,8 +404,9 @@ export function AdminProducts() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="p-tags" className="text-xs">Tags (comma separated)</Label>
-                <Input id="p-tags" value={draft.tags} onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value }))} className="mt-1" placeholder="e.g. New Arrival, Limited, Premium" />
+                <Label htmlFor="p-tags" className="text-xs font-medium">Tags (shown on product image — comma separated)</Label>
+                <Input id="p-tags" value={draft.tags} onChange={(e) => setDraft((d) => ({ ...d, tags: e.target.value }))} className="mt-1" placeholder="e.g. New Arrival, Limited Edition, 20% OFF" />
+                <p className="text-[11px] text-muted-foreground mt-1">Only these tags will appear on the product image. Enter any custom tags you want — they show as pink badges on the product photo.</p>
               </div>
               <div className="sm:col-span-2 flex items-center gap-6">
                 <label className="flex items-center gap-2 cursor-pointer">

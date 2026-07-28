@@ -34,10 +34,7 @@ import { SwipeableImage } from './swipeable-image'
 import { ProductCustomSections } from './product-custom-sections'
 
 const TONE_STYLES: Record<string, string> = {
-  trending: 'bg-brand text-white',
-  best: 'bg-amber-500 text-white',
-  discount: 'bg-emerald-600 text-white',
-  new: 'bg-foreground text-white',
+  custom: 'bg-brand text-white',
 }
 
 export function ProductDetail({ productId }: { productId: string }) {
@@ -155,15 +152,16 @@ export function ProductDetail({ productId }: { productId: string }) {
   const reviews = product.reviews || []
 
   return (
-    <div className="fade-up">
+    <div className="fade-up overflow-x-hidden">
       {/*
         Layout:
         - Mobile: full-width image (edge-to-edge, no padding, no gap from header),
           then info section with padding below.
         - Desktop: centered 2-column grid (image | info) with padding.
-        No breadcrumb. Image uses object-contain (not cropped).
+        No breadcrumb. Image uses adaptive mode (natural dimensions, no crop).
+        overflow-x-hidden prevents any horizontal gap on the right side.
       */}
-      <div className="lg:max-w-7xl lg:mx-auto lg:px-6 lg:py-8">
+      <div className="lg:max-w-7xl lg:mx-auto lg:px-6 lg:py-8 w-full">
         <div className="grid lg:grid-cols-2 lg:gap-12">
           {/* === Image section === */}
           <div className="relative group">

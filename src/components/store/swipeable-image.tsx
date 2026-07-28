@@ -165,13 +165,6 @@ export function SwipeableImage({
             />
           </div>
         )}
-
-        {/* Image counter badge */}
-        {images.length > 1 && indicator === 'bar' && (
-          <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-white text-[10px] font-medium">
-            {activeIndex + 1} / {images.length}
-          </div>
-        )}
       </div>
     )
   }
@@ -275,13 +268,6 @@ export function SwipeableImage({
               aria-label={`Go to image ${i + 1}`}
             />
           ))}
-        </div>
-      )}
-
-      {/* Image counter badge (top-right, only for product page style) */}
-      {images.length > 1 && indicator === 'bar' && (
-        <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur text-white text-[10px] font-medium">
-          {activeIndex + 1} / {images.length}
         </div>
       )}
     </div>
