@@ -747,7 +747,8 @@ function AdminCustomSections() {
                 placeholder={'<!-- Write your HTML here -->\n<div class="offer-banner">\n  <h2>🎉 Festive Sale!</h2>\n  <p>Flat 20% off — use code FESTIVE20</p>\n  <button onclick="alert(\'Copied!\')">Copy code</button>\n</div>\n\n<!-- Your CSS here -->\n<style>\n.offer-banner {\n  background: linear-gradient(135deg, #f9758d, #ffb4c0);\n  color: white;\n  padding: 20px;\n  border-radius: 12px;\n  text-align: center;\n}\n.offer-banner h2 { font-size: 24px; margin: 0 0 8px; }\n.offer-banner button {\n  background: white;\n  color: #f9758d;\n  border: 0;\n  padding: 8px 20px;\n  border-radius: 8px;\n  font-weight: 600;\n  cursor: pointer;\n  margin-top: 8px;\n}\n</style>\n\n<!-- Your JS here (optional) -->\n<script>\nconsole.log("Offer banner loaded");\n</script>'}
               />
               <p className="text-[11px] text-muted-foreground mt-1">
-                Write everything in this one box. Use <code>&lt;style&gt;</code> tags for CSS and <code>&lt;script&gt;</code> tags for JS — they'll be automatically extracted and scoped.
+                Write everything in this one box. Use <code>&lt;style&gt;</code> tags for CSS and <code>&lt;script&gt;</code> tags for JS — they'll be automatically extracted and scoped.<br/>
+                <strong>Tip:</strong> Use <code>document.getElementById()</code> and <code>document.querySelector()</code> normally — they work inside the section's shadow DOM. For API calls, use the built-in proxy <code>/api/pincode?pin=560001</code> (avoids CORS issues).
               </p>
             </div>
 
