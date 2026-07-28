@@ -13,19 +13,21 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { title, html, css, js, position, visible, location } = body
-  if (!title || !html) {
-    return NextResponse.json({ error: 'title and html required' }, { status: 400 })
+  const { title, code, html, css, js, position, visible, slot, location } = body
+  if (!title) {
+    return NextResponse.json({ error: 'title required' }, { status: 400 })
   }
   try {
     const section = await createCustomSection({
       title,
-      html,
+      code: code || '',
+      html: html || '',
       css: css ?? null,
       js: js ?? null,
       position,
       visible,
-      location: location || 'storefront',
+      slot: slot || location || 'storefront',
+      location,
     })
     return NextResponse.json({ section })
   } catch (e) {

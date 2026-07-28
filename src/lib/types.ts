@@ -49,16 +49,48 @@ export interface Section {
 export interface CustomSection {
   id: string
   title: string
-  html: string
+  /** Single code box — HTML with inline <style> and <script> tags */
+  code?: string
+  /** Legacy fields (backward compat) — if code is empty, fall back to these */
+  html?: string
   css?: string | null
   js?: string | null
   position: number
   visible: boolean
-  /** Where the section renders: 'storefront' (home page) | 'product-below-actions' (product page, after Add to bag/Buy now/Wishlist) */
+  /**
+   * Where the section renders. Options:
+   * - 'storefront' — home page
+   * - 'product-after-image' — between product image and title
+   * - 'product-after-title' — between title and review stars
+   * - 'product-after-stars' — between stars and price
+   * - 'product-after-price' — between price and pincode checker
+   * - 'product-after-pincode' — between pincode and quantity picker
+   * - 'product-after-buttons' — after Add to bag / Buy now
+   * - 'product-after-trust' — after trust badges
+   * - 'product-after-tabs' — after description/specs/reviews tabs
+   * - 'product-bottom' — at the very bottom before "You may also like"
+   * Legacy: 'product-below-actions' maps to 'product-after-buttons'
+   */
+  slot?: string
+  /** Legacy field — maps to slot */
   location?: string
   createdAt: string
   updatedAt: string
 }
+
+/** All valid product page slots for the dropdown */
+export const PRODUCT_SLOTS = [
+  { value: 'storefront', label: '🏠 Home page (storefront)' },
+  { value: 'product-after-image', label: '📷 Product page — after image' },
+  { value: 'product-after-title', label: '📝 Product page — after title' },
+  { value: 'product-after-stars', label: '⭐ Product page — after rating stars' },
+  { value: 'product-after-price', label: '💰 Product page — after price' },
+  { value: 'product-after-pincode', label: '📦 Product page — after delivery check' },
+  { value: 'product-after-buttons', label: '🛍️ Product page — after Add to bag / Buy now' },
+  { value: 'product-after-trust', label: '🛡️ Product page — after trust badges' },
+  { value: 'product-after-tabs', label: '📋 Product page — after description tabs' },
+  { value: 'product-bottom', label: '🔽 Product page — bottom (before "You may also like")' },
+] as const
 
 export interface Order {
   id: string

@@ -35,6 +35,7 @@ import { ProductCustomSections } from './product-custom-sections'
 import { PincodeChecker } from './pincode-checker'
 import { YouMayAlsoLike } from './you-may-also-like'
 import { StickyActionBar } from './sticky-action-bar'
+import { ProductCustomSlot } from './product-custom-slot'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -188,7 +189,13 @@ export function ProductDetail({ productId }: { productId: string }) {
 
           {/* === Info section === */}
           <div className="px-4 sm:px-6 lg:px-0 pt-6 lg:pt-0">
+            {/* SLOT: product-after-image */}
+            <ProductCustomSlot slot="product-after-image" />
+
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{product.title}</h1>
+
+            {/* SLOT: product-after-title */}
+            <ProductCustomSlot slot="product-after-title" />
 
             {/* Clickable star rating — scrolls to reviews section */}
             <button
@@ -217,6 +224,9 @@ export function ProductDetail({ productId }: { productId: string }) {
               </span>
             </button>
 
+            {/* SLOT: product-after-stars */}
+            <ProductCustomSlot slot="product-after-stars" />
+
             <div className="flex items-end gap-3 mt-4">
               <span className="text-3xl font-bold text-price">{formatPrice(product.price)}</span>
               {product.comparedPrice && product.comparedPrice > product.price && (
@@ -231,8 +241,14 @@ export function ProductDetail({ productId }: { productId: string }) {
               )}
             </div>
 
+            {/* SLOT: product-after-price */}
+            <ProductCustomSlot slot="product-after-price" />
+
             {/* Pincode delivery check — between price and quantity picker */}
             <PincodeChecker />
+
+            {/* SLOT: product-after-pincode */}
+            <ProductCustomSlot slot="product-after-pincode" />
 
             {/* Row 1: Quantity picker + Wishlist + Add to bag */}
             <div className="mt-5 flex items-center gap-2">
@@ -302,8 +318,14 @@ export function ProductDetail({ productId }: { productId: string }) {
               Buy now
             </Button>
 
-            {/* Custom sections targeted to product page (location: 'product-below-actions') */}
+            {/* SLOT: product-after-buttons */}
+            <ProductCustomSlot slot="product-after-buttons" />
+
+            {/* Custom sections targeted to product page (legacy product-below-actions) */}
             <ProductCustomSections />
+
+            {/* SLOT: product-after-trust (after trust badges) */}
+            <ProductCustomSlot slot="product-after-trust" />
 
             {/* Trust badges */}
             <div className="mt-6 grid grid-cols-3 gap-2 text-xs">
@@ -507,6 +529,12 @@ export function ProductDetail({ productId }: { productId: string }) {
           </div>
         </div>
       </div>
+
+      {/* SLOT: product-after-tabs (after description/specs/reviews tabs) */}
+      <ProductCustomSlot slot="product-after-tabs" />
+
+      {/* SLOT: product-bottom (before "You may also like") */}
+      <ProductCustomSlot slot="product-bottom" />
 
       {/* You may also like — other products */}
       <YouMayAlsoLike currentProductId={productId} />

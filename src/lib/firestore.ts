@@ -184,11 +184,13 @@ export interface SectionDoc {
 export interface CustomSectionDoc {
   id: string
   title: string
-  html: string
+  code?: string
+  html?: string
   css?: string | null
   js?: string | null
   position: number
   visible: boolean
+  slot?: string
   location?: string
   createdAt: string
   updatedAt: string
@@ -605,28 +607,32 @@ export async function listCustomSections(): Promise<CustomSectionDoc[]> {
     return {
       id: d.id,
       title: data.title || '',
+      code: data.code || '',
+      // Legacy fields (backward compat)
       html: data.html || '',
       css: data.css || null,
       js: data.js || null,
       position: data.position ?? 0,
       visible: data.visible ?? true,
-      location: data.location || 'storefront',
+      slot: data.slot || data.location || 'storefront',
+      location: data.location || data.slot || 'storefront',
       createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
       updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
     } as CustomSectionDoc
   })
-  // Sort in memory by position ascending
   sections.sort((a, b) => a.position - b.position)
   return sections
 }
 
 export async function createCustomSection(input: {
   title: string
-  html: string
+  code?: string
+  html?: string
   css?: string | null
   js?: string | null
   position?: number
   visible?: boolean
+  slot?: string
   location?: string
 }): Promise<CustomSectionDoc> {
   const database = db()
@@ -634,14 +640,18 @@ export async function createCustomSection(input: {
   const snap = await database.collection('customSections').orderBy('position', 'desc').limit(1).get()
   const maxPos = snap.empty ? -1 : (snap.docs[0].data()!.position ?? 0)
   const now = new Date()
+  const slot = input.slot || input.location || 'storefront'
   const docData = {
     title: input.title,
-    html: input.html,
+    code: input.code || '',
+    // Keep legacy fields for backward compat
+    html: input.html || '',
     css: input.css ?? null,
     js: input.js ?? null,
     position: input.position ?? maxPos + 1,
     visible: input.visible ?? true,
-    location: input.location || 'storefront',
+    slot,
+    location: slot,
     createdAt: now,
     updatedAt: now,
   }

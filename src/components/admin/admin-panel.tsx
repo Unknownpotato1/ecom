@@ -56,6 +56,7 @@ import { CustomSectionPreview } from '@/components/store/custom-section-renderer
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Section, CustomSection, HeroConfig } from '@/lib/types'
+import { PRODUCT_SLOTS } from '@/lib/types'
 
 type SectionItem = Section
 
@@ -135,15 +136,15 @@ function SortableCustomRow({
           <p className="text-sm font-medium">{section.title}</p>
           <span className={cn(
             'px-1.5 py-0.5 text-[9px] font-semibold rounded-full uppercase tracking-wide',
-            section.location === 'product-below-actions'
-              ? 'bg-brand text-white'
-              : 'bg-brand-soft text-brand'
+            (section.slot || section.location) === 'storefront'
+              ? 'bg-brand-soft text-brand'
+              : 'bg-brand text-white'
           )}>
-            {section.location === 'product-below-actions' ? 'Product page' : 'Home page'}
+            {(PRODUCT_SLOTS.find((s) => s.value === (section.slot || section.location || 'storefront'))?.label || section.slot || section.location || 'storefront').replace(/^[^\s]+ /, '')}
           </span>
         </div>
         <p className="text-xs text-muted-foreground line-clamp-1">
-          {section.html.substring(0, 80).replace(/<[^>]+>/g, '') || 'Empty section'}
+          {(section.code || section.html || '').substring(0, 80).replace(/<[^>]+>/g, '') || 'Empty section'}
         </p>
       </div>
       <div className="flex items-center gap-2">
@@ -537,11 +538,13 @@ function AdminCustomSections() {
   const emptyDraft: CustomSection = {
     id: '',
     title: '',
+    code: '',
     html: '',
     css: '',
     js: '',
     position: 0,
     visible: true,
+    slot: 'storefront',
     location: 'storefront',
     createdAt: '',
     updatedAt: '',
@@ -601,13 +604,33 @@ function AdminCustomSections() {
 
   const openEditor = (section: CustomSection | null) => {
     setEditing(section)
-    setDraft(section ? { ...section } : { ...emptyDraft, position: sections.length })
+    if (section) {
+      // If section has legacy html/css/js but no code, combine them into code
+      let code = section.code || ''
+      if (!code && (section.html || section.css || section.js)) {
+        code = section.html || ''
+        if (section.css) code += `\n<style>\n${section.css}\n</style>`
+        if (section.js) code += `\n<script>\n${section.js}\n</script>`
+      }
+      setDraft({
+        ...section,
+        code,
+        slot: section.slot || section.location || 'storefront',
+      })
+    } else {
+      setDraft({ ...emptyDraft, position: sections.length })
+    }
     setOpen(true)
   }
 
   const saveDraft = async () => {
-    if (!draft.title || !draft.html) {
-      toast.error('Title and HTML are required')
+    if (!draft.title) {
+      toast.error('Title is required')
+      return
+    }
+    // Require either code or legacy html
+    if (!draft.code && !draft.html) {
+      toast.error('Code is required')
       return
     }
     setSaving(true)
@@ -618,10 +641,8 @@ function AdminCustomSections() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: draft.title,
-        html: draft.html,
-        css: draft.css,
-        js: draft.js,
-        location: draft.location || 'storefront',
+        code: draft.code || '',
+        slot: draft.slot || draft.location || 'storefront',
       }),
     })
     setSaving(false)
@@ -689,7 +710,7 @@ function AdminCustomSections() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Title (shown above the section on storefront)</Label>
+              <Label className="text-xs">Title (optional — shown above the section)</Label>
               <Input
                 value={draft.title}
                 onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
@@ -698,55 +719,36 @@ function AdminCustomSections() {
               />
             </div>
 
-            {/* Location selector */}
+            {/* Slot selector — free placement anywhere on product page */}
             <div>
-              <Label className="text-xs">Where should this section appear?</Label>
+              <Label className="text-xs font-medium">Where should this section appear?</Label>
               <select
-                value={draft.location || 'storefront'}
-                onChange={(e) => setDraft((d) => ({ ...d, location: e.target.value }))}
+                value={draft.slot || draft.location || 'storefront'}
+                onChange={(e) => setDraft((d) => ({ ...d, slot: e.target.value, location: e.target.value }))}
                 className="mt-1 w-full h-10 rounded-md border border-pink-200 bg-white px-3 text-sm"
               >
-                <option value="storefront">🏠 Home page (storefront)</option>
-                <option value="product-below-actions">🛍️ Product page — below Buy buttons</option>
+                {PRODUCT_SLOTS.map((s) => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
               </select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                {draft.location === 'product-below-actions'
-                  ? 'This section will appear on every product detail page, right after the Add to bag / Buy now / Wishlist buttons.'
-                  : 'This section will appear on the home page among the other storefront sections.'}
+                Place this section between any two elements on the product page, or on the home page. Choose the exact position from the list above.
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs">HTML</Label>
-                <Textarea
-                  value={draft.html}
-                  onChange={(e) => setDraft((d) => ({ ...d, html: e.target.value }))}
-                  rows={10}
-                  className="mt-1 font-mono text-xs"
-                  placeholder={'<div class="banner">\n  <h2>Big Festive Sale</h2>\n  <p>Up to 40% off</p>\n</div>'}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">CSS (scoped)</Label>
-                <Textarea
-                  value={draft.css || ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, css: e.target.value }))}
-                  rows={10}
-                  className="mt-1 font-mono text-xs"
-                  placeholder={'.banner {\n  background: #f9758d;\n  color: white;\n  padding: 24px;\n  border-radius: 12px;\n  text-align: center;\n}'}
-                />
-              </div>
-              <div>
-                <Label className="text-xs">JS (optional)</Label>
-                <Textarea
-                  value={draft.js || ''}
-                  onChange={(e) => setDraft((d) => ({ ...d, js: e.target.value }))}
-                  rows={10}
-                  className="mt-1 font-mono text-xs"
-                  placeholder={'root.querySelector("h2").addEventListener("click", () => {\n  alert("Sale clicked!");\n});'}
-                />
-              </div>
+            {/* Single code box — HTML + CSS + JS all in one */}
+            <div>
+              <Label className="text-xs font-medium">Code (HTML + CSS + JS in one box)</Label>
+              <Textarea
+                value={draft.code || ''}
+                onChange={(e) => setDraft((d) => ({ ...d, code: e.target.value }))}
+                rows={16}
+                className="mt-1 font-mono text-xs"
+                placeholder={'<!-- Write your HTML here -->\n<div class="offer-banner">\n  <h2>🎉 Festive Sale!</h2>\n  <p>Flat 20% off — use code FESTIVE20</p>\n  <button onclick="alert(\'Copied!\')">Copy code</button>\n</div>\n\n<!-- Your CSS here -->\n<style>\n.offer-banner {\n  background: linear-gradient(135deg, #f9758d, #ffb4c0);\n  color: white;\n  padding: 20px;\n  border-radius: 12px;\n  text-align: center;\n}\n.offer-banner h2 { font-size: 24px; margin: 0 0 8px; }\n.offer-banner button {\n  background: white;\n  color: #f9758d;\n  border: 0;\n  padding: 8px 20px;\n  border-radius: 8px;\n  font-weight: 600;\n  cursor: pointer;\n  margin-top: 8px;\n}\n</style>\n\n<!-- Your JS here (optional) -->\n<script>\nconsole.log("Offer banner loaded");\n</script>'}
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Write everything in this one box. Use <code>&lt;style&gt;</code> tags for CSS and <code>&lt;script&gt;</code> tags for JS — they'll be automatically extracted and scoped.
+              </p>
             </div>
 
             <div>
