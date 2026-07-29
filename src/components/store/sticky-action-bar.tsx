@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ShoppingBag, Check } from 'lucide-react'
+import { useEffect } from 'react'
+import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -12,67 +12,47 @@ interface Props {
 }
 
 /**
- * Sticky action bar — slides up from the bottom of the mobile screen
- * ONLY when the inline Buy now button (id="inline-buy-now") scrolls out
- * of view. When the user scrolls back up, it slides back down.
+ * Sticky action bar — always pinned to the bottom of the mobile screen,
+ * like many e-commerce apps (Myntra, Amazon, Flipkart) use.
  *
  * Design: single solid #f9758d background, two equal-width buttons with
  * only a thin white vertical divider line between them. No rounded
  * corners, no gaps — full edge-to-edge.
  *
  * Mobile only (hidden on desktop via lg:hidden).
- * Uses IntersectionObserver to track the inline Buy now button.
  *
- * When visible, adds padding-bottom to the body so the footer content
- * is never hidden behind the bar — the user can always scroll to see
- * all footer content.
+ * Always visible — adds persistent padding-bottom to the body so the
+ * footer content is never hidden behind the bar. 56px = bar height
+ * (h-14 = 3.5rem = 56px).
+ *
+ * Text on both buttons is rendered in ALL CAPS per spec.
+ * Bag icon is removed from the Add to bag button (the Check icon for
+ * the "Added" state is kept for clarity).
  */
 export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
-  const [visible, setVisible] = useState(false)
-
+  // Always reserve space at the bottom of the page so the footer (and
+  // any other trailing content) is never hidden behind the sticky bar.
+  // 56px = bar height (h-14 = 3.5rem = 56px).
   useEffect(() => {
-    const target = document.getElementById('inline-buy-now')
-    if (!target) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setVisible(!entry.isIntersecting)
-      },
-      { threshold: 0, rootMargin: '0px 0px 0px 0px' }
-    )
-
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [])
-
-  // When visible, add padding-bottom to body so footer isn't hidden.
-  // When hidden, remove it. 56px = bar height (h-14 = 3.5rem = 56px).
-  useEffect(() => {
-    if (visible) {
-      document.body.style.paddingBottom = '56px'
-    } else {
-      document.body.style.paddingBottom = ''
-    }
+    document.body.style.paddingBottom = '56px'
     return () => {
       document.body.style.paddingBottom = ''
     }
-  }, [visible])
+  }, [])
 
   return (
     <div
       className={cn(
         'fixed bottom-0 left-0 right-0 z-30 lg:hidden',
-        'flex items-stretch',
-        'transition-transform duration-300 ease-out',
-        visible ? 'translate-y-0' : 'translate-y-full'
+        'flex items-stretch'
       )}
       style={{ backgroundColor: '#f9758d' }}
     >
-      {/* Add to bag — left half */}
+      {/* Add to bag — left half (no bag icon, text only) */}
       <button
         onClick={onAdd}
         className={cn(
-          'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold',
+          'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold uppercase tracking-wide',
           'active:bg-black/10 transition-colors'
         )}
       >
@@ -81,9 +61,7 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
             <Check className="h-4 w-4" /> Added
           </>
         ) : (
-          <>
-            <ShoppingBag className="h-4 w-4" /> Add to bag
-          </>
+          <>Add to bag</>
         )}
       </button>
 
@@ -94,7 +72,7 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
       <button
         onClick={onBuyNow}
         className={cn(
-          'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold',
+          'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide',
           'active:bg-black/10 transition-colors'
         )}
       >
