@@ -73,7 +73,7 @@ export function Storefront({ heroFallback }: Props) {
     return (
       <>
         <HeroSection config={heroFallback || { imageUrl: '', title: 'Aurora Gifts', subtitle: 'Curated hampers, hand-packed with love.' }} />
-        <ProductGrid title="All Hampers" filter="all" anchorId="all-hampers" />
+        <ProductGrid title="Explore Hampers" filter="all" anchorId="all-hampers" listenToFilterEvents />
       </>
     )
   }
@@ -82,29 +82,35 @@ export function Storefront({ heroFallback }: Props) {
   const allItems: Array<{ kind: 'section'; data: Section } | { kind: 'custom'; data: CustomSection }> = [
     ...sections.map((s) => ({ kind: 'section' as const, data: s })),
     ...customSections.map((c) => ({ kind: 'custom' as const, data: c })),
-  ].sort((a, b) => {
-    const ap = a.data.position
-    const bp = b.data.position
-    if (ap !== bp) return ap - bp
-    return a.kind === 'section' ? -1 : 1
-  })
+  ]
+    .filter((item) => {
+      // Hide any admin-configured "Trending Now" and "Best Sellers" product
+      // sections — per the new home design, the home page only shows the
+      // single "Explore Hampers" grid. Custom (HTML) sections are kept.
+      if (item.kind !== 'section') return true
+      const s = item.data
+      if (s.type !== 'products') return true
+      const cfg = s.config ? JSON.parse(s.config) : { filter: 'all' }
+      const filter = cfg.filter || 'all'
+      return filter !== 'best' && filter !== 'trending'
+    })
+    .sort((a, b) => {
+      const ap = a.data.position
+      const bp = b.data.position
+      if (ap !== bp) return ap - bp
+      return a.kind === 'section' ? -1 : 1
+    })
 
-  // Pre-compute anchors for the FIRST occurrence of each product filter
-  const anchors = {
-    best: allItems.findIndex(
-      (i) => i.kind === 'section' && i.data.type === 'products' && i.data.config && JSON.parse(i.data.config).filter === 'best'
-    ),
-    trending: allItems.findIndex(
-      (i) => i.kind === 'section' && i.data.type === 'products' && i.data.config && JSON.parse(i.data.config).filter === 'trending'
-    ),
-    all: allItems.findIndex(
-      (i) => i.kind === 'section' && i.data.type === 'products' && (!i.data.config || JSON.parse(i.data.config).filter === 'all')
-    ),
-  }
+  // Track whether the home page already includes an "all" product grid
+  // (admin-configured). If not, we'll append one at the end so the home
+  // page always shows all hampers.
+  const hasAllGrid = allItems.some(
+    (i) => i.kind === 'section' && i.data.type === 'products' && (!i.data.config || JSON.parse(i.data.config).filter === 'all')
+  )
 
   return (
     <>
-      {allItems.map((item, idx) => {
+      {allItems.map((item) => {
         if (item.kind === 'custom') {
           return <CustomSectionRenderer key={`custom-${item.data.id}`} section={item.data} />
         }
@@ -127,17 +133,16 @@ export function Storefront({ heroFallback }: Props) {
         if (s.type === 'products') {
           const cfg = s.config ? JSON.parse(s.config) : { filter: 'all' }
           const filter: 'all' | 'best' | 'trending' = cfg.filter || 'all'
-          let anchor: string | undefined
-          if (idx === anchors.best) anchor = 'best-sellers'
-          else if (idx === anchors.trending) anchor = 'trending-now'
-          else if (idx === anchors.all) anchor = 'all-hampers'
+          // The only product section that survives the filter above is
+          // the "all" grid. Force its title to "Explore Hampers" and give
+          // it the canonical anchor + filter-event listener.
           return (
             <ProductGrid
               key={s.id}
-              title={s.title || (filter === 'best' ? 'Best Sellers' : filter === 'trending' ? 'Trending Now' : 'All Hampers')}
-              filter={filter}
-              anchorId={anchor}
-              listenToFilterEvents={idx === anchors.all}
+              title="Explore Hampers"
+              filter="all"
+              anchorId="all-hampers"
+              listenToFilterEvents
             />
           )
         }
@@ -152,6 +157,19 @@ export function Storefront({ heroFallback }: Props) {
         }
         return null
       })}
+
+      {/* Always ensure an "Explore Hampers" grid is rendered on the home
+          page, even if the admin hasn't configured one. This guarantees
+          visitors can always browse all hampers. Skipped if the admin
+          already placed an "all" products section above. */}
+      {!hasAllGrid && (
+        <ProductGrid
+          title="Explore Hampers"
+          filter="all"
+          anchorId="all-hampers"
+          listenToFilterEvents
+        />
+      )}
     </>
   )
 }

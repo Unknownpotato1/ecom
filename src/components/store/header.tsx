@@ -17,9 +17,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 const MENU_LINKS = [
-  { label: 'All Hampers', view: 'home', filter: 'all' },
-  { label: 'Best Sellers', view: 'home', filter: 'best' },
-  { label: 'Trending', view: 'home', filter: 'trending' },
+  { label: 'Explore Hampers', view: 'home', filter: 'all' },
   { label: 'Festive', view: 'home', filter: 'festive' },
   { label: 'Birthday', view: 'home', filter: 'birthday' },
   { label: 'Anniversary', view: 'home', filter: 'anniversary' },

@@ -105,7 +105,7 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents }: P
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{overrideFilter ? overrideFilter.charAt(0).toUpperCase() + overrideFilter.slice(1) : title}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            {filtered.length} hamper{filtered.length === 1 ? '' : 's'} • hand-packed with love
+            Gift hampers • hand-packed with love
           </p>
         </div>
         <Button variant="link" className="text-brand hover:text-brand" onClick={() => useUI.getState().goSearch(overrideFilter || title)}>
