@@ -75,35 +75,44 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
       )}
       style={{ backgroundColor: '#f9758d' }}
     >
-      {/* Add to bag — left half (no bag icon, text only) */}
+      {/* Add to bag — left half (no bag icon, text only).
+          .sticky-button-wrapper enables the shimmer effect (defined in
+          globals.css). The inner <span> is positioned with z-index:2 so
+          the button text stays ABOVE the shimmer streak (::before is
+          z-index:1). Without this, the streak would visually overlay
+          the text on some browsers. */}
       <button
         onClick={onAdd}
         className={cn(
+          'sticky-button-wrapper',
           'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold uppercase tracking-wide',
           'active:bg-black/10 transition-colors'
         )}
       >
-        {added ? (
-          <>
-            <Check className="h-4 w-4" /> Added
-          </>
-        ) : (
-          <>Add to bag</>
-        )}
+        <span className="relative z-[2] flex items-center gap-1.5">
+          {added ? (
+            <>
+              <Check className="h-4 w-4" /> Added
+            </>
+          ) : (
+            <>Add to bag</>
+          )}
+        </span>
       </button>
 
       {/* Thin divider line between the two buttons */}
       <div className="w-px bg-white/30 my-3" />
 
-      {/* Buy now — right half */}
+      {/* Buy now — right half. Same shimmer wrapper + text layering. */}
       <button
         onClick={onBuyNow}
         className={cn(
+          'sticky-button-wrapper',
           'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide',
           'active:bg-black/10 transition-colors'
         )}
       >
-        Buy now
+        <span className="relative z-[2]">Buy now</span>
       </button>
     </div>,
     document.body

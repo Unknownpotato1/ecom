@@ -244,3 +244,66 @@ html.aurora-lock-scroll body {
   overflow: hidden !important;
   touch-action: none !important;
 }
+
+/* ============================================================
+ * Shimmer effect for the sticky buy / add-to-bag bar.
+ *
+ * Applied to each button via the .sticky-button-wrapper class.
+ * A diagonal light streak sweeps across the button every 8 seconds:
+ *   - 0% → 37.5% : sweep across (~3 seconds of motion)
+ *   - 37.5% → 100% : pause (~5 seconds, no visible shimmer)
+ *   - then repeats
+ *
+ * The wrapper needs `overflow: hidden` so the shimmer streak stays
+ * clipped inside the button (the streak starts off-screen at
+ * left:-75% and exits at left:125%).
+ *
+ * `position: relative` on the wrapper establishes a stacking context
+ * so the ::before pseudo-element (the streak) layers above the
+ * button background but below the button text (text sits at the
+ * button's natural z-index, which is above ::before's z-index:1
+ * because the text is in normal flow and the pseudo-element has
+ * z-index:1 but is positioned — actually, to guarantee the text
+ * stays above the streak, the text container also needs to be
+ * positioned with a higher z-index. We handle that with an inline
+ * style in the React component (position:relative; z-index:2).
+ * ============================================================ */
+.sticky-button-wrapper {
+  position: relative;
+  overflow: hidden; /* required so the shimmer stays clipped inside the button */
+}
+
+.sticky-button-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  animation: aurora-shimmer 8s infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+@keyframes aurora-shimmer {
+  0%      { left: -75%;  opacity: 1; }  /* shimmer start */
+  37.5%   { left: 125%;  opacity: 1; }  /* shimmer sweeps across for 3s */
+  37.51%  { opacity: 0; }                /* fade immediately after the sweep */
+  100%    { left: 125%;  opacity: 0; }   /* remaining ~5s = pause before repeat */
+}
+
+/* Respect reduced-motion preference — disable the animation entirely
+   for users who have set prefers-reduced-motion: reduce in their OS. */
+@media (prefers-reduced-motion: reduce) {
+  .sticky-button-wrapper::before {
+    animation: none;
+    display: none;
+  }
+}
