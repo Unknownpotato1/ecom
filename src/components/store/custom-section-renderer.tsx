@@ -59,8 +59,9 @@ function createDocumentProxy(shadow: ShadowRoot, root: HTMLElement): Document {
   return new Proxy(realDoc, {
     get(target, prop, receiver) {
       // Element-finding methods → search shadow root
+      // NOTE: ShadowRoot does NOT have getElementById — use querySelector instead
       if (prop === 'getElementById') {
-        return (id: string) => shadow.getElementById(id) || root.querySelector(`#${id}`)
+        return (id: string) => root.querySelector(`#${id}`) || shadow.querySelector(`#${id}`)
       }
       if (prop === 'querySelector') {
         return (selector: string) => shadow.querySelector(selector) || root.querySelector(selector)
