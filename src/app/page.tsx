@@ -11,6 +11,7 @@ import { SearchResults } from '@/components/store/search-results'
 import { Orders } from '@/components/store/orders'
 import { Profile } from '@/components/auth/profile'
 import { AdminPanel } from '@/components/admin/admin-panel'
+import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { useUI } from '@/lib/ui-store'
 import type { HeroConfig } from '@/lib/types'
 
@@ -30,6 +31,7 @@ export default function Home() {
   if (view === 'admin') {
     return (
       <main className="min-h-screen flex flex-col bg-background">
+        <NavigationWatcher />
         <AdminPanel />
         <CartDrawer />
       </main>
@@ -38,6 +40,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col bg-background">
+      <NavigationWatcher />
       <Header />
 
       <div className="flex-1">
