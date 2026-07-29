@@ -46,13 +46,13 @@ export function Footer() {
           </p>
           <div className="mt-4 space-y-2 text-sm text-white/90">
             <div className="flex items-start gap-2">
-              <MapPin className="h-4 w-4 mt-0.5" /> <span>Koramangala, Bengaluru 226026, USA</span>
+              <MapPin className="h-4 w-4 mt-0.5" /> <span>Gomtinagar, Lucknow 226010, India</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4" /> <span>+91 80 4567 8910</span>
             </div>
             <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> <span>hello@aurora.gifts</span>
+              <Mail className="h-4 w-4" /> <span>contact@aurora.com</span>
             </div>
           </div>
         </div>
