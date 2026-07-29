@@ -214,3 +214,33 @@
 .fade-up {
   animation: aurora-fade-up 0.5s ease-out backwards;
 }
+
+/* ============================================================
+ * Body scroll lock — for custom-section overlays (chat widgets,
+ * popovers, etc.) that need to freeze the page behind them while open.
+ *
+ * Usage from custom section JS:
+ *   document.documentElement.classList.add('aurora-lock-scroll')
+ *   // ...later, when closing...
+ *   document.documentElement.classList.remove('aurora-lock-scroll')
+ *
+ * `overflow: hidden` on <html> is the simplest cross-browser way to
+ * freeze page scroll. On iOS Safari, also setting it on <body> and
+ * adding `touch-action: none` blocks touch scrolling / rubber-band.
+ *
+ * NOTE: This does NOT preserve scroll position by itself — the page
+ * stays where it is, scrolling is just frozen. When the lock is
+ * removed, scrolling resumes from the same position. (If you need to
+ * also prevent the small iOS position jump, your custom-section JS
+ * can save window.scrollY before locking and window.scrollTo(0, y)
+ * after unlocking — but for a chat popup that closes quickly this is
+ * rarely needed.)
+ *
+ * The custom-section renderer's `document` proxy passes `documentElement`
+ * through to the real document, so this works inside Shadow DOM.
+ * ============================================================ */
+html.aurora-lock-scroll,
+html.aurora-lock-scroll body {
+  overflow: hidden !important;
+  touch-action: none !important;
+}

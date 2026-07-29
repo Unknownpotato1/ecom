@@ -115,7 +115,7 @@ export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
 
     const styleEl = document.createElement('style')
     styleEl.textContent = `
-      :host { display: block; position: relative; z-index: 50; }
+      :host { display: block; position: relative; }
       ${css}
     `
 
