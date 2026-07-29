@@ -409,18 +409,78 @@ export function AdminProducts() {
                 <div className="mt-2 space-y-2">
                   {/* Existing tags */}
                   {draft.tagItems.map((tag, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} className="flex items-center gap-2 flex-wrap">
+                      {/*
+                        Color picker + hex text field (two-way bound).
+                        The native <input type="color"> only accepts 7-char
+                        hex (#rrggbb) — no shorthand, no rgb(), no named
+                        colors. We coerce the text input to that shape so
+                        the two stay in sync:
+
+                          swatch change → text field updates to #rrggbb
+                          text field change → if valid hex, swatch updates
+                                              if invalid, swatch stays but
+                                              text field keeps user input
+                                              so they can finish typing.
+
+                        We also normalize shorthand (#abc → #aabbcc) and
+                        accept input without a leading # (auto-prepended).
+                      */}
                       <input
                         type="color"
-                        value={tag.color}
+                        value={/^#[0-9a-fA-F]{6}$/.test(tag.color) ? tag.color : '#f9758d'}
                         onChange={(e) => {
                           setDraft((d) => ({
                             ...d,
                             tagItems: d.tagItems.map((t, idx) => idx === i ? { ...t, color: e.target.value } : t),
                           }))
                         }}
-                        className="h-9 w-12 rounded border border-pink-200 cursor-pointer bg-white p-0.5"
-                        aria-label="Tag color"
+                        className="h-9 w-12 rounded border border-pink-200 cursor-pointer bg-white p-0.5 shrink-0"
+                        aria-label="Tag color picker"
+                      />
+                      <Input
+                        value={tag.color}
+                        onChange={(e) => {
+                          let v = e.target.value.trim()
+                          // Auto-prepend # if the user typed a hex without it
+                          if (v && !v.startsWith('#')) v = '#' + v
+                          // Expand 3-char shorthand (#abc → #aabbcc) so the
+                          // native color input stays in sync when valid.
+                          if (/^#[0-9a-fA-F]{3}$/.test(v) && !/^#[0-9a-fA-F]{6}$/.test(v)) {
+                            v = '#' + v.slice(1).split('').map(c => c + c).join('')
+                          }
+                          setDraft((d) => ({
+                            ...d,
+                            tagItems: d.tagItems.map((t, idx) => idx === i ? { ...t, color: v } : t),
+                          }))
+                        }}
+                        onBlur={(e) => {
+                          // On blur, if the hex is invalid, reset to last
+                          // valid color so we don't persist garbage.
+                          let v = e.target.value.trim()
+                          if (v && !v.startsWith('#')) v = '#' + v
+                          if (!/^#[0-9a-fA-F]{6}$/.test(v)) {
+                            // Invalid — fall back to a sane default
+                            setDraft((d) => ({
+                              ...d,
+                              tagItems: d.tagItems.map((t, idx) =>
+                                idx === i ? { ...t, color: '#f9758d' } : t
+                              ),
+                            }))
+                          } else {
+                            // Valid — normalize to lowercase for consistency
+                            setDraft((d) => ({
+                              ...d,
+                              tagItems: d.tagItems.map((t, idx) =>
+                                idx === i ? { ...t, color: v.toLowerCase() } : t
+                              ),
+                            }))
+                          }
+                        }}
+                        className="w-24 font-mono text-xs shrink-0"
+                        placeholder="#f9758d"
+                        aria-label="Tag color hex code"
+                        maxLength={7}
                       />
                       <Input
                         value={tag.label}
@@ -430,7 +490,7 @@ export function AdminProducts() {
                             tagItems: d.tagItems.map((t, idx) => idx === i ? { ...t, label: e.target.value } : t),
                           }))
                         }}
-                        className="flex-1"
+                        className="flex-1 min-w-[120px]"
                         placeholder="Tag label e.g. New Arrival"
                       />
                       {/* Live preview */}
@@ -473,7 +533,7 @@ export function AdminProducts() {
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-2">
-                  Each tag shows on the product image with the color you pick. A green "X% OFF" tag is auto-added when a compared price is set. Max 4 tags total per product.
+                  Each tag shows on the product image with the color you pick. Pick a color from the swatch or type a hex code (e.g. <code className="font-mono bg-muted px-1 rounded">#f9758d</code>, <code className="font-mono bg-muted px-1 rounded">#1abc9c</code>). A green &quot;X% OFF&quot; tag is auto-added when a compared price is set. Max 4 tags total per product.
                 </p>
               </div>
               <div className="sm:col-span-2 flex items-center gap-6">
