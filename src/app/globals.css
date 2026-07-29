@@ -248,32 +248,35 @@ html.aurora-lock-scroll body {
 /* ============================================================
  * Shimmer effect for the sticky buy / add-to-bag bar.
  *
- * Applied to each button via the .sticky-button-wrapper class.
- * A diagonal light streak sweeps across the button every 8 seconds:
+ * Applied to the CONTAINER (the bar that holds both buttons) via the
+ * .sticky-shimmer-bar class — so a SINGLE light streak sweeps across
+ * both buttons as one continuous wave (not two independent shimmers).
+ *
+ * A diagonal light streak sweeps across the bar every 8 seconds:
  *   - 0% → 37.5% : sweep across (~3 seconds of motion)
  *   - 37.5% → 100% : pause (~5 seconds, no visible shimmer)
  *   - then repeats
  *
- * The wrapper needs `overflow: hidden` so the shimmer streak stays
- * clipped inside the button (the streak starts off-screen at
- * left:-75% and exits at left:125%).
+ * The container needs `overflow: hidden` so the shimmer streak stays
+ * clipped inside the bar (the streak starts off-screen at left:-75%
+ * and exits at left:125%).
  *
- * `position: relative` on the wrapper establishes a stacking context
- * so the ::before pseudo-element (the streak) layers above the
- * button background but below the button text (text sits at the
- * button's natural z-index, which is above ::before's z-index:1
- * because the text is in normal flow and the pseudo-element has
- * z-index:1 but is positioned — actually, to guarantee the text
- * stays above the streak, the text container also needs to be
- * positioned with a higher z-index. We handle that with an inline
- * style in the React component (position:relative; z-index:2).
+ * Layering:
+ *   - bar background (#f9758d) — z-index auto (bottom)
+ *   - ::before shimmer streak  — z-index 1
+ *   - buttons + divider + text — z-index 2 (via .sticky-shimmer-content)
+ *
+ * The buttons themselves are positioned with z-index:2 (via the
+ * .sticky-shimmer-content class) so they sit above the streak and
+ * remain fully clickable. The streak has pointer-events:none so it
+ * never intercepts clicks anyway.
  * ============================================================ */
-.sticky-button-wrapper {
+.sticky-shimmer-bar {
   position: relative;
-  overflow: hidden; /* required so the shimmer stays clipped inside the button */
+  overflow: hidden; /* required so the shimmer stays clipped inside the bar */
 }
 
-.sticky-button-wrapper::before {
+.sticky-shimmer-bar::before {
   content: "";
   position: absolute;
   top: 0;
@@ -292,6 +295,13 @@ html.aurora-lock-scroll body {
   pointer-events: none;
 }
 
+/* All interactive content (buttons + divider) inside the bar gets
+   z-index:2 so it layers above the ::before streak. */
+.sticky-shimmer-content {
+  position: relative;
+  z-index: 2;
+}
+
 @keyframes aurora-shimmer {
   0%      { left: -75%;  opacity: 1; }  /* shimmer start */
   37.5%   { left: 125%;  opacity: 1; }  /* shimmer sweeps across for 3s */
@@ -302,7 +312,7 @@ html.aurora-lock-scroll body {
 /* Respect reduced-motion preference — disable the animation entirely
    for users who have set prefers-reduced-motion: reduce in their OS. */
 @media (prefers-reduced-motion: reduce) {
-  .sticky-button-wrapper::before {
+  .sticky-shimmer-bar::before {
     animation: none;
     display: none;
   }
