@@ -37,7 +37,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-pink-100 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer"
+      className="group relative flex flex-col overflow-hidden border border-pink-100 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer"
       onClick={() => goProduct(product.id)}
     >
       <div className="relative aspect-square overflow-hidden bg-pink-50">
@@ -55,7 +55,7 @@ export function ProductCard({ product }: { product: Product }) {
           {tags.slice(0, 4).map((t, i) => (
             <span
               key={i}
-              className="px-2 py-0.5 text-[10px] font-semibold rounded-full tracking-wide shadow-sm text-white"
+              className="px-2 py-0.5 text-[10px] font-semibold tracking-wide shadow-sm text-white"
               style={{ backgroundColor: t.color }}
             >
               {t.label}
@@ -107,7 +107,7 @@ export function ProductCard({ product }: { product: Product }) {
             size="sm"
             onClick={handleAdd}
             className={cn(
-              'h-9 px-3 text-xs shadow-sm transition-all',
+              'h-9 px-3 text-xs shadow-sm transition-all rounded-none',
               added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
             )}
           >

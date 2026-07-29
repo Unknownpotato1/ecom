@@ -3,13 +3,6 @@
 import { useEffect, useState } from 'react'
 import {
   Star,
-  ShoppingBag,
-  Heart,
-  Truck,
-  Shield,
-  RefreshCw,
-  Minus,
-  Plus,
   Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -32,7 +25,6 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { SwipeableImage } from './swipeable-image'
 import { ProductCustomSections } from './product-custom-sections'
-import { PincodeChecker } from './pincode-checker'
 import { YouMayAlsoLike } from './you-may-also-like'
 import { StickyActionBar } from './sticky-action-bar'
 import { ProductCustomSlot } from './product-custom-slot'
@@ -43,7 +35,6 @@ export function ProductDetail({ productId }: { productId: string }) {
   const [activeImage, setActiveImage] = useState(0)
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
-  const [liked, setLiked] = useState(false)
   const [tab, setTab] = useState<'description' | 'specifications' | 'reviews'>('description')
 
   // Review form
@@ -178,7 +169,7 @@ export function ProductDetail({ productId }: { productId: string }) {
               {tags.slice(0, 4).map((t, i) => (
                 <span
                   key={i}
-                  className="px-2 py-0.5 text-[11px] font-semibold rounded-full tracking-wide shadow-sm text-white"
+                  className="px-2 py-0.5 text-[11px] font-semibold tracking-wide shadow-sm text-white"
                   style={{ backgroundColor: t.color }}
                 >
                   {t.label}
@@ -244,103 +235,20 @@ export function ProductDetail({ productId }: { productId: string }) {
             {/* SLOT: product-after-price */}
             <ProductCustomSlot slot="product-after-price" />
 
-            {/* Pincode delivery check — between price and quantity picker */}
-            <PincodeChecker />
-
-            {/* SLOT: product-after-pincode */}
+            {/* SLOT: product-after-pincode (was PincodeChecker, now just a slot) */}
             <ProductCustomSlot slot="product-after-pincode" />
 
-            {/* Row 1: Quantity picker + Wishlist + Add to bag */}
-            <div className="mt-5 flex items-center gap-2">
-              {/* Quantity picker — thin black border, no internal dividers */}
-              <div className="inline-flex items-center rounded-md border border-black overflow-hidden shrink-0">
-                <button
-                  className="h-11 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  aria-label="Decrease"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="h-11 min-w-[2.5rem] inline-flex items-center justify-center text-sm font-semibold">
-                  {qty}
-                </span>
-                <button
-                  className="h-11 w-10 inline-flex items-center justify-center hover:bg-brand-soft"
-                  onClick={() => setQty((q) => q + 1)}
-                  aria-label="Increase"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Wishlist heart — thin black border */}
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-11 w-11 border border-black rounded-md hover:bg-black hover:text-white shrink-0"
-                onClick={() => setLiked((v) => !v)}
-                aria-label="Wishlist"
-              >
-                <Heart className={cn('h-5 w-5', liked ? 'fill-brand text-brand' : '')} />
-              </Button>
-
-              {/* Add to bag — fills remaining space */}
-              <Button
-                size="lg"
-                onClick={handleAdd}
-                className={cn(
-                  'flex-1 h-11',
-                  added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
-                )}
-              >
-                {added ? (
-                  <>
-                    <Check className="h-4 w-4 mr-2" /> Added to bag
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag className="h-4 w-4 mr-2" /> Add to bag
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Row 2: Buy now — full width, #f9758d */}
-            <Button
-              id="inline-buy-now"
-              size="lg"
-              className="w-full h-11 mt-2 bg-brand hover:shadow-lg text-white"
-              onClick={() => {
-                handleAdd()
-                setTimeout(() => openCart(), 200)
-              }}
-            >
-              Buy now
-            </Button>
-
-            {/* SLOT: product-after-buttons */}
+            {/* SLOT: product-after-buttons (inline buttons removed — sticky bar handles add/buy) */}
             <ProductCustomSlot slot="product-after-buttons" />
+
+            {/* Hidden anchor for sticky bar observer — placed where Buy now used to be */}
+            <div id="inline-buy-now" className="h-px w-full" aria-hidden="true" />
 
             {/* Custom sections targeted to product page (legacy product-below-actions) */}
             <ProductCustomSections />
 
-            {/* SLOT: product-after-trust (after trust badges) */}
+            {/* SLOT: product-after-trust (trust badges removed) */}
             <ProductCustomSlot slot="product-after-trust" />
-
-            {/* Trust badges */}
-            <div className="mt-6 grid grid-cols-3 gap-2 text-xs">
-              {[
-                { icon: Truck, label: 'Free shipping', sub: 'on orders ₹1499+' },
-                { icon: Shield, label: 'Secure packing', sub: 'tamper-proof' },
-                { icon: RefreshCw, label: 'Easy returns', sub: 'within 7 days' },
-              ].map((b, i) => (
-                <div key={i} className="rounded-lg border border-pink-100 bg-brand-soft p-3 text-center">
-                  <b.icon className="h-4 w-4 mx-auto mb-1 text-brand" />
-                  <div className="font-medium">{b.label}</div>
-                  <div className="text-muted-foreground text-[10px]">{b.sub}</div>
-                </div>
-              ))}
-            </div>
 
             {/* Tabs */}
             <div className="mt-8">
