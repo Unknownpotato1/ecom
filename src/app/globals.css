@@ -257,22 +257,36 @@ html.aurora-lock-scroll body {
  *   - 37.5% → 100% : pause (~5 seconds, no visible shimmer)
  *   - then repeats
  *
- * The container needs `overflow: hidden` so the shimmer streak stays
- * clipped inside the bar (the streak starts off-screen at left:-75%
- * and exits at left:125%).
+ * ⚠️ CRITICAL: Do NOT set `position: relative` on this rule!
+ *
+ * The bar uses Tailwind's `.fixed` class (position: fixed) to pin to
+ * the viewport bottom. Both `.fixed` and `.sticky-shimmer-bar` are
+ * single-class selectors with the same specificity (0,1,0), so the
+ * one that appears LATER in the compiled stylesheet wins. globals.css
+ * is appended AFTER Tailwind's generated utilities, so any position
+ * declared here would override Tailwind's `.fixed` — breaking the
+ * pin-to-viewport behavior and leaving the bar stuck in normal
+ * document flow at the bottom of the page content (invisible because
+ * it's below the fold).
+ *
+ * We rely on the fact that `position: fixed` (from Tailwind's .fixed)
+ * already establishes a containing block for absolutely-positioned
+ * descendants — so the ::before shimmer streak (position: absolute)
+ * positions itself relative to the bar without needing position:relative
+ * on this rule.
+ *
+ * `overflow: hidden` IS safe to declare here — it doesn't conflict
+ * with any Tailwind utility on the bar, and it's required so the
+ * shimmer streak stays clipped inside the bar (the streak starts
+ * off-screen at left:-75% and exits at left:125%).
  *
  * Layering:
  *   - bar background (#f9758d) — z-index auto (bottom)
  *   - ::before shimmer streak  — z-index 1
  *   - buttons + divider + text — z-index 2 (via .sticky-shimmer-content)
- *
- * The buttons themselves are positioned with z-index:2 (via the
- * .sticky-shimmer-content class) so they sit above the streak and
- * remain fully clickable. The streak has pointer-events:none so it
- * never intercepts clicks anyway.
  * ============================================================ */
 .sticky-shimmer-bar {
-  position: relative;
+  /* NO `position` declared here — see warning above. */
   overflow: hidden; /* required so the shimmer stays clipped inside the bar */
 }
 
@@ -296,7 +310,9 @@ html.aurora-lock-scroll body {
 }
 
 /* All interactive content (buttons + divider) inside the bar gets
-   z-index:2 so it layers above the ::before streak. */
+   z-index:2 so it layers above the ::before streak.
+   `position: relative` is safe here because the buttons/divider don't
+   use Tailwind position utilities that would conflict. */
 .sticky-shimmer-content {
   position: relative;
   z-index: 2;
