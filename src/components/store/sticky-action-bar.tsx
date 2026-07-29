@@ -77,45 +77,49 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
       style={{ backgroundColor: '#f9758d' }}
     >
       {/*
-        Single shimmer streak lives on the container's ::before
-        (see .sticky-shimmer-bar in globals.css). All interactive
-        content (buttons + divider) is wrapped in .sticky-shimmer-content
-        so it layers ABOVE the streak (z-index:2 vs the streak's z-index:1).
+        Single shimmer streak lives on this container's ::before
+        (see .sticky-shimmer-bar in globals.css). The buttons and
+        divider are DIRECT children of this flex container — same
+        structure as before the shimmer feature was added — so the
+        layout is identical to the known-working version.
+
+        Each button has .sticky-shimmer-content (position: relative;
+        z-index: 2) so it layers ABOVE the ::before streak (z-index: 1).
         This produces ONE continuous wave sweeping across both buttons,
         instead of two independent per-button shimmers.
       */}
-      <div className="sticky-shimmer-content flex items-stretch flex-1">
-        {/* Add to bag — left half (no bag icon, text only) */}
-        <button
-          onClick={onAdd}
-          className={cn(
-            'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold uppercase tracking-wide',
-            'active:bg-black/10 transition-colors'
-          )}
-        >
-          {added ? (
-            <>
-              <Check className="h-4 w-4" /> Added
-            </>
-          ) : (
-            <>Add to bag</>
-          )}
-        </button>
+      {/* Add to bag — left half (no bag icon, text only) */}
+      <button
+        onClick={onAdd}
+        className={cn(
+          'sticky-shimmer-content',
+          'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold uppercase tracking-wide',
+          'active:bg-black/10 transition-colors'
+        )}
+      >
+        {added ? (
+          <>
+            <Check className="h-4 w-4" /> Added
+          </>
+        ) : (
+          <>Add to bag</>
+        )}
+      </button>
 
-        {/* Thin divider line between the two buttons */}
-        <div className="w-px bg-white/30 my-3" />
+      {/* Thin divider line between the two buttons */}
+      <div className="sticky-shimmer-content w-px bg-white/30 my-3" />
 
-        {/* Buy now — right half */}
-        <button
-          onClick={onBuyNow}
-          className={cn(
-            'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide',
-            'active:bg-black/10 transition-colors'
-          )}
-        >
-          Buy now
-        </button>
-      </div>
+      {/* Buy now — right half */}
+      <button
+        onClick={onBuyNow}
+        className={cn(
+          'sticky-shimmer-content',
+          'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide',
+          'active:bg-black/10 transition-colors'
+        )}
+      >
+        Buy now
+      </button>
     </div>,
     document.body
   )
