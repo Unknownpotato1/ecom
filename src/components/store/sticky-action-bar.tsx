@@ -51,7 +51,9 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
 
   // Only render the portal after mount on the client — document.body is
   // not available during SSR.
-  useEffect(() => setMounted(true), [])
+  useEffect(() => {
+    Promise.resolve().then(() => setMounted(true))
+  }, [])
 
   // Always reserve space at the bottom of the page so the footer (and
   // any other trailing content) is never hidden behind the sticky bar.
