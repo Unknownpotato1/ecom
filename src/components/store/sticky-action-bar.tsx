@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +15,22 @@ interface Props {
 /**
  * Sticky action bar — always pinned to the bottom of the mobile screen,
  * like many e-commerce apps (Myntra, Amazon, Flipkart) use.
+ *
+ * ⚠️ ROOT CAUSE NOTE (why previous attempts failed):
+ * The product page wraps everything in `<div className="fade-up">` whose
+ * CSS animation `aurora-fade-up` uses `animation-fill-mode: both`. That
+ * leaves `transform: translateY(0)` permanently applied to the ancestor.
+ * Per the CSS spec, ANY ancestor with a non-`none` `transform` becomes
+ * the containing block for `position: fixed` descendants — so a plain
+ * `fixed bottom-0` bar was being trapped inside the `.fade-up` div and
+ * behaved like `absolute`, sticking to the bottom of the product content
+ * (right above the footer) instead of the viewport.
+ *
+ * ✅ FIX: Render the bar through `createPortal(…, document.body)` so it
+ * is a direct child of <body>. No ancestor can capture it, regardless of
+ * where ProductDetail is mounted in the React tree. Same trick the
+ * CartDrawer / Sheet components use, and the same reason the Header
+ * (which sits directly under <main>) already sticks correctly.
  *
  * Design: single solid #f9758d background, two equal-width buttons with
  * only a thin white vertical divider line between them. No rounded
@@ -30,6 +47,12 @@ interface Props {
  * the "Added" state is kept for clarity).
  */
 export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
+  const [mounted, setMounted] = useState(false)
+
+  // Only render the portal after mount on the client — document.body is
+  // not available during SSR.
+  useEffect(() => setMounted(true), [])
+
   // Always reserve space at the bottom of the page so the footer (and
   // any other trailing content) is never hidden behind the sticky bar.
   // 56px = bar height (h-14 = 3.5rem = 56px).
@@ -40,7 +63,9 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
     }
   }, [])
 
-  return (
+  if (!mounted) return null
+
+  return createPortal(
     <div
       className={cn(
         'fixed bottom-0 left-0 right-0 z-30 lg:hidden',
@@ -78,6 +103,7 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
       >
         Buy now
       </button>
-    </div>
+    </div>,
+    document.body
   )
 }
