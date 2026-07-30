@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useUI } from '@/lib/ui-store'
 import { ProductCard } from './product-card'
 import type { Product } from '@/lib/types'
@@ -12,9 +12,21 @@ interface Props {
   filter: 'all' | 'best' | 'trending' | 'festive' | 'birthday' | 'anniversary'
   anchorId?: string
   listenToFilterEvents?: boolean
+  /**
+   * Optional React nodes to render INSIDE the product grid, after the
+   * Nth product. Used to inject custom sections (e.g. a video banner)
+   * between products on the home page.
+   *
+   * The inserted content spans the full grid width (lg:col-span-4 on
+   * desktop, col-span-2 on mobile) so it breaks the grid row cleanly.
+   *
+   * Pass undefined or null to render nothing (normal behavior).
+   */
+  insertAfterN?: number | null
+  insertContent?: ReactNode
 }
 
-export function ProductGrid({ title, filter, anchorId, listenToFilterEvents }: Props) {
+export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, insertAfterN, insertContent }: Props) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [overrideFilter, setOverrideFilter] = useState<string | null>(null)
@@ -99,6 +111,16 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents }: P
     )
   }
 
+  // If insertAfterN is set and we have enough products, split the list
+  // so the inserted content renders as a full-width row after the Nth
+  // product. On desktop (4 cols), the inserted content uses col-span-4
+  // to break the grid row cleanly. On mobile (2 cols), col-span-2.
+  const shouldInsert =
+    insertContent != null &&
+    typeof insertAfterN === 'number' &&
+    insertAfterN > 0 &&
+    insertAfterN < filtered.length
+
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id={anchorId} ref={ref}>
       <div className="flex items-end justify-between mb-5">
@@ -113,9 +135,21 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents }: P
         </Button>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {filtered.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
+        {shouldInsert
+          ? [
+              ...filtered.slice(0, insertAfterN!).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              )),
+              <div key="__inserted-content__" className="col-span-2 lg:col-span-4">
+                {insertContent}
+              </div>,
+              ...filtered.slice(insertAfterN!).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              )),
+            ]
+          : filtered.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
       </div>
     </section>
   )

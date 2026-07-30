@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     isBestSeller,
     specifications,
     tags,
+    sortOrder,
     images,
   } = body
 
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
       isBestSeller: !!isBestSeller,
       specifications: specifications ?? null,
       tags: tags ?? null,
+      sortOrder: typeof sortOrder === 'number' ? sortOrder : 0,
       images: images?.length ? images : [],
     })
     return NextResponse.json({ product })

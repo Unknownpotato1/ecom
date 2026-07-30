@@ -133,7 +133,10 @@ function SortableCustomRow({
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium">{section.title}</p>
+          {/* Title removed — show a short code snippet as the label instead. */}
+          <p className="text-sm font-medium truncate">
+            {(section.code || section.html || '').replace(/<[^>]+>/g, '').trim().slice(0, 40) || 'Empty section'}
+          </p>
           <span className={cn(
             'px-1.5 py-0.5 text-[9px] font-semibold rounded-full uppercase tracking-wide',
             (section.slot || section.location) === 'storefront'
@@ -624,11 +627,10 @@ function AdminCustomSections() {
   }
 
   const saveDraft = async () => {
-    if (!draft.title) {
-      toast.error('Title is required')
-      return
-    }
-    // Require either code or legacy html
+    // Title is no longer required (or used) — custom sections render
+    // their content only, no heading above. We pass an empty title
+    // string to the API for backward compatibility with the schema.
+    // Require code (or legacy html) so the section isn't empty.
     if (!draft.code && !draft.html) {
       toast.error('Code is required')
       return
@@ -640,7 +642,7 @@ function AdminCustomSections() {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: draft.title,
+        title: '', // no longer used — kept for schema compatibility
         code: draft.code || '',
         slot: draft.slot || draft.location || 'storefront',
       }),
@@ -709,15 +711,9 @@ function AdminCustomSections() {
             <DialogTitle>{editing ? 'Edit custom section' : 'New custom section'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label className="text-xs">Title (optional — shown above the section)</Label>
-              <Input
-                value={draft.title}
-                onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
-                placeholder="e.g. Spring Festive Banner"
-                className="mt-1"
-              />
-            </div>
+            {/* Title field removed — custom sections no longer show a
+                title. Existing sections that have a title stored in
+                Firestore will simply not render it (see custom-section-renderer.tsx). */}
 
             {/* Slot selector — free placement anywhere on product page */}
             <div>
@@ -732,7 +728,7 @@ function AdminCustomSections() {
                 ))}
               </select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Place this section between any two elements on the product page, or on the home page. Choose the exact position from the list above.
+                Place this section between any two elements on the product page, or on the home page. Choose the exact position from the list above. Video sections on the home page are automatically placed after the 10th product.
               </p>
             </div>
 

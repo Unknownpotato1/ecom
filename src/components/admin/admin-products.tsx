@@ -44,6 +44,12 @@ interface Draft {
   category: string
   isTrending: boolean
   isBestSeller: boolean
+  /**
+   * Admin-controlled sort order on the home page (lower = earlier).
+   * 0 = no custom order (falls back to newest-first by createdAt).
+   * Stored as a string for the input field, converted to number on save.
+   */
+  sortOrder: string
   specifications: string // raw spec text - one per line "Key: Value"
   tagItems: Array<{ label: string; color: string }> // up to 3 custom tags with colors
   images: DraftImage[]
@@ -59,6 +65,7 @@ const EMPTY: Draft = {
   category: '',
   isTrending: false,
   isBestSeller: false,
+  sortOrder: '0',
   specifications: '',
   tagItems: [],
   images: [],
@@ -119,6 +126,7 @@ export function AdminProducts() {
       category: p.category || '',
       isTrending: p.isTrending,
       isBestSeller: p.isBestSeller,
+      sortOrder: String(p.sortOrder ?? 0),
       specifications: specs.map((s) => `${s.key}: ${s.value}`).join('\n'),
       tagItems,
       images: p.images.map((img) => ({ url: img.url, alt: img.alt || undefined })),
@@ -184,6 +192,7 @@ export function AdminProducts() {
       category: draft.category || null,
       isTrending: draft.isTrending,
       isBestSeller: draft.isBestSeller,
+      sortOrder: Number(draft.sortOrder || 0),
       specifications: JSON.stringify(specs),
       tags: JSON.stringify(draft.tagItems.slice(0, 3)),
       images: draft.images,
@@ -536,7 +545,7 @@ export function AdminProducts() {
                   Each tag shows on the product image with the color you pick. Pick a color from the swatch or type a hex code (e.g. <code className="font-mono bg-muted px-1 rounded">#f9758d</code>, <code className="font-mono bg-muted px-1 rounded">#1abc9c</code>). A green &quot;X% OFF&quot; tag is auto-added when a compared price is set. Max 4 tags total per product.
                 </p>
               </div>
-              <div className="sm:col-span-2 flex items-center gap-6">
+              <div className="sm:col-span-2 flex items-center gap-6 flex-wrap">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <Switch checked={draft.isTrending} onCheckedChange={(v) => setDraft((d) => ({ ...d, isTrending: v }))} />
                   <span className="text-sm">Trending</span>
@@ -545,6 +554,25 @@ export function AdminProducts() {
                   <Switch checked={draft.isBestSeller} onCheckedChange={(v) => setDraft((d) => ({ ...d, isBestSeller: v }))} />
                   <span className="text-sm">Best Seller</span>
                 </label>
+                {/* Sort order — controls the product's position on the home page.
+                    Lower numbers appear first. 0 = no custom order (falls back
+                    to newest-first by createdAt). Useful for pinning specific
+                    products to the top of the Explore Hampers grid. */}
+                <label className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Home sort order</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={draft.sortOrder}
+                    onChange={(e) => setDraft((d) => ({ ...d, sortOrder: e.target.value }))}
+                    className="w-20 h-9"
+                    placeholder="0"
+                  />
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  Lower numbers appear first on the home page. 0 = newest-first (default).
+                </span>
               </div>
             </div>
 

@@ -14,6 +14,13 @@ export interface Product {
   isBestSeller: boolean
   specifications?: string | null
   tags?: string | null
+  /**
+   * Admin-controlled sort order for the home page product grid.
+   * Lower numbers appear first. Products with the same sortOrder
+   * (or sortOrder 0 / unset) fall back to createdAt DESC (newest first).
+   * Default is 0 (no custom order).
+   */
+  sortOrder?: number
   createdAt: string
   updatedAt: string
   images: ProductImage[]

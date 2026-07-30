@@ -14,12 +14,15 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const { title, code, html, css, js, position, visible, slot, location } = body
-  if (!title) {
-    return NextResponse.json({ error: 'title required' }, { status: 400 })
+  // Title is no longer required — custom sections render content only,
+  // no heading. We accept an empty string for backward schema compatibility.
+  // Require at least code (or legacy html) so the section isn't empty.
+  if (!code && !html) {
+    return NextResponse.json({ error: 'code is required' }, { status: 400 })
   }
   try {
     const section = await createCustomSection({
-      title,
+      title: title || '', // kept for schema compatibility; not rendered
       code: code || '',
       html: html || '',
       css: css ?? null,

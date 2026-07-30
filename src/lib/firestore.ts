@@ -123,6 +123,11 @@ export interface ProductDoc {
   isBestSeller: boolean
   specifications?: string | null // JSON string
   tags?: string | null // JSON string
+  /**
+   * Admin-controlled sort order (lower = earlier on home page).
+   * 0 / unset = fall back to createdAt DESC.
+   */
+  sortOrder?: number
   createdAt: string
   updatedAt: string
   images: Array<{
@@ -232,6 +237,7 @@ function snapshotToProduct(snap: DocSnapLike): ProductDoc | null {
     isBestSeller: !!data.isBestSeller,
     specifications: data.specifications || null,
     tags: data.tags || null,
+    sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : 0,
     createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
     updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
     images: (data.images || []).map((img: Record<string, unknown>, i: number) => ({
@@ -263,8 +269,14 @@ export async function listProducts(opts: {
   if (opts.best) q = q.where('isBestSeller', '==', true)
   const snap = await q.get()
   let products = snap.docs.map(snapshotToProduct).filter(Boolean) as ProductDoc[]
-  // Sort in memory by createdAt descending (newest first)
+  // Sort in memory by sortOrder ASC (lower = earlier on home page),
+  // then by createdAt DESC (newest first) as a tiebreaker.
+  // Products with sortOrder 0 / unset naturally fall to the bottom of
+  // the explicitly-ordered group but are still ordered by recency.
   products.sort((a, b) => {
+    const sa = typeof a.sortOrder === 'number' ? a.sortOrder : 0
+    const sb = typeof b.sortOrder === 'number' ? b.sortOrder : 0
+    if (sa !== sb) return sa - sb
     const ta = new Date(a.createdAt).getTime()
     const tb = new Date(b.createdAt).getTime()
     return tb - ta
@@ -324,6 +336,7 @@ export async function createProduct(input: {
   isBestSeller: boolean
   specifications?: string | null
   tags?: string | null
+  sortOrder?: number
   images: Array<{ url: string; alt?: string }>
 }): Promise<ProductDoc> {
   const database = db()
@@ -353,6 +366,7 @@ export async function createProduct(input: {
     isBestSeller: !!input.isBestSeller,
     specifications: input.specifications ?? null,
     tags: input.tags ?? null,
+    sortOrder: typeof input.sortOrder === 'number' ? input.sortOrder : 0,
     createdAt: now,
     updatedAt: now,
     images: input.images.map((img, i) => ({
