@@ -10,8 +10,6 @@ import {
   Loader2,
   Tag,
   ArrowLeft,
-  Building2,
-  Home,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -329,14 +327,14 @@ export function Checkout() {
         <div className="lg:col-span-3 space-y-6">
           {/* Contact */}
           <section className="rounded-xl border border-pink-100 p-5">
-            <h2 className="text-base font-semibold mb-4">Contact details</h2>
+            <h2 className="text-base font-semibold mb-4">Contact</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Input
                   id="name"
                   value={form.name}
                   onChange={(e) => set('name', e.target.value)}
-                  placeholder="Full name"
+                  placeholder="Name"
                   className="h-11"
                 />
               </div>
@@ -361,7 +359,7 @@ export function Checkout() {
                   id="line1"
                   value={form.line1}
                   onChange={(e) => set('line1', e.target.value)}
-                  placeholder="Address line 1 (House no, building)"
+                  placeholder="Full Address"
                   className="h-11"
                 />
               </div>
@@ -370,7 +368,7 @@ export function Checkout() {
                   id="line2"
                   value={form.line2}
                   onChange={(e) => set('line2', e.target.value)}
-                  placeholder="Address line 2 (Landmark, area) — optional"
+                  placeholder="Landmark — Optional"
                   className="h-11"
                 />
               </div>
@@ -413,43 +411,10 @@ export function Checkout() {
                   id="notes"
                   value={form.notes}
                   onChange={(e) => set('notes', e.target.value)}
-                  placeholder="Delivery notes (e.g. Leave at the door, call before delivery) — optional"
+                  placeholder="Delivery Notes — Optional"
                   rows={2}
                 />
               </div>
-            </div>
-          </section>
-
-          {/* Address type */}
-          <section className="rounded-xl border border-pink-100 p-5">
-            <h2 className="text-base font-semibold mb-4">Address type</h2>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => set('addressType', 'home')}
-                className={cn(
-                  'flex items-center gap-3 p-4 border-2 rounded-lg transition-colors',
-                  form.addressType === 'home' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
-                )}
-              >
-                <Home className={cn('h-5 w-5', form.addressType === 'home' ? 'text-brand' : 'text-muted-foreground')} />
-                <span className={cn('text-sm font-medium', form.addressType === 'home' ? 'text-brand' : 'text-foreground')}>
-                  Home
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => set('addressType', 'office')}
-                className={cn(
-                  'flex items-center gap-3 p-4 border-2 rounded-lg transition-colors',
-                  form.addressType === 'office' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
-                )}
-              >
-                <Building2 className={cn('h-5 w-5', form.addressType === 'office' ? 'text-brand' : 'text-muted-foreground')} />
-                <span className={cn('text-sm font-medium', form.addressType === 'office' ? 'text-brand' : 'text-foreground')}>
-                  Office
-                </span>
-              </button>
             </div>
           </section>
 
@@ -470,25 +435,30 @@ export function Checkout() {
                     <Wallet className="h-4 w-4 text-brand shrink-0" />
                     <span className="text-sm font-medium">Prepaid <span className="text-emerald-600">— Extra 10% Off</span></span>
                   </div>
-                  {payment === 'prepaid' && (
-                    <div className="mt-3 pl-7 fade-up">
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Pay securely online. Extra 10% discount applied on this order.
-                      </p>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {[
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/UPI_logo.svg/1920px-UPI_logo.svg.png',
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Phonepe-blue.svg/1920px-Phonepe-blue.svg.png',
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/1920px-Google_Pay_Logo.svg.png',
-                          'https://upload.wikimedia.org/wikipedia/commons/2/29/Amazon_Pay_logo.svg',
-                          'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/1920px-Paytm_Logo_%28standalone%29.svg.png',
-                        ].map((src, i) => (
-                          <div key={i} className="h-6 px-1.5 rounded border border-pink-100 bg-white flex items-center">
-                            <img src={src} alt="payment" className="h-4 w-auto object-contain" loading="lazy" />
-                          </div>
-                        ))}
+                  {payment === 'prepaid' ? (
+                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '200px' }}>
+                      <div className="mt-3 pl-7">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Pay securely online. Extra 10% discount applied on this order.
+                        </p>
+                        <div className="flex items-center gap-2">
+                          {[
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/UPI_logo.svg/1920px-UPI_logo.svg.png',
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Phonepe-blue.svg/1920px-Phonepe-blue.svg.png',
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Google_Pay_2018_icon.svg/1920px-Google_Pay_2018_icon.svg.png',
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Cib-cc-amazon-pay_%28CoreUI_Icons_v1.0.0%29.svg/1920px-Cib-cc-amazon-pay_%28CoreUI_Icons_v1.0.0%29.svg.png',
+                            'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/1920px-Paytm_Logo_%28standalone%29.svg.png',
+                          ].map((src, i) => (
+                            <div key={i} className="h-6 px-1.5 rounded border border-pink-100 bg-white flex items-center shrink-0">
+                              <img src={src} alt="payment" className="h-4 w-auto object-contain" loading="lazy" />
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
+                  )
+                  : (
+                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '0px' }} />
                   )}
                 </label>
 
@@ -504,13 +474,17 @@ export function Checkout() {
                     <Banknote className="h-4 w-4 text-brand shrink-0" />
                     <span className="text-sm font-medium">Cash On Delivery</span>
                   </div>
-                  {payment === 'cod' && (
-                    <div className="mt-3 pl-7 fade-up">
-                      <p className="text-xs text-muted-foreground">
-                        Pay <span className="font-semibold text-brand">₹49 now</span> to confirm your COD order and{' '}
-                        <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your hamper is delivered.
-                      </p>
+                  {payment === 'cod' ? (
+                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '100px' }}>
+                      <div className="mt-3 pl-7">
+                        <p className="text-xs text-muted-foreground">
+                          Pay <span className="font-semibold text-brand">₹49 now</span> to confirm your COD order and{' '}
+                          <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your hamper is delivered.
+                        </p>
+                      </div>
                     </div>
+                  ) : (
+                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '0px' }} />
                   )}
                 </label>
               </div>
