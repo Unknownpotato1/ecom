@@ -22,7 +22,7 @@ export function SearchResults({ initialQuery }: { initialQuery: string }) {
   useEffect(() => {
     if (!initialQuery) return
     let active = true
-    fetch(`/api/products?search=${encodeURIComponent(initialQuery)}`)
+    fetch(`/api/products?search=${encodeURIComponent(initialQuery)}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!active) return

@@ -57,7 +57,7 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, ins
     else if (['festive', 'birthday', 'anniversary'].includes(activeFilter)) {
       q.set('category', activeFilter.charAt(0).toUpperCase() + activeFilter.slice(1))
     }
-    fetch(`/api/products?${q.toString()}`)
+    fetch(`/api/products?${q.toString()}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!active) return

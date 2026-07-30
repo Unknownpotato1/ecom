@@ -6,51 +6,47 @@ import type { CustomSection } from '@/lib/types'
 
 /**
  * Renders custom sections assigned to a specific slot on the product page.
- * Fetches all custom sections once (cached in a module-level variable to
- * avoid repeated fetches when multiple slots are on the same page),
- * filters by the given slot, and renders them in position order.
+ * Fetches all custom sections and filters by the given slot.
  *
  * All sections render in compact mode (no max-width wrapper, no title).
+ *
+ * ⚠️ No module-level cache — each product page mount fetches fresh data.
+ * The previous module-level cache (cachedSections) caused stale content
+ * when the user edited a custom section in admin and navigated to a
+ * product page — the old cached sections were used instead of fetching
+ * the updated code.
+ *
+ * Browsers automatically deduplicate concurrent identical fetch requests,
+ * so multiple ProductCustomSlot instances on the same page won't cause
+ * multiple network requests.
  */
-
-// Module-level cache so all ProductCustomSlot instances on the same
-// product page share a single fetch.
-let cachedSections: CustomSection[] | null = null
-let fetchPromise: Promise<CustomSection[]> | null = null
-
-async function fetchSections(): Promise<CustomSection[]> {
-  if (cachedSections) return cachedSections
-  if (fetchPromise) return fetchPromise
-  fetchPromise = fetch('/api/custom-sections')
-    .then((r) => r.json())
-    .then((data) => {
-      cachedSections = (data.sections as CustomSection[]).filter((s) => s.visible)
-      return cachedSections
-    })
-    .catch(() => {
-      return []
-    })
-  return fetchPromise
-}
 
 export function ProductCustomSlot({ slot }: { slot: string }) {
   const [sections, setSections] = useState<CustomSection[]>([])
 
   useEffect(() => {
     let active = true
-    fetchSections().then((all) => {
-      if (!active) return
-      // Match by slot, or legacy location field (product-below-actions → product-after-buttons)
-      const filtered = all
-        .filter((s) => {
-          const sSlot = s.slot || s.location || 'storefront'
-          // Map legacy product-below-actions to product-after-buttons
-          if (slot === 'product-after-buttons' && sSlot === 'product-below-actions') return true
-          return sSlot === slot
-        })
-        .sort((a, b) => a.position - b.position)
-      setSections(filtered)
-    })
+    // cache: 'no-store' prevents the browser from serving a cached
+    // response, ensuring the user always sees the latest section code.
+    fetch('/api/custom-sections', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!active) return
+        const all = (data.sections as CustomSection[]).filter((s) => s.visible)
+        // Match by slot, or legacy location field (product-below-actions → product-after-buttons)
+        const filtered = all
+          .filter((s) => {
+            const sSlot = s.slot || s.location || 'storefront'
+            // Map legacy product-below-actions to product-after-buttons
+            if (slot === 'product-after-buttons' && sSlot === 'product-below-actions') return true
+            return sSlot === slot
+          })
+          .sort((a, b) => a.position - b.position)
+        setSections(filtered)
+      })
+      .catch(() => {
+        if (active) setSections([])
+      })
     return () => {
       active = false
     }

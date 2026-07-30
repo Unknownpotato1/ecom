@@ -4,7 +4,13 @@ import { listCustomSections, createCustomSection, updateCustomSection } from '@/
 export async function GET() {
   try {
     const sections = await listCustomSections()
-    return NextResponse.json({ sections })
+    // cache: 'no-store' on the client fetch handles browser caching,
+    // but we also set Cache-Control on the response to prevent any
+    // intermediate CDN/edge caching (Vercel, Cloudflare, etc.).
+    return NextResponse.json(
+      { sections },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
+    )
   } catch (e) {
     console.error('GET /api/custom-sections failed:', (e as Error).message)
     return NextResponse.json({ sections: [], error: (e as Error).message }, { status: 500 })

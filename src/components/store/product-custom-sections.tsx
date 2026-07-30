@@ -18,7 +18,7 @@ export function ProductCustomSections() {
 
   useEffect(() => {
     let active = true
-    fetch('/api/custom-sections')
+    fetch('/api/custom-sections', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!active) return

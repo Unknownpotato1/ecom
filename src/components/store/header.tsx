@@ -35,7 +35,7 @@ export function Header() {
   useEffect(() => {
     Promise.resolve().then(() => setMounted(true))
     // Fetch logo from settings
-    fetch('/api/settings')
+    fetch('/api/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (d.settings?.logoUrl) setLogoUrl(d.settings.logoUrl)

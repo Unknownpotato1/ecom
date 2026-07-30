@@ -15,7 +15,7 @@ export function YouMayAlsoLike({ currentProductId }: { currentProductId: string 
 
   useEffect(() => {
     let active = true
-    fetch('/api/products')
+    fetch('/api/products', { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!active) return

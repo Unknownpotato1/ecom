@@ -48,7 +48,7 @@ export function ProductDetail({ productId }: { productId: string }) {
 
   useEffect(() => {
     let active = true
-    fetch(`/api/products/${productId}`)
+    fetch(`/api/products/${productId}`, { cache: 'no-store' })
       .then((r) => r.json())
       .then((data) => {
         if (!active) return
@@ -103,7 +103,7 @@ export function ProductDetail({ productId }: { productId: string }) {
       setReviewComment('')
       setReviewRating(5)
       // Refresh product
-      const data = await (await fetch(`/api/products/${productId}`)).json()
+      const data = await (await fetch(`/api/products/${productId}`, { cache: 'no-store' })).json()
       setProduct(data.product)
     } else {
       toast.error('Failed to submit review')

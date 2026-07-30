@@ -43,10 +43,16 @@ export function Storefront({ heroFallback }: Props) {
 
   useEffect(() => {
     let active = true
+    // ⚠️ cache: 'no-store' is REQUIRED on all these fetches.
+    // Without it, the browser may serve a cached response when the
+    // Storefront remounts (e.g. after navigating admin → home). This
+    // caused a bug where custom section edits in the admin panel
+    // didn't appear on the homepage until a hard refresh.
+    // 'no-store' forces the browser to always make a fresh request.
     Promise.all([
-      fetch('/api/sections').then((r) => r.json()),
-      fetch('/api/custom-sections').then((r) => r.json()),
-      fetch('/api/settings').then((r) => r.json()),
+      fetch('/api/sections', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/custom-sections', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/settings', { cache: 'no-store' }).then((r) => r.json()),
     ])
       .then(([secData, customData, settingsData]) => {
         if (!active) return
