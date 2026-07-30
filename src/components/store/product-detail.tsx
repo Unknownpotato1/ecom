@@ -226,7 +226,12 @@ export function ProductDetail({ productId }: { productId: string }) {
                   <span className="text-base text-compared-price line-through mb-1">
                     {formatPrice(product.comparedPrice)}
                   </span>
-                  <span className="text-sm text-price font-medium mb-1">
+                  {/* "Save ₹XXX" badge — green background, white text.
+                      Small pill shape, vertically aligned with the price. */}
+                  <span
+                    className="text-xs font-semibold mb-1.5 px-2 py-0.5 rounded"
+                    style={{ backgroundColor: '#5bb450', color: '#ffffff' }}
+                  >
                     Save {formatPrice(product.comparedPrice - product.price)}
                   </span>
                 </>

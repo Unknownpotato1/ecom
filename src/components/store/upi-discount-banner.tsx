@@ -16,9 +16,12 @@ interface Props {
  *   └────────────────────────────────────────────┘
  *
  *   - Light mint green background (#E8F5E9)
- *   - Left: "Get it for ₹XXX" in normal weight (400), muted green
- *   - Right: official UPI logo (NPCI mark, inline SVG from Wikimedia)
+ *   - Left: "Get it for" (weight 400) + "₹XXX" (weight 500, slightly
+ *     larger) in the original price color (#5bb450)
+ *   - Right: official UPI logo (NPCI mark, local SVG file)
  *   - Minimal padding (8px 12px)
+ *   - Tight top margin (mt-1 = 4px) to reduce empty space between
+ *     the price row and this banner
  *   - No icons, no badges, no shadows, sharp corners
  *
  * The discounted price = floor(price * 0.9) — i.e. 10% off the
@@ -34,26 +37,37 @@ export function UpiDiscountBanner({ price }: Props) {
   // convention rarely uses paise).
   const discountedPrice = Math.floor(price * 0.9)
 
+  // Original price color — matches the .text-price class (#5bb450)
+  // so the UPI price reads as the same "brand green" as the main price.
+  const PRICE_COLOR = '#5bb450'
+
   return (
     <div
-      className="flex items-center justify-between w-full mt-2"
+      className="flex items-center justify-between w-full mt-1"
       style={{
         backgroundColor: '#E8F5E9',
         padding: '8px 12px',
       }}
     >
-      {/* Left side: "Get it for ₹XXX" — normal weight, muted green */}
+      {/*
+        Left side: "Get it for ₹XXX"
+        - "Get it for" — font-weight 400 (normal)
+        - "₹XXX" — font-weight 500 (medium), slightly larger font size
+        Both use the original price color (#5bb450) per user request.
+      */}
       <span
-        className="text-base sm:text-lg"
-        style={{
-          color: '#1B8A3A',
-          fontWeight: 400,
-        }}
+        className="flex items-baseline gap-1.5"
+        style={{ color: PRICE_COLOR }}
       >
-        Get it for {formatPrice(discountedPrice)}
+        <span className="text-base sm:text-lg" style={{ fontWeight: 400 }}>
+          Get it for
+        </span>
+        <span className="text-lg sm:text-xl" style={{ fontWeight: 500 }}>
+          {formatPrice(discountedPrice)}
+        </span>
       </span>
 
-      {/* Right side: official UPI logo (inline SVG) */}
+      {/* Right side: official UPI logo */}
       <div className="flex items-center shrink-0">
         <UpiLogo />
       </div>
@@ -68,15 +82,9 @@ export function UpiDiscountBanner({ price }: Props) {
  * Hosted locally at /upi-logo.svg (in the /public folder) to avoid
  * any external network dependency and CDN issues.
  *
- * The logo consists of:
- *  - Two interlocking chevron/arrow shapes (green #27803b + orange #e9661c)
- *    forming the "U" mark on the left
- *  - "UPI" wordmark in grey (#696a6a) on the right
- *
- * Using a local <img> tag (not inline SVG) because the official SVG
- * uses complex nested transforms that are error-prone to inline.
- * The local file is the exact official SVG from Wikimedia, served
- * from our own domain.
+ * Using a local <img> tag because the official SVG uses complex nested
+ * transforms that are error-prone to inline. The local file is the
+ * exact official SVG from Wikimedia, served from our own domain.
  *
  * Rendered at height 18px (width auto-scales to ~51px based on the
  * logo's 2.83:1 aspect ratio).
@@ -87,14 +95,10 @@ function UpiLogo() {
       src="/upi-logo.svg"
       alt="UPI"
       height={18}
-      // width is auto — the SVG's intrinsic aspect ratio (2.83:1)
-      // gives ~51px at 18px height. Don't set width to avoid distortion.
       style={{ display: 'block', height: '18px', width: 'auto' }}
-      // loading="eager" — this is above the fold on product pages,
-      // so we want it immediately (not lazily loaded).
       loading="eager"
-      // No referrer needed for a same-origin static asset.
       referrerPolicy="no-referrer"
     />
   )
 }
+
