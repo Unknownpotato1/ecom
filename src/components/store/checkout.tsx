@@ -39,7 +39,10 @@ export function Checkout() {
     notes: '',
     addressType: 'home' as 'home' | 'office',
   })
-  const [payment, setPayment] = useState<'prepaid' | 'cod'>('prepaid')
+  // Payment method — empty string means NOTHING is preselected.
+  // The user must explicitly pick Prepaid or COD before placing the order.
+  // This avoids biasing the customer toward any particular payment option.
+  const [payment, setPayment] = useState<'prepaid' | 'cod' | ''>('')
   const [placing, setPlacing] = useState(false)
   const [pincodeLoading, setPincodeLoading] = useState(false)
   const [promo, setPromo] = useState('')
@@ -101,6 +104,11 @@ export function Checkout() {
     }
     if (items.length === 0) {
       toast.error('Your bag is empty')
+      return
+    }
+    // No payment method preselected — require the user to pick one.
+    if (payment !== 'prepaid' && payment !== 'cod') {
+      toast.error('Please select a payment method')
       return
     }
 
@@ -388,7 +396,10 @@ export function Checkout() {
                   )}
                 </div>
               </div>
-              <div>
+              {/* City + State — always side by side (grid-cols-2),
+                  even on mobile screens. Was sm:grid-cols-2 which stacked
+                  them on mobile; user requested they stay in one row. */}
+              <div className="sm:col-span-2 grid grid-cols-2 gap-3">
                 <Input
                   id="city"
                   value={form.city}
@@ -396,8 +407,6 @@ export function Checkout() {
                   placeholder="City / District"
                   className="h-11"
                 />
-              </div>
-              <div>
                 <Input
                   id="state"
                   value={form.state}
@@ -435,8 +444,20 @@ export function Checkout() {
                     <Wallet className="h-4 w-4 text-brand shrink-0" />
                     <span className="text-sm font-medium">Prepaid <span className="text-emerald-600">— Extra 10% Off</span></span>
                   </div>
-                  {payment === 'prepaid' ? (
-                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '200px' }}>
+                  {/*
+                    Smooth dropdown animation for the payment description.
+                    Uses the CSS grid-template-rows 0fr → 1fr trick instead of
+                    a fixed maxHeight — this animates the ACTUAL content height
+                    smoothly regardless of how much text/icons are inside.
+                    No dropdown arrow icon is rendered (per user request).
+                  */}
+                  <div
+                    className="grid transition-all duration-300 ease-out"
+                    style={{
+                      gridTemplateRows: payment === 'prepaid' ? '1fr' : '0fr',
+                    }}
+                  >
+                    <div className="overflow-hidden">
                       <div className="mt-3 pl-7">
                         <p className="text-xs text-muted-foreground mb-2">
                           Pay securely online. Extra 10% discount applied on this order.
@@ -456,10 +477,7 @@ export function Checkout() {
                         </div>
                       </div>
                     </div>
-                  )
-                  : (
-                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '0px' }} />
-                  )}
+                  </div>
                 </label>
 
                 {/* COD */}
@@ -474,8 +492,14 @@ export function Checkout() {
                     <Banknote className="h-4 w-4 text-brand shrink-0" />
                     <span className="text-sm font-medium">Cash On Delivery</span>
                   </div>
-                  {payment === 'cod' ? (
-                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '100px' }}>
+                  {/* Same smooth grid-rows animation, no dropdown arrow. */}
+                  <div
+                    className="grid transition-all duration-300 ease-out"
+                    style={{
+                      gridTemplateRows: payment === 'cod' ? '1fr' : '0fr',
+                    }}
+                  >
+                    <div className="overflow-hidden">
                       <div className="mt-3 pl-7">
                         <p className="text-xs text-muted-foreground">
                           Pay <span className="font-semibold text-brand">₹49 now</span> to confirm your COD order and{' '}
@@ -483,9 +507,7 @@ export function Checkout() {
                         </p>
                       </div>
                     </div>
-                  ) : (
-                    <div className="overflow-hidden transition-all duration-300 ease-out" style={{ maxHeight: '0px' }} />
-                  )}
+                  </div>
                 </label>
               </div>
             </RadioGroup>
@@ -595,6 +617,10 @@ export function Checkout() {
               ) : payment === 'cod' ? (
                 <>
                   <Lock className="h-4 w-4 mr-2" /> Pay ₹49 & confirm order
+                </>
+              ) : payment === 'prepaid' ? (
+                <>
+                  <Lock className="h-4 w-4 mr-2" /> Place order • {formatPrice(total)}
                 </>
               ) : (
                 <>
