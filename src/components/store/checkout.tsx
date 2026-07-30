@@ -48,9 +48,13 @@ export function Checkout() {
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPct: number } | null>(null)
 
   const sub = subtotal()
-  const discount = appliedPromo ? Math.round((sub * appliedPromo.discountPct) / 100) : 0
+  const promoDiscount = appliedPromo ? Math.round((sub * appliedPromo.discountPct) / 100) : 0
+  const prepaidExtraDiscount = payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0
+  const discount = promoDiscount + prepaidExtraDiscount
   const shipping = sub - discount >= 1499 || sub === 0 ? 0 : 99
+  const codPartial = 49
   const total = Math.max(0, sub - discount) + shipping
+  const codRemaining = Math.max(0, total - codPartial)
 
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }))
 
@@ -102,11 +106,11 @@ export function Checkout() {
       return
     }
 
-    // For prepaid orders, process via Razorpay first
+    // For prepaid orders, process via Razorpay first (full amount)
     if (payment === 'prepaid') {
       const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
       if (!razorpayKeyId) {
-        toast.error('Online payment is not configured. Please choose Cash on Delivery.')
+        toast.error('Online payment is not configured. Please try again later.')
         return
       }
 
@@ -126,57 +130,7 @@ export function Checkout() {
 
         await loadRazorpayScript()
 
-        const paymentSuccess = await new Promise<boolean>((resolve) => {
-          const options = {
-            key: razorpayKeyId,
-            amount: orderData.amount,
-            currency: orderData.currency,
-            name: 'Aurora',
-            description: 'Gift Hampers Order',
-            order_id: orderData.orderId,
-            prefill: {
-              name: form.name,
-              contact: form.phone,
-            },
-            theme: { color: '#f9758d' },
-            handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-              try {
-                const verifyRes = await fetch('/api/razorpay/verify', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature,
-                  }),
-                })
-                const verifyData = await verifyRes.json()
-                if (verifyData.verified) {
-                  resolve(true)
-                } else {
-                  toast.error('Payment verification failed. Please contact support.')
-                  resolve(false)
-                }
-              } catch {
-                toast.error('Could not verify payment. Please contact support.')
-                resolve(false)
-              }
-            },
-            modal: {
-              ondismiss: () => {
-                toast.info('Payment cancelled')
-                resolve(false)
-              },
-            },
-          }
-
-          const rzp = new (window as unknown as { Razorpay: new (opts: unknown) => { open: () => void; on: (evt: string, cb: (err: { error: { description: string } }) => void) => void } }).Razorpay(options)
-          rzp.on('payment.failed', (err: { error: { description: string } }) => {
-            toast.error('Payment failed: ' + (err.error?.description || 'Unknown error'))
-            resolve(false)
-          })
-          rzp.open()
-        })
+        const paymentSuccess = await openRazorpayCheckout(razorpayKeyId, orderData, total, 'Full payment')
 
         if (!paymentSuccess) {
           setPlacing(false)
@@ -192,15 +146,45 @@ export function Checkout() {
       return
     }
 
-    // For COD: create order directly
-    setPlacing(true)
-    try {
-      await createOrderRecord('cod', 'pending')
-    } catch (e) {
-      console.error(e)
-      toast.error('Network error — please try again')
-    } finally {
-      setPlacing(false)
+    // For COD: pay ₹49 partial payment via Razorpay to confirm order
+    if (payment === 'cod') {
+      const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+      if (!razorpayKeyId) {
+        toast.error('Online payment is not configured. Please try again later.')
+        return
+      }
+
+      setPlacing(true)
+      try {
+        const createRes = await fetch('/api/razorpay/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: codPartial }),
+        })
+        const orderData = await createRes.json()
+        if (!createRes.ok || !orderData.orderId) {
+          toast.error(orderData.error || 'Failed to initiate payment')
+          setPlacing(false)
+          return
+        }
+
+        await loadRazorpayScript()
+
+        const paymentSuccess = await openRazorpayCheckout(razorpayKeyId, orderData, codPartial, 'COD confirmation')
+
+        if (!paymentSuccess) {
+          setPlacing(false)
+          return
+        }
+
+        // ₹49 paid — create order with COD for the remaining amount
+        await createOrderRecord('cod', 'partial_paid')
+      } catch (e) {
+        console.error(e)
+        toast.error('Payment error — please try again')
+        setPlacing(false)
+      }
+      return
     }
   }
 
@@ -213,6 +197,66 @@ export function Checkout() {
       script.onload = () => resolve()
       script.onerror = () => reject(new Error('Failed to load Razorpay script'))
       document.head.appendChild(script)
+    })
+  }
+
+  /** Opens Razorpay checkout modal, returns true if payment succeeded */
+  async function openRazorpayCheckout(
+    keyId: string,
+    orderData: { orderId: string; amount: number; currency: string },
+    amount: number,
+    description: string
+  ): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const options = {
+        key: keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Aurora',
+        description: description + ' • ₹' + amount,
+        order_id: orderData.orderId,
+        prefill: {
+          name: form.name,
+          contact: form.phone,
+        },
+        theme: { color: '#f9758d' },
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+          try {
+            const verifyRes = await fetch('/api/razorpay/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            })
+            const verifyData = await verifyRes.json()
+            if (verifyData.verified) {
+              resolve(true)
+            } else {
+              toast.error('Payment verification failed. Please contact support.')
+              resolve(false)
+            }
+          } catch {
+            toast.error('Could not verify payment. Please contact support.')
+            resolve(false)
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast.info('Payment cancelled')
+            resolve(false)
+          },
+        },
+      }
+
+      const rzp = new (window as unknown as { Razorpay: new (opts: unknown) => { open: () => void; on: (evt: string, cb: (err: { error: { description: string } }) => void) => void } }).Razorpay(options)
+      rzp.on('payment.failed', (err: { error: { description: string } }) => {
+        toast.error('Payment failed: ' + (err.error?.description || 'Unknown error'))
+        resolve(false)
+      })
+      rzp.open()
     })
   }
 
@@ -414,44 +458,60 @@ export function Checkout() {
             <h2 className="text-base font-semibold mb-4">Payment method</h2>
             <RadioGroup value={payment} onValueChange={(v) => setPayment(v as 'prepaid' | 'cod')}>
               <div className="space-y-2">
+                {/* Prepaid */}
                 <label
                   className={cn(
-                    'flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors',
+                    'block p-4 rounded-lg border-2 cursor-pointer transition-colors',
                     payment === 'prepaid' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
                   )}
                 >
-                  <RadioGroupItem value="prepaid" className="mt-1" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4 text-brand" />
-                      <span className="text-sm font-medium">Prepaid — UPI / Card / Net banking</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Pay securely online via Razorpay. UPI, credit/debit cards, wallets and net banking supported.
-                    </p>
-                    <div className="flex gap-1 mt-2">
-                      {['UPI', 'VISA', 'MC', 'RUP'].map((p) => (
-                        <span key={p} className="px-1.5 py-0.5 text-[9px] rounded bg-foreground/5 text-muted-foreground border border-pink-100 font-semibold">{p}</span>
-                      ))}
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <RadioGroupItem value="prepaid" />
+                    <Wallet className="h-4 w-4 text-brand shrink-0" />
+                    <span className="text-sm font-medium">Prepaid <span className="text-emerald-600">— Extra 10% Off</span></span>
                   </div>
+                  {payment === 'prepaid' && (
+                    <div className="mt-3 pl-7 fade-up">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Pay securely online. Extra 10% discount applied on this order.
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {[
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/UPI_logo.svg/1920px-UPI_logo.svg.png',
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Phonepe-blue.svg/1920px-Phonepe-blue.svg.png',
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f2/Google_Pay_Logo.svg/1920px-Google_Pay_Logo.svg.png',
+                          'https://upload.wikimedia.org/wikipedia/commons/2/29/Amazon_Pay_logo.svg',
+                          'https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Paytm_Logo_%28standalone%29.svg/1920px-Paytm_Logo_%28standalone%29.svg.png',
+                        ].map((src, i) => (
+                          <div key={i} className="h-6 px-1.5 rounded border border-pink-100 bg-white flex items-center">
+                            <img src={src} alt="payment" className="h-4 w-auto object-contain" loading="lazy" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </label>
+
+                {/* COD */}
                 <label
                   className={cn(
-                    'flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors',
+                    'block p-4 rounded-lg border-2 cursor-pointer transition-colors',
                     payment === 'cod' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
                   )}
                 >
-                  <RadioGroupItem value="cod" className="mt-1" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4 text-brand" />
-                      <span className="text-sm font-medium">Cash on Delivery (COD)</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Pay in cash when your hamper is delivered. Available across India.
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <RadioGroupItem value="cod" />
+                    <Banknote className="h-4 w-4 text-brand shrink-0" />
+                    <span className="text-sm font-medium">Cash On Delivery</span>
                   </div>
+                  {payment === 'cod' && (
+                    <div className="mt-3 pl-7 fade-up">
+                      <p className="text-xs text-muted-foreground">
+                        Pay <span className="font-semibold text-brand">₹49 now</span> to confirm your COD order and{' '}
+                        <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your hamper is delivered.
+                      </p>
+                    </div>
+                  )}
                 </label>
               </div>
             </RadioGroup>
@@ -514,10 +574,16 @@ export function Checkout() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-price">{formatPrice(sub)}</span>
               </div>
-              {discount > 0 && (
+              {promoDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600">
-                  <span>Discount</span>
-                  <span>− {formatPrice(discount)}</span>
+                  <span>Promo discount</span>
+                  <span>− {formatPrice(promoDiscount)}</span>
+                </div>
+              )}
+              {prepaidExtraDiscount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Prepaid 10% off</span>
+                  <span>− {formatPrice(prepaidExtraDiscount)}</span>
                 </div>
               )}
               <div className="flex justify-between">
@@ -530,6 +596,18 @@ export function Checkout() {
               <span>Total</span>
               <span className="text-price">{formatPrice(total)}</span>
             </div>
+            {payment === 'cod' && (
+              <div className="mt-2 rounded-lg bg-brand-soft p-3 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pay now (confirm)</span>
+                  <span className="font-semibold text-brand">₹49</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pay on delivery</span>
+                  <span className="font-semibold">{formatPrice(codRemaining)}</span>
+                </div>
+              </div>
+            )}
 
             <Button
               className="w-full mt-4 h-11 bg-brand text-white hover:shadow-lg"
@@ -539,6 +617,10 @@ export function Checkout() {
               {placing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing order...
+                </>
+              ) : payment === 'cod' ? (
+                <>
+                  <Lock className="h-4 w-4 mr-2" /> Pay ₹49 & confirm order
                 </>
               ) : (
                 <>
