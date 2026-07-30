@@ -10,17 +10,18 @@ interface Props {
 /**
  * UPI Discount Banner — shown directly below the product price.
  *
- * Design (based on the user's reference image):
- *   ┌──────────────────────────────────────────────────────┐
- *   │  ✦%   Get it for ₹1,506                    [UPI logo]│
- *   └──────────────────────────────────────────────────────┘
- *   - Light mint green background (#E8F5E9)
- *   - Left: a starburst/seal icon with "%" inside, followed by
- *     "Get it for ₹XXX" in vibrant green
- *   - Right: the UPI logo (NPCI's official UPI mark)
- *   - Sharp corners (no border radius), no shadows, flat design
+ * Clean, minimal, professional design:
+ *   ┌────────────────────────────────────────────┐
+ *   │  Get it for ₹449                    [UPI®] │
+ *   └────────────────────────────────────────────┘
  *
- * The discounted price = round(price * 0.9) — i.e. 10% off the
+ *   - Light mint green background (#E8F5E9)
+ *   - Left: "Get it for ₹XXX" in normal weight (400), muted green
+ *   - Right: official UPI logo (NPCI mark, inline SVG from Wikimedia)
+ *   - Minimal padding (8px 12px)
+ *   - No icons, no badges, no shadows, sharp corners
+ *
+ * The discounted price = floor(price * 0.9) — i.e. 10% off the
  * product's current selling price. This is a UPI-payment offer
  * (hence the UPI logo on the right).
  *
@@ -29,56 +30,30 @@ interface Props {
 export function UpiDiscountBanner({ price }: Props) {
   if (!price || price <= 0) return null
 
-  // 10% off, rounded to the nearest rupee (Indian pricing convention
-  // rarely uses paise, and rounding down avoids "₹149.90" ugliness).
+  // 10% off, rounded down to the nearest rupee (Indian pricing
+  // convention rarely uses paise).
   const discountedPrice = Math.floor(price * 0.9)
 
   return (
     <div
-      className="flex items-center justify-between w-full mt-3"
+      className="flex items-center justify-between w-full mt-2"
       style={{
         backgroundColor: '#E8F5E9',
-        padding: '16px 20px',
+        padding: '8px 12px',
       }}
     >
-      {/* Left side: starburst % icon + "Get it for ₹XXX" */}
-      <div className="flex items-center gap-3">
-        {/* Starburst / seal badge with % inside — matches the reference design */}
-        <svg
-          width="36"
-          height="36"
-          viewBox="0 0 36 36"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          aria-hidden="true"
-        >
-          {/* Starburst shape — 12-pointed scalloped seal */}
-          <path
-            d="M18 2 L21 6 L26 4 L25 9 L30 11 L26 14 L29 19 L24 19 L24 24 L19 21 L18 26 L17 21 L12 24 L12 19 L7 19 L10 14 L6 11 L11 9 L10 4 L15 6 Z"
-            fill="#1B8A3A"
-          />
-          {/* % symbol in white inside the seal */}
-          <text
-            x="18"
-            y="22"
-            textAnchor="middle"
-            fontSize="11"
-            fontWeight="700"
-            fill="white"
-            fontFamily="Arial, sans-serif"
-          >
-            %
-          </text>
-        </svg>
-        <span
-          className="text-xl sm:text-2xl font-semibold"
-          style={{ color: '#1B8A3A' }}
-        >
-          Get it for {formatPrice(discountedPrice)}
-        </span>
-      </div>
+      {/* Left side: "Get it for ₹XXX" — normal weight, muted green */}
+      <span
+        className="text-base sm:text-lg"
+        style={{
+          color: '#1B8A3A',
+          fontWeight: 400,
+        }}
+      >
+        Get it for {formatPrice(discountedPrice)}
+      </span>
 
-      {/* Right side: UPI logo */}
+      {/* Right side: official UPI logo (inline SVG) */}
       <div className="flex items-center shrink-0">
         <UpiLogo />
       </div>
@@ -87,55 +62,49 @@ export function UpiDiscountBanner({ price }: Props) {
 }
 
 /**
- * Inline SVG of the UPI (Unified Payments Interface) logo by NPCI.
+ * Official UPI (Unified Payments Interface) logo by NPCI.
  *
- * The official UPI mark consists of:
- *  - A green teardrop/half-circle on the left (the "U" shape)
- *  - A green right-pointing triangle (play arrow) merging into the text
- *  - "UPI" in bold green letters
+ * Source: https://upload.wikimedia.org/wikipedia/commons/e/e1/UPI-Logo-vector.svg
  *
- * Using an inline SVG (instead of an <img>) means:
+ * The logo consists of:
+ *  - Two interlocking chevron/arrow shapes (green #27803b + orange #e9661c)
+ *    forming the "U" mark on the left
+ *  - "UPI" wordmark in grey (#696a6a) on the right
+ *
+ * Inlined as SVG (not <img>) so:
  *  - No external network dependency (always renders, even offline)
- *  - No CDN/account required
- *  - Crisp at any size
- *  - Colors are fixed and consistent
+ *  - Crisp at any DPI
+ *  - Colors are the official brand colors, fixed
  *
- * Approximate dimensions: 56×24 (matches the proportions of the real
- * UPI logo as seen on payment screens).
+ * The viewBox is 0 0 130.54 46.118 (aspect ratio ~2.83:1).
+ * Rendered at height 18px → width ~51px on the banner.
  */
 function UpiLogo() {
   return (
     <svg
-      width="56"
-      height="24"
-      viewBox="0 0 56 24"
-      fill="none"
+      height="18"
+      viewBox="0 0 130.54 46.118"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="UPI"
       role="img"
+      style={{ display: 'block' }}
     >
-      {/* Left teardrop / half-circle — the iconic UPI swoosh */}
-      <path
-        d="M12 2 C6 2 2 6 2 12 C2 18 6 22 12 22 C14 22 16 21 17 20 C13 18 10 15 10 12 C10 9 13 6 17 4 C16 3 14 2 12 2 Z"
-        fill="#097D38"
-      />
-      {/* Right-pointing triangle (play arrow) — part of the UPI mark */}
-      <path
-        d="M17 4 C21 6 24 9 24 12 C24 15 21 18 17 20 L20 12 Z"
-        fill="#5FCE85"
-      />
-      {/* "UPI" text in bold green */}
-      <text
-        x="28"
-        y="17"
-        fontSize="13"
-        fontWeight="800"
-        fill="#097D38"
-        fontFamily="Arial, Helvetica, sans-serif"
-        letterSpacing="0.5"
-      >
-        UPI
-      </text>
+      {/* U — grey (#696a6a) */}
+      <g transform="translate(316.4629,76.4951)"><path d="M 0,0 H -19.283 L 7.535,96.855 h 19.284 z" fill="#66686c"/></g>
+      <g transform="translate(306.4521,170.2881)"><path d="m 0,0 c -1.337,1.843 -3.399,2.773 -6.2,2.773 h -106.036 l -5.252,-18.97 h 19.294 v 0.011 h 77.169 l -5.614,-20.272 h -77.171 l 0.007,0.042 h -19.286 l -16.007,-57.787 h 19.296 l 10.742,38.786 h 86.746 c 2.709,0 5.259,0.924 7.657,2.772 2.393,1.85 3.968,4.131 4.723,6.855 L 0.809,-6.996 C 1.593,-4.181 1.322,-1.845 0,0" fill="#66686c"/></g>
+      <g transform="translate(156.1196,82.541)"><path d="m 0,0 c -1.065,-3.835 -4.557,-6.488 -8.538,-6.488 h -99.491 c -2.711,0 -4.726,0.924 -6.051,2.77 -1.324,1.848 -1.608,4.134 -0.851,6.857 l 24.276,87.387 h 19.301 l -21.683,-78.05 h 77.206 l 21.683,78.05 h 19.297 z" fill="#66686c"/></g>
+      {/* P — green arrow (#27803b) */}
+      <g transform="translate(376.5859,173.1689)"><path d="m 0,0 24.414,-48.553 -51.322,-48.54 z" fill="#27803b"/></g>
+      {/* I — orange arrow (#e9661c) */}
+      <g transform="translate(359.4717,173.1689)"><path d="m 0,0 24.396,-48.553 -51.343,-48.54 z" fill="#e9661c"/></g>
+      {/* "UPI" wordmark letters in grey (#696a6a) */}
+      <g transform="translate(33.9766,61.0674)"><path d="M 0,0 H 2.77 L 0.196,-10.751 c -0.382,-1.595 -0.31,-2.796 0.218,-3.597 0.526,-0.802 1.505,-1.203 2.936,-1.203 1.422,0 2.588,0.401 3.499,1.203 0.912,0.801 1.559,2.002 1.941,3.597 L 11.363,0 h 2.806 l -2.637,-11.017 c -0.573,-2.394 -1.594,-4.186 -3.056,-5.374 -1.463,-1.19 -3.381,-1.784 -5.754,-1.784 -2.375,0 -4.004,0.593 -4.891,1.778 -0.888,1.184 -1.043,2.978 -0.468,5.38 z" fill="#696a6a"/></g>
+      <g transform="translate(47.7734,43.3633)"><path d="M 0,0 4.406,18.405 12.778,7.582 C 13.002,7.277 13.228,6.95 13.451,6.603 13.674,6.256 13.902,5.866 14.136,5.43 l 2.939,12.274 h 2.593 L 15.265,-0.687 6.717,10.329 C 6.488,10.626 6.275,10.94 6.076,11.271 5.875,11.602 5.694,11.949 5.528,12.311 L 2.581,0 Z" fill="#696a6a"/></g>
+      <g transform="translate(67.2119,43.3633)"><path d="M 0,0 4.238,17.704 H 7.042 L 2.805,0 Z" fill="#696a6a"/></g>
+      <g transform="translate(74.0488,43.3633)"><path d="m 0,0 4.238,17.704 h 9.63 L 13.283,15.262 H 6.458 L 5.401,10.848 h 6.825 L 11.622,8.321 H 4.796 L 2.805,0 Z" fill="#696a6a"/></g>
+      <g transform="translate(86.7686,43.3633)"><path d="M 0,0 4.238,17.704 H 7.042 L 2.805,0 Z" fill="#696a6a"/></g>
+      <g transform="translate(93.6055,43.3633)"><path d="m 0,0 4.238,17.704 h 9.63 L 13.283,15.262 H 6.458 L 5.395,10.824 H 12.22 L 11.616,8.296 H 4.791 l -1.37,-5.72 h 6.825 L 9.63,0 Z" fill="#696a6a"/></g>
+      <g transform="translate(109.8818,45.9639)"><path d="m 0,0 h 2.358 c 1.296,0 2.29,0.089 2.981,0.266 0.691,0.177 1.325,0.476 1.906,0.895 0.789,0.571 1.448,1.283 1.978,2.134 0.529,0.85 0.93,1.841 1.2,2.97 0.269,1.129 0.343,2.117 0.221,2.966 -0.123,0.852 -0.441,1.563 -0.956,2.136 -0.387,0.418 -0.898,0.718 -1.536,0.896 -0.639,0.176 -1.679,0.265 -3.125,0.265 H 4.013 2.999 Z m -3.427,-2.601 4.238,17.705 h 3.783 c 2.46,0 4.16,-0.126 5.102,-0.38 0.94,-0.255 1.717,-0.681 2.328,-1.277 0.811,-0.782 1.327,-1.786 1.549,-3.01 C 13.794,9.211 13.716,7.812 13.34,6.24 12.964,4.668 12.373,3.275 11.567,2.062 10.763,0.848 9.766,-0.153 8.58,-0.943 7.683,-1.54 6.721,-1.965 5.699,-2.22 4.674,-2.473 3.146,-2.601 1.11,-2.601 H 0.355 Z" fill="#696a6a"/></g>
     </svg>
   )
 }
