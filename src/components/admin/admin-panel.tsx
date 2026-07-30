@@ -512,7 +512,7 @@ function AdminHero() {
         </CardHeader>
         <CardContent>
           <Label htmlFor="ann" className="text-xs">Announcement text (top strip)</Label>
-          <Input id="ann" value={announcement} onChange={(e) => setAnnouncement(e.target.value)} className="mt-1" placeholder="e.g. Free shipping above ₹1499" />
+          <Input id="ann" value={announcement} onChange={(e) => setAnnouncement(e.target.value)} className="mt-1" placeholder="e.g. Free shipping above ₹249" />
         </CardContent>
       </Card>
 
@@ -771,7 +771,7 @@ function AdminCustomSections() {
 
 function AdminSettings() {
   const [shippingFee, setShippingFee] = useState('99')
-  const [freeThreshold, setFreeThreshold] = useState('1499')
+  const [freeThreshold, setFreeThreshold] = useState('249')
   const [logoUrl, setLogoUrl] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -782,7 +782,7 @@ function AdminSettings() {
       .then((r) => r.json())
       .then((d) => {
         setShippingFee(d.settings?.shippingFee || '99')
-        setFreeThreshold(d.settings?.freeShippingThreshold || '1499')
+        setFreeThreshold(d.settings?.freeShippingThreshold || '249')
         setLogoUrl(d.settings?.logoUrl || '')
         setLoading(false)
       })

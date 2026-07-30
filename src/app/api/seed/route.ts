@@ -213,9 +213,9 @@ export async function POST() {
 
     // Seed site settings
     await upsertSettings([
-      { key: 'announcement', value: 'Free shipping on orders above ₹1,499 — hand-packed with love.' },
+      { key: 'announcement', value: 'Free shipping on orders above ₹249 — hand-packed with love.' },
       { key: 'shippingFee', value: '99' },
-      { key: 'freeShippingThreshold', value: '1499' },
+      { key: 'freeShippingThreshold', value: '249' },
     ])
 
     return NextResponse.json({ ok: true, message: 'Seeded successfully' })

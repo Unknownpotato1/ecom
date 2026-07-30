@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import {
   ChevronRight,
-  Lock,
   Wallet,
   Banknote,
   CheckCircle2,
@@ -52,7 +51,10 @@ export function Checkout() {
   const promoDiscount = appliedPromo ? Math.round((sub * appliedPromo.discountPct) / 100) : 0
   const prepaidExtraDiscount = payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0
   const discount = promoDiscount + prepaidExtraDiscount
-  const shipping = sub - discount >= 1499 || sub === 0 ? 0 : 99
+  // Free shipping on orders above ₹249 (was ₹1499 — lowered per user request).
+  // sub === 0 means empty cart → no shipping charge (cart drawer use case).
+  const FREE_SHIPPING_THRESHOLD = 249
+  const shipping = sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
   const codPartial = 49
   const total = Math.max(0, sub - discount) + shipping
   const codRemaining = Math.max(0, total - codPartial)
@@ -605,8 +607,15 @@ export function Checkout() {
               </div>
             )}
 
+            {/*
+              Place Order button — simple, clean text only.
+              No lock icon, no amount displayed. Just "Place Order" in
+              a larger size (h-13) and bolder weight (font-semibold).
+              The button is full-width and uses the brand pink color.
+              The placing spinner state still shows "Placing order...".
+            */}
             <Button
-              className="w-full mt-4 h-11 bg-brand text-white hover:shadow-lg"
+              className="w-full mt-4 h-13 bg-brand text-white hover:shadow-lg text-base font-semibold"
               disabled={placing}
               onClick={placeOrder}
             >
@@ -614,18 +623,8 @@ export function Checkout() {
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing order...
                 </>
-              ) : payment === 'cod' ? (
-                <>
-                  <Lock className="h-4 w-4 mr-2" /> Pay ₹49 & confirm order
-                </>
-              ) : payment === 'prepaid' ? (
-                <>
-                  <Lock className="h-4 w-4 mr-2" /> Place order • {formatPrice(total)}
-                </>
               ) : (
-                <>
-                  <Lock className="h-4 w-4 mr-2" /> Place order • {formatPrice(total)}
-                </>
+                <>Place Order</>
               )}
             </Button>
           </div>
