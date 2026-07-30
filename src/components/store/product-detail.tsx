@@ -28,6 +28,7 @@ import { ProductCustomSections } from './product-custom-sections'
 import { YouMayAlsoLike } from './you-may-also-like'
 import { StickyActionBar } from './sticky-action-bar'
 import { ProductCustomSlot } from './product-custom-slot'
+import { UpiDiscountBanner } from './upi-discount-banner'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -231,6 +232,10 @@ export function ProductDetail({ productId }: { productId: string }) {
                 </>
               )}
             </div>
+
+            {/* UPI discount banner — "Get it for ₹XXX (10% off)" with UPI logo.
+                Shown directly below the price. */}
+            <UpiDiscountBanner price={product.price} />
 
             {/* SLOT: product-after-price */}
             <ProductCustomSlot slot="product-after-price" />
