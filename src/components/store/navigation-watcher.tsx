@@ -115,7 +115,7 @@ export function NavigationWatcher() {
     // Priority 3: fall back to whatever Zustand has (persisted from
     // last session) and sync history to match.
     replaceHistory(view, selectedProductId, searchQuery)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [])
 
   // Listen for browser back/forward (popstate) and restore the

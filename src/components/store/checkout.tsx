@@ -4,18 +4,17 @@ import { useState } from 'react'
 import {
   ChevronRight,
   Lock,
-  Truck,
   Wallet,
   Banknote,
-  ShieldCheck,
   CheckCircle2,
   Loader2,
   Tag,
   ArrowLeft,
+  Building2,
+  Home,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Separator } from '@/components/ui/separator'
@@ -33,7 +32,6 @@ export function Checkout() {
 
   const [form, setForm] = useState({
     name: user?.name || '',
-    email: user?.email || '',
     phone: '',
     line1: '',
     line2: '',
@@ -41,9 +39,11 @@ export function Checkout() {
     state: '',
     pincode: '',
     notes: '',
+    addressType: 'home' as 'home' | 'office',
   })
   const [payment, setPayment] = useState<'prepaid' | 'cod'>('prepaid')
   const [placing, setPlacing] = useState(false)
+  const [pincodeLoading, setPincodeLoading] = useState(false)
   const [promo, setPromo] = useState('')
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPct: number } | null>(null)
 
@@ -53,6 +53,30 @@ export function Checkout() {
   const total = Math.max(0, sub - discount) + shipping
 
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }))
+
+  /** Auto-fill city + state when pincode is entered (6 digits) */
+  const handlePincodeChange = async (value: string) => {
+    const pin = value.replace(/\D/g, '').slice(0, 6)
+    set('pincode', pin)
+    if (pin.length === 6) {
+      setPincodeLoading(true)
+      try {
+        const res = await fetch(`/api/pincode?pin=${pin}`)
+        const data = await res.json()
+        if (data.status === 'Success' && data.district && data.state) {
+          set('city', data.district)
+          set('state', data.state)
+          toast.success(`Delivering to ${data.district}, ${data.state}`)
+        } else {
+          toast.error('PIN code not found')
+        }
+      } catch {
+        toast.error('Could not verify pincode')
+      } finally {
+        setPincodeLoading(false)
+      }
+    }
+  }
 
   const applyPromo = () => {
     const code = promo.trim().toUpperCase()
@@ -69,7 +93,7 @@ export function Checkout() {
   }
 
   const placeOrder = async () => {
-    if (!form.name || !form.email || !form.phone || !form.line1 || !form.city || !form.state || !form.pincode) {
+    if (!form.name || !form.phone || !form.line1 || !form.city || !form.state || !form.pincode) {
       toast.error('Please complete all required fields')
       return
     }
@@ -88,7 +112,6 @@ export function Checkout() {
 
       setPlacing(true)
       try {
-        // Step 1: Create a Razorpay order on the server
         const createRes = await fetch('/api/razorpay/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -101,26 +124,22 @@ export function Checkout() {
           return
         }
 
-        // Step 2: Load Razorpay checkout script
         await loadRazorpayScript()
 
-        // Step 3: Open Razorpay checkout modal
         const paymentSuccess = await new Promise<boolean>((resolve) => {
           const options = {
             key: razorpayKeyId,
-            amount: orderData.amount, // in paise
+            amount: orderData.amount,
             currency: orderData.currency,
             name: 'Aurora',
             description: 'Gift Hampers Order',
             order_id: orderData.orderId,
             prefill: {
               name: form.name,
-              email: form.email,
               contact: form.phone,
             },
             theme: { color: '#f9758d' },
             handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-              // Step 4: Verify the payment signature on the server
               try {
                 const verifyRes = await fetch('/api/razorpay/verify', {
                   method: 'POST',
@@ -151,8 +170,7 @@ export function Checkout() {
             },
           }
 
-           
-          const rzp = new (window as any).Razorpay(options)
+          const rzp = new (window as unknown as { Razorpay: new (opts: unknown) => { open: () => void; on: (evt: string, cb: (err: { error: { description: string } }) => void) => void } }).Razorpay(options)
           rzp.on('payment.failed', (err: { error: { description: string } }) => {
             toast.error('Payment failed: ' + (err.error?.description || 'Unknown error'))
             resolve(false)
@@ -165,7 +183,6 @@ export function Checkout() {
           return
         }
 
-        // Step 5: Payment verified — create the order in Firestore
         await createOrderRecord('prepaid', 'paid')
       } catch (e) {
         console.error(e)
@@ -187,11 +204,9 @@ export function Checkout() {
     }
   }
 
-  /** Loads the Razorpay checkout script if not already loaded */
   async function loadRazorpayScript() {
     if (typeof window === 'undefined') return
-     
-    if ((window as any).Razorpay) return
+    if ((window as unknown as { Razorpay?: unknown }).Razorpay) return
     return new Promise<void>((resolve, reject) => {
       const script = document.createElement('script')
       script.src = 'https://checkout.razorpay.com/v1/checkout.js'
@@ -201,14 +216,13 @@ export function Checkout() {
     })
   }
 
-  /** Creates the order record in Firestore and redirects to success page */
   async function createOrderRecord(method: string, paymentStatus: string) {
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customerName: form.name,
-        customerEmail: form.email,
+        customerEmail: user?.email || '',
         customerPhone: form.phone,
         shippingAddress: {
           line1: form.line1,
@@ -216,6 +230,7 @@ export function Checkout() {
           city: form.city,
           state: form.state,
           pincode: form.pincode,
+          addressType: form.addressType,
         },
         items: items.map((i) => ({
           productId: i.productId,
@@ -270,66 +285,133 @@ export function Checkout() {
         <div className="lg:col-span-3 space-y-6">
           {/* Contact */}
           <section className="rounded-xl border border-pink-100 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white text-xs font-bold">1</span>
-              <h2 className="text-base font-semibold">Contact details</h2>
-            </div>
+            <h2 className="text-base font-semibold mb-4">Contact details</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="name" className="text-xs">Full name *</Label>
-                <Input id="name" value={form.name} onChange={(e) => set('name', e.target.value)} className="mt-1" />
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => set('name', e.target.value)}
+                  placeholder="Full name"
+                  className="h-11"
+                />
               </div>
               <div>
-                <Label htmlFor="phone" className="text-xs">Phone *</Label>
-                <Input id="phone" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+91" className="mt-1" />
-              </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="email" className="text-xs">Email *</Label>
-                <Input id="email" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className="mt-1" />
+                <Input
+                  id="phone"
+                  value={form.phone}
+                  onChange={(e) => set('phone', e.target.value)}
+                  placeholder="Phone"
+                  className="h-11"
+                />
               </div>
             </div>
           </section>
 
-          {/* Shipping */}
+          {/* Address */}
           <section className="rounded-xl border border-pink-100 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white text-xs font-bold">2</span>
-              <h2 className="text-base font-semibold">Shipping address</h2>
-            </div>
+            <h2 className="text-base font-semibold mb-4">Address</h2>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <Label htmlFor="line1" className="text-xs">Address line 1 *</Label>
-                <Input id="line1" value={form.line1} onChange={(e) => set('line1', e.target.value)} placeholder="House no, building" className="mt-1" />
+                <Input
+                  id="line1"
+                  value={form.line1}
+                  onChange={(e) => set('line1', e.target.value)}
+                  placeholder="Address line 1 (House no, building)"
+                  className="h-11"
+                />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="line2" className="text-xs">Address line 2 (optional)</Label>
-                <Input id="line2" value={form.line2} onChange={(e) => set('line2', e.target.value)} placeholder="Landmark, area" className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="city" className="text-xs">City *</Label>
-                <Input id="city" value={form.city} onChange={(e) => set('city', e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="state" className="text-xs">State *</Label>
-                <Input id="state" value={form.state} onChange={(e) => set('state', e.target.value)} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="pincode" className="text-xs">Pincode *</Label>
-                <Input id="pincode" value={form.pincode} onChange={(e) => set('pincode', e.target.value)} maxLength={6} className="mt-1" />
+                <Input
+                  id="line2"
+                  value={form.line2}
+                  onChange={(e) => set('line2', e.target.value)}
+                  placeholder="Address line 2 (Landmark, area) — optional"
+                  className="h-11"
+                />
               </div>
               <div className="sm:col-span-2">
-                <Label htmlFor="notes" className="text-xs">Delivery notes (optional)</Label>
-                <Textarea id="notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="e.g. Leave at the door, call before delivery..." rows={2} className="mt-1" />
+                <div className="relative">
+                  <Input
+                    id="pincode"
+                    value={form.pincode}
+                    onChange={(e) => handlePincodeChange(e.target.value)}
+                    placeholder="Pincode"
+                    maxLength={6}
+                    className="h-11"
+                    inputMode="numeric"
+                  />
+                  {pincodeLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-brand" />
+                  )}
+                </div>
               </div>
+              <div>
+                <Input
+                  id="city"
+                  value={form.city}
+                  onChange={(e) => set('city', e.target.value)}
+                  placeholder="City / District"
+                  className="h-11"
+                />
+              </div>
+              <div>
+                <Input
+                  id="state"
+                  value={form.state}
+                  onChange={(e) => set('state', e.target.value)}
+                  placeholder="State"
+                  className="h-11"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Textarea
+                  id="notes"
+                  value={form.notes}
+                  onChange={(e) => set('notes', e.target.value)}
+                  placeholder="Delivery notes (e.g. Leave at the door, call before delivery) — optional"
+                  rows={2}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Address type */}
+          <section className="rounded-xl border border-pink-100 p-5">
+            <h2 className="text-base font-semibold mb-4">Address type</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => set('addressType', 'home')}
+                className={cn(
+                  'flex items-center gap-3 p-4 border-2 rounded-lg transition-colors',
+                  form.addressType === 'home' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
+                )}
+              >
+                <Home className={cn('h-5 w-5', form.addressType === 'home' ? 'text-brand' : 'text-muted-foreground')} />
+                <span className={cn('text-sm font-medium', form.addressType === 'home' ? 'text-brand' : 'text-foreground')}>
+                  Home
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => set('addressType', 'office')}
+                className={cn(
+                  'flex items-center gap-3 p-4 border-2 rounded-lg transition-colors',
+                  form.addressType === 'office' ? 'border-brand bg-brand-soft' : 'border-pink-100 hover:border-brand'
+                )}
+              >
+                <Building2 className={cn('h-5 w-5', form.addressType === 'office' ? 'text-brand' : 'text-muted-foreground')} />
+                <span className={cn('text-sm font-medium', form.addressType === 'office' ? 'text-brand' : 'text-foreground')}>
+                  Office
+                </span>
+              </button>
             </div>
           </section>
 
           {/* Payment */}
           <section className="rounded-xl border border-pink-100 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white text-xs font-bold">3</span>
-              <h2 className="text-base font-semibold">Payment method</h2>
-            </div>
+            <h2 className="text-base font-semibold mb-4">Payment method</h2>
             <RadioGroup value={payment} onValueChange={(v) => setPayment(v as 'prepaid' | 'cod')}>
               <div className="space-y-2">
                 <label
@@ -367,17 +449,12 @@ export function Checkout() {
                       <span className="text-sm font-medium">Cash on Delivery (COD)</span>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Pay in cash when your hamper is delivered. A small handling fee of ₹0 applies. Available across India.
+                      Pay in cash when your hamper is delivered. Available across India.
                     </p>
                   </div>
                 </label>
               </div>
             </RadioGroup>
-
-            <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground bg-brand-soft rounded-md p-3">
-              <ShieldCheck className="h-4 w-4 text-brand shrink-0" />
-              <span>All transactions are secured. Aurora never stores your card details.</span>
-            </div>
           </section>
         </div>
 
@@ -390,7 +467,6 @@ export function Checkout() {
                 <div key={item.id} className="flex gap-3">
                   <div className="relative h-16 w-16 rounded-md overflow-hidden bg-pink-50 shrink-0">
                     {item.image && (
-                       
                       <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
                     )}
                     <span className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 rounded-full bg-brand text-white text-[10px] font-bold inline-flex items-center justify-center">
@@ -470,10 +546,6 @@ export function Checkout() {
                 </>
               )}
             </Button>
-
-            <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
-              <Truck className="h-3.5 w-3.5" /> Free shipping on orders above ₹1,499
-            </div>
           </div>
         </aside>
       </div>
