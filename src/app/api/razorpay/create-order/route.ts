@@ -18,8 +18,19 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { amount, currency = 'INR' } = body
 
-  if (!amount || amount < 100) {
-    return NextResponse.json({ error: 'Amount must be at least ₹1 (100 paise)' }, { status: 400 })
+  // ⚠️ `amount` is in RUPEES (the client sends e.g. 49 for COD partial,
+  // or the order total like 499 for prepaid). We convert to paise below
+  // on the Razorpay API call (amount * 100).
+  //
+  // Razorpay's minimum is ₹1 (100 paise). So the input validation
+  // must check amount < 1 (less than one rupee), NOT amount < 100.
+  //
+  // BUG HISTORY: the previous check was `amount < 100`, which treated
+  // the input as paise — but the input is rupees. This rejected the
+  // ₹49 COD partial payment with "Amount must be at least ₹1" even
+  // though ₹49 is well above ₹1. Fixed by checking `amount < 1`.
+  if (!amount || amount < 1) {
+    return NextResponse.json({ error: 'Amount must be at least ₹1' }, { status: 400 })
   }
 
   try {
