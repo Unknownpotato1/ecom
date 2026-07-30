@@ -25,13 +25,11 @@ import { useAuth } from '@/lib/auth-store'
 import { formatPrice } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { useToast } from '@/hooks/use-toast'
 
 export function Checkout() {
   const { items, subtotal, clearCart } = useCart()
   const { goOrderSuccess, goHome } = useUI()
   const { user } = useAuth()
-  const { toast: shadToast } = useToast()
 
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -79,60 +77,170 @@ export function Checkout() {
       toast.error('Your bag is empty')
       return
     }
+
+    // For prepaid orders, process via Razorpay first
     if (payment === 'prepaid') {
-      // Razorpay placeholder — replace with real Razorpay integration later
-      shadToast({
-        title: 'Razorpay (preview mode)',
-        description: 'Connect Razorpay keys in production to enable real prepaid payments. Simulating success for now.',
-      })
+      const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+      if (!razorpayKeyId) {
+        toast.error('Online payment is not configured. Please choose Cash on Delivery.')
+        return
+      }
+
+      setPlacing(true)
+      try {
+        // Step 1: Create a Razorpay order on the server
+        const createRes = await fetch('/api/razorpay/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: total }),
+        })
+        const orderData = await createRes.json()
+        if (!createRes.ok || !orderData.orderId) {
+          toast.error(orderData.error || 'Failed to initiate payment')
+          setPlacing(false)
+          return
+        }
+
+        // Step 2: Load Razorpay checkout script
+        await loadRazorpayScript()
+
+        // Step 3: Open Razorpay checkout modal
+        const paymentSuccess = await new Promise<boolean>((resolve) => {
+          const options = {
+            key: razorpayKeyId,
+            amount: orderData.amount, // in paise
+            currency: orderData.currency,
+            name: 'Aurora',
+            description: 'Gift Hampers Order',
+            order_id: orderData.orderId,
+            prefill: {
+              name: form.name,
+              email: form.email,
+              contact: form.phone,
+            },
+            theme: { color: '#f9758d' },
+            handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
+              // Step 4: Verify the payment signature on the server
+              try {
+                const verifyRes = await fetch('/api/razorpay/verify', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  }),
+                })
+                const verifyData = await verifyRes.json()
+                if (verifyData.verified) {
+                  resolve(true)
+                } else {
+                  toast.error('Payment verification failed. Please contact support.')
+                  resolve(false)
+                }
+              } catch {
+                toast.error('Could not verify payment. Please contact support.')
+                resolve(false)
+              }
+            },
+            modal: {
+              ondismiss: () => {
+                toast.info('Payment cancelled')
+                resolve(false)
+              },
+            },
+          }
+
+           
+          const rzp = new (window as any).Razorpay(options)
+          rzp.on('payment.failed', (err: { error: { description: string } }) => {
+            toast.error('Payment failed: ' + (err.error?.description || 'Unknown error'))
+            resolve(false)
+          })
+          rzp.open()
+        })
+
+        if (!paymentSuccess) {
+          setPlacing(false)
+          return
+        }
+
+        // Step 5: Payment verified — create the order in Firestore
+        await createOrderRecord('prepaid', 'paid')
+      } catch (e) {
+        console.error(e)
+        toast.error('Payment error — please try again')
+        setPlacing(false)
+      }
+      return
     }
+
+    // For COD: create order directly
     setPlacing(true)
     try {
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: form.name,
-          customerEmail: form.email,
-          customerPhone: form.phone,
-          shippingAddress: {
-            line1: form.line1,
-            line2: form.line2,
-            city: form.city,
-            state: form.state,
-            pincode: form.pincode,
-          },
-          items: items.map((i) => ({
-            productId: i.productId,
-            title: i.title,
-            price: i.price,
-            quantity: i.quantity,
-            image: i.image,
-          })),
-          subtotal: sub - discount,
-          shipping,
-          total,
-          paymentMethod: payment,
-          notes: form.notes,
-          userId: user?.email,
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        clearCart()
-        // Stash order for success screen
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('aurora:last-order', JSON.stringify(data.order))
-        }
-        goOrderSuccess()
-      } else {
-        toast.error('Failed to place order')
-      }
+      await createOrderRecord('cod', 'pending')
     } catch (e) {
       console.error(e)
       toast.error('Network error — please try again')
     } finally {
       setPlacing(false)
+    }
+  }
+
+  /** Loads the Razorpay checkout script if not already loaded */
+  async function loadRazorpayScript() {
+    if (typeof window === 'undefined') return
+     
+    if ((window as any).Razorpay) return
+    return new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('Failed to load Razorpay script'))
+      document.head.appendChild(script)
+    })
+  }
+
+  /** Creates the order record in Firestore and redirects to success page */
+  async function createOrderRecord(method: string, paymentStatus: string) {
+    const res = await fetch('/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName: form.name,
+        customerEmail: form.email,
+        customerPhone: form.phone,
+        shippingAddress: {
+          line1: form.line1,
+          line2: form.line2,
+          city: form.city,
+          state: form.state,
+          pincode: form.pincode,
+        },
+        items: items.map((i) => ({
+          productId: i.productId,
+          title: i.title,
+          price: i.price,
+          quantity: i.quantity,
+          image: i.image,
+        })),
+        subtotal: sub - discount,
+        shipping,
+        total,
+        paymentMethod: method,
+        notes: form.notes,
+        userId: user?.email,
+      }),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      clearCart()
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('aurora:last-order', JSON.stringify(data.order))
+      }
+      goOrderSuccess()
+    } else {
+      toast.error('Failed to place order')
     }
   }
 
