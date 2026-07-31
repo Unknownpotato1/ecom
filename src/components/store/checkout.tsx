@@ -45,7 +45,16 @@ export function Checkout() {
   const [placing, setPlacing] = useState(false)
   const [pincodeLoading, setPincodeLoading] = useState(false)
   const [promo, setPromo] = useState('')
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPct: number } | null>(null)
+  /**
+   * Applied promo state.
+   * - discountPct: percentage off the subtotal (AURORA10, FESTIVE15)
+   * - freeShipping: makes shipping ₹0 regardless of order total (FS99).
+   *   Useful for orders under ₹249 where shipping would otherwise be ₹99.
+   *   The "99" in FS99 refers to the ₹99 shipping fee it waives.
+   */
+  const [appliedPromo, setAppliedPromo] = useState<
+    { code: string; discountPct: number; freeShipping?: boolean } | null
+  >(null)
 
   const sub = subtotal()
   const promoDiscount = appliedPromo ? Math.round((sub * appliedPromo.discountPct) / 100) : 0
@@ -53,8 +62,10 @@ export function Checkout() {
   const discount = promoDiscount + prepaidExtraDiscount
   // Free shipping on orders above ₹249 (was ₹1499 — lowered per user request).
   // sub === 0 means empty cart → no shipping charge (cart drawer use case).
+  // FS99 promo code also makes shipping free (overrides the threshold check).
   const FREE_SHIPPING_THRESHOLD = 249
-  const shipping = sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
+  const hasFreeShippingPromo = appliedPromo?.freeShipping === true
+  const shipping = hasFreeShippingPromo || sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
   const codPartial = 49
   const total = Math.max(0, sub - discount) + shipping
   const codRemaining = Math.max(0, total - codPartial)
@@ -94,6 +105,12 @@ export function Checkout() {
     } else if (code === 'FESTIVE15') {
       setAppliedPromo({ code, discountPct: 15 })
       toast.success('Promo FESTIVE15 applied — 15% off!')
+    } else if (code === 'FS99') {
+      // FS99 = Free Shipping (waives the ₹99 shipping fee).
+      // Makes shipping ₹0 for orders under ₹249 that would otherwise
+      // incur the ₹99 shipping charge. No percentage discount on subtotal.
+      setAppliedPromo({ code, discountPct: 0, freeShipping: true })
+      toast.success('Promo FS99 applied — Free shipping!')
     } else {
       toast.error('Invalid promo code')
     }
@@ -561,7 +578,10 @@ export function Checkout() {
             </div>
             {appliedPromo && (
               <div className="mb-4 text-xs text-emerald-600 inline-flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" /> {appliedPromo.code} applied ({appliedPromo.discountPct}% off)
+                <CheckCircle2 className="h-3.5 w-3.5" /> {appliedPromo.code} applied
+                {appliedPromo.freeShipping
+                  ? ' (Free shipping)'
+                  : ` (${appliedPromo.discountPct}% off)`}
               </div>
             )}
 
