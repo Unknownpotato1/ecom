@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import {
   Star,
   Check,
+  X,
 } from 'lucide-react'
-import { StarRating } from './star-rating'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
@@ -38,6 +38,7 @@ export function ProductDetail({ productId }: { productId: string }) {
   const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
   const [tab, setTab] = useState<'description' | 'specifications' | 'reviews'>('description')
+  const [allReviewsOpen, setAllReviewsOpen] = useState(false)
 
   // Review form
   const [reviewName, setReviewName] = useState('')
@@ -201,11 +202,17 @@ export function ProductDetail({ productId }: { productId: string }) {
               className="flex items-center gap-2 mt-2 group cursor-pointer"
               aria-label="View reviews"
             >
-              <StarRating
-                rating={product.rating}
-                sizeClass="h-4 w-4"
-                starClassName="transition-transform group-hover:scale-110"
-              />
+              <div className="flex items-center">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={cn(
+                      'h-4 w-4 transition-transform group-hover:scale-110',
+                      n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
+                    )}
+                  />
+                ))}
+              </div>
               <span className="text-sm text-muted-foreground group-hover:text-brand transition-colors">
                 {product.rating.toFixed(1)} • {product.reviewCount} reviews
               </span>
@@ -317,7 +324,15 @@ export function ProductDetail({ productId }: { productId: string }) {
                         <div className="text-center">
                           <div className="text-4xl font-bold text-foreground">{product.rating.toFixed(1)}</div>
                           <div className="flex items-center justify-center mt-1">
-                            <StarRating rating={product.rating} sizeClass="h-4 w-4" />
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <Star
+                                key={n}
+                                className={cn(
+                                  'h-4 w-4',
+                                  n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
+                                )}
+                              />
+                            ))}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">{product.reviewCount} reviews</div>
                         </div>
@@ -345,31 +360,50 @@ export function ProductDetail({ productId }: { productId: string }) {
                       </div>
                     </div>
 
-                    {/* Existing reviews */}
+                    {/* Existing reviews — show max 10 on product page */}
                     {reviews.length === 0 ? (
                       <p className="text-muted-foreground text-center py-6">No reviews yet. Be the first to review!</p>
                     ) : (
-                      reviews.map((r: Review) => (
-                        <div key={r.id} className="rounded-lg border border-pink-100 p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 rounded-full bg-brand-soft text-brand font-semibold inline-flex items-center justify-center">
-                                {r.userName[0]?.toUpperCase()}
-                              </div>
+                      <>
+                        {reviews.slice(0, 10).map((r: Review) => (
+                          <div key={r.id} className="rounded-lg border border-pink-100 p-4">
+                            <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">{r.userName}</span>
-                                {/* Verified Buyer badge */}
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold">
-                                  <Check className="h-2.5 w-2.5" />
-                                  Verified Buyer
-                                </span>
+                                <div className="h-8 w-8 rounded-full bg-brand-soft text-brand font-semibold inline-flex items-center justify-center">
+                                  {r.userName[0]?.toUpperCase()}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{r.userName}</span>
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold">
+                                    <Check className="h-2.5 w-2.5" />
+                                    Verified Buyer
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex">
+                                {[1, 2, 3, 4, 5].map((n) => (
+                                  <Star
+                                    key={n}
+                                    className={cn(
+                                      'h-3 w-3',
+                                      n <= r.rating ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
+                                    )}
+                                  />
+                                ))}
                               </div>
                             </div>
-                            <StarRating rating={r.rating} sizeClass="h-3 w-3" />
+                            {r.comment && <p className="mt-2 text-sm text-muted-foreground">{r.comment}</p>}
                           </div>
-                          {r.comment && <p className="mt-2 text-sm text-muted-foreground">{r.comment}</p>}
-                        </div>
-                      ))
+                        ))}
+                        {reviews.length > 10 && (
+                          <button
+                            onClick={() => setAllReviewsOpen(true)}
+                            className="w-full py-3 mt-2 text-sm font-medium text-brand border border-brand rounded-lg hover:bg-brand-soft transition-colors"
+                          >
+                            See all {reviews.length} reviews →
+                          </button>
+                        )}
+                      </>
                     )}
 
                     <Separator />
@@ -444,6 +478,97 @@ export function ProductDetail({ productId }: { productId: string }) {
           setTimeout(() => openCart(), 200)
         }}
       />
+
+      {/* Full-screen all reviews overlay */}
+      {allReviewsOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-white flex flex-col"
+          style={{ animation: 'aurora-fade-up 0.3s ease-out' }}
+        >
+          {/* Header with close button */}
+          <div className="sticky top-0 bg-white border-b border-pink-100 px-4 py-3 flex items-center justify-between z-10">
+            <h2 className="text-base font-semibold">All Reviews ({reviews.length})</h2>
+            <button
+              onClick={() => setAllReviewsOpen(false)}
+              className="h-9 w-9 rounded-full hover:bg-brand-soft flex items-center justify-center"
+              aria-label="Close reviews"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Review summary widget */}
+          <div className="px-4 py-4 border-b border-pink-100 bg-brand-soft/30">
+            <div className="flex items-center gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold">{product.rating.toFixed(1)}</div>
+                <div className="flex items-center justify-center mt-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={cn(
+                        'h-3 w-3',
+                        n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
+                      )}
+                    />
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">{product.reviewCount} reviews</div>
+              </div>
+              <div className="flex-1 space-y-1">
+                {[5, 4, 3, 2, 1].map((star) => {
+                  const count = reviews.filter((r: Review) => r.rating === star).length
+                  const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0
+                  return (
+                    <div key={star} className="flex items-center gap-2 text-xs">
+                      <span className="w-3 text-muted-foreground">{star}</span>
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      <div className="flex-1 h-2 bg-pink-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-amber-400 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-8 text-right text-muted-foreground">{count}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* All reviews list (scrollable) */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 fancy-scroll">
+            {reviews.map((r: Review) => (
+              <div key={r.id} className="rounded-lg border border-pink-100 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-brand-soft text-brand font-semibold inline-flex items-center justify-center">
+                      {r.userName[0]?.toUpperCase()}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{r.userName}</span>
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-semibold">
+                        <Check className="h-2.5 w-2.5" />
+                        Verified Buyer
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <Star
+                        key={n}
+                        className={cn(
+                          'h-3 w-3',
+                          n <= r.rating ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
+                        )}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {r.comment && <p className="mt-2 text-sm text-muted-foreground">{r.comment}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
