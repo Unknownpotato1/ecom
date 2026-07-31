@@ -5,6 +5,7 @@ import {
   Star,
   Check,
 } from 'lucide-react'
+import { StarRating } from './star-rating'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
@@ -200,17 +201,11 @@ export function ProductDetail({ productId }: { productId: string }) {
               className="flex items-center gap-2 mt-2 group cursor-pointer"
               aria-label="View reviews"
             >
-              <div className="flex items-center">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Star
-                    key={n}
-                    className={cn(
-                      'h-4 w-4 transition-transform group-hover:scale-110',
-                      n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
-                    )}
-                  />
-                ))}
-              </div>
+              <StarRating
+                rating={product.rating}
+                sizeClass="h-4 w-4"
+                starClassName="transition-transform group-hover:scale-110"
+              />
               <span className="text-sm text-muted-foreground group-hover:text-brand transition-colors">
                 {product.rating.toFixed(1)} • {product.reviewCount} reviews
               </span>
@@ -322,15 +317,7 @@ export function ProductDetail({ productId }: { productId: string }) {
                         <div className="text-center">
                           <div className="text-4xl font-bold text-foreground">{product.rating.toFixed(1)}</div>
                           <div className="flex items-center justify-center mt-1">
-                            {[1, 2, 3, 4, 5].map((n) => (
-                              <Star
-                                key={n}
-                                className={cn(
-                                  'h-4 w-4',
-                                  n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
-                                )}
-                              />
-                            ))}
+                            <StarRating rating={product.rating} sizeClass="h-4 w-4" />
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">{product.reviewCount} reviews</div>
                         </div>
@@ -378,17 +365,7 @@ export function ProductDetail({ productId }: { productId: string }) {
                                 </span>
                               </div>
                             </div>
-                            <div className="flex">
-                              {[1, 2, 3, 4, 5].map((n) => (
-                                <Star
-                                  key={n}
-                                  className={cn(
-                                    'h-3 w-3',
-                                    n <= r.rating ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
-                                  )}
-                                />
-                              ))}
-                            </div>
+                            <StarRating rating={r.rating} sizeClass="h-3 w-3" />
                           </div>
                           {r.comment && <p className="mt-2 text-sm text-muted-foreground">{r.comment}</p>}
                         </div>

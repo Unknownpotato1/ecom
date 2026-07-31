@@ -1,6 +1,7 @@
 'use client'
 
-import { Star, ShoppingBag, Heart } from 'lucide-react'
+import { ShoppingBag, Heart } from 'lucide-react'
+import { StarRating } from './star-rating'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
@@ -78,17 +79,7 @@ export function ProductCard({ product }: { product: Product }) {
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
         <div className="flex items-center gap-1 mb-1">
-          <div className="flex items-center">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Star
-                key={n}
-                className={cn(
-                  'h-3 w-3',
-                  n <= Math.round(product.rating) ? 'fill-amber-400 text-amber-400' : 'fill-muted text-muted-foreground/30'
-                )}
-              />
-            ))}
-          </div>
+          <StarRating rating={product.rating} sizeClass="h-3 w-3" />
           <span className="text-[11px] text-muted-foreground">({product.reviewCount})</span>
         </div>
 
