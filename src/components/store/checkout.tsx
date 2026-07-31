@@ -53,21 +53,20 @@ export function Checkout() {
    *   The "99" in FS99 refers to the ₹99 shipping fee it waives.
    */
   const [appliedPromo, setAppliedPromo] = useState<
-    { code: string; discountPct: number; freeShipping?: boolean } | null
+    { code: string; discountPct: number; freeShipping?: boolean; flatTotal?: number } | null
   >(null)
 
   const sub = subtotal()
   const promoDiscount = appliedPromo ? Math.round((sub * appliedPromo.discountPct) / 100) : 0
   const prepaidExtraDiscount = payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0
   const discount = promoDiscount + prepaidExtraDiscount
-  // Free shipping on orders above ₹249 (was ₹1499 — lowered per user request).
-  // sub === 0 means empty cart → no shipping charge (cart drawer use case).
-  // FS99 promo code also makes shipping free (overrides the threshold check).
   const FREE_SHIPPING_THRESHOLD = 249
   const hasFreeShippingPromo = appliedPromo?.freeShipping === true
+  const hasFlatTotalPromo = appliedPromo?.flatTotal != null
   const shipping = hasFreeShippingPromo || sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
   const codPartial = 49
-  const total = Math.max(0, sub - discount) + shipping
+  // FS99 promo: total becomes ₹2 flat (no matter original price)
+  const total = hasFlatTotalPromo ? (appliedPromo?.flatTotal ?? 2) : Math.max(0, sub - discount) + shipping
   const codRemaining = Math.max(0, total - codPartial)
 
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }))
@@ -106,11 +105,8 @@ export function Checkout() {
       setAppliedPromo({ code, discountPct: 15 })
       toast.success('Promo FESTIVE15 applied — 15% off!')
     } else if (code === 'FS99') {
-      // FS99 = Free Shipping (waives the ₹99 shipping fee).
-      // Makes shipping ₹0 for orders under ₹249 that would otherwise
-      // incur the ₹99 shipping charge. No percentage discount on subtotal.
-      setAppliedPromo({ code, discountPct: 0, freeShipping: true })
-      toast.success('Promo FS99 applied — Free shipping!')
+      setAppliedPromo({ code, discountPct: 0, flatTotal: 2 })
+      toast.success('Promo FS99 applied — Total is now just ₹2!')
     } else {
       toast.error('Invalid promo code')
     }
@@ -579,7 +575,9 @@ export function Checkout() {
             {appliedPromo && (
               <div className="mb-4 text-xs text-emerald-600 inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" /> {appliedPromo.code} applied
-                {appliedPromo.freeShipping
+                {appliedPromo.flatTotal != null
+                  ? ` (Total = ₹${appliedPromo.flatTotal})`
+                  : appliedPromo.freeShipping
                   ? ' (Free shipping)'
                   : ` (${appliedPromo.discountPct}% off)`}
               </div>
@@ -592,22 +590,31 @@ export function Checkout() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-price">{formatPrice(sub)}</span>
               </div>
-              {promoDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>Promo discount</span>
-                  <span>− {formatPrice(promoDiscount)}</span>
+              {hasFlatTotalPromo ? (
+                <div className="flex justify-between text-emerald-600 font-semibold">
+                  <span>FS99 special price</span>
+                  <span>{formatPrice(total)}</span>
                 </div>
+              ) : (
+                <>
+                  {promoDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Promo discount</span>
+                      <span>− {formatPrice(promoDiscount)}</span>
+                    </div>
+                  )}
+                  {prepaidExtraDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-600">
+                      <span>Prepaid 10% off</span>
+                      <span>− {formatPrice(prepaidExtraDiscount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span>{shipping === 0 ? <span className="text-emerald-600 font-medium">FREE</span> : formatPrice(shipping)}</span>
+                  </div>
+                </>
               )}
-              {prepaidExtraDiscount > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>Prepaid 10% off</span>
-                  <span>− {formatPrice(prepaidExtraDiscount)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Shipping</span>
-                <span>{shipping === 0 ? <span className="text-emerald-600 font-medium">FREE</span> : formatPrice(shipping)}</span>
-              </div>
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between text-base font-semibold">
