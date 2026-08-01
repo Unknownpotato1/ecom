@@ -16,6 +16,14 @@ import {
   Eye,
   EyeOff,
   GripVertical,
+  ShoppingBag,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  CreditCard,
+  User,
+  StickyNote,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -221,6 +229,9 @@ function AdminPanelInner() {
             <TabsTrigger value="products" className="gap-1.5">
               <Package className="h-3.5 w-3.5" /> Products
             </TabsTrigger>
+            <TabsTrigger value="orders" className="gap-1.5">
+              <ShoppingBag className="h-3.5 w-3.5" /> Orders
+            </TabsTrigger>
             <TabsTrigger value="hero" className="gap-1.5">
               <ImageIcon className="h-3.5 w-3.5" /> Hero & Banner
             </TabsTrigger>
@@ -237,6 +248,9 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="products" className="mt-6">
             <AdminProducts />
+          </TabsContent>
+          <TabsContent value="orders" className="mt-6">
+            <AdminOrders />
           </TabsContent>
           <TabsContent value="hero" className="mt-6">
             <AdminHero />
@@ -926,6 +940,241 @@ function AdminSettings() {
           </Button>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function AdminOrders() {
+  const [orders, setOrders] = useState<Array<{
+    id: string
+    orderNumber: string
+    customerName: string
+    customerEmail: string
+    customerPhone: string
+    shippingAddress: string
+    subtotal: number
+    shipping: number
+    total: number
+    paymentMethod: string
+    paymentStatus: string
+    orderStatus: string
+    notes?: string | null
+    createdAt: string
+    items: Array<{
+      id: string
+      title: string
+      price: number
+      quantity: number
+      image?: string | null
+    }>
+  }>>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/orders')
+      .then((r) => r.json())
+      .then((d) => {
+        setOrders(d.orders || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const formatPrice = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return iso
+    }
+  }
+
+  const parseAddress = (addrStr: string) => {
+    try {
+      return JSON.parse(addrStr)
+    } catch {
+      return {} as Record<string, string>
+    }
+  }
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading orders...</div>
+  }
+
+  if (orders.length === 0) {
+    return (
+      <Card className="border-pink-100">
+        <CardContent className="py-12 text-center">
+          <ShoppingBag className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-sm font-medium">No orders yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Orders will appear here when customers place them.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {orders.map((order) => {
+        const addr = parseAddress(order.shippingAddress)
+        const isExpanded = expandedId === order.id
+        const isPrepaid = order.paymentMethod === 'prepaid'
+        const isPartialPaid = order.paymentStatus === 'partial_paid'
+        const paidAmount = isPrepaid ? order.total : (isPartialPaid ? 49 : 0)
+        const remainingAmount = isPrepaid ? 0 : Math.max(0, order.total - 49)
+
+        return (
+          <div key={order.id} className="rounded-xl border border-pink-100 overflow-hidden">
+            {/* Order header — click to expand */}
+            <button
+              onClick={() => setExpandedId(isExpanded ? null : order.id)}
+              className="w-full flex items-center justify-between p-4 hover:bg-brand-soft/30 transition-colors text-left"
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">{order.orderNumber}</span>
+                <span className="text-xs text-muted-foreground">{order.customerName}</span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-price">{formatPrice(order.total)}</div>
+                  <div className="text-xs text-muted-foreground">{order.paymentMethod.toUpperCase()}</div>
+                </div>
+                <span className={cn(
+                  'px-2 py-0.5 rounded-full text-[10px] font-semibold',
+                  order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                  order.paymentStatus === 'partial_paid' ? 'bg-amber-100 text-amber-700' :
+                  'bg-red-100 text-red-700'
+                )}>
+                  {order.paymentStatus.replace('_', ' ')}
+                </span>
+              </div>
+            </button>
+
+            {/* Expanded details */}
+            {isExpanded && (
+              <div className="border-t border-pink-100 p-4 space-y-4 bg-muted/20">
+                {/* Date */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>Placed on {formatDate(order.createdAt)}</span>
+                </div>
+
+                {/* Customer + Address */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer</h4>
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-3.5 w-3.5 text-brand shrink-0" />
+                      <span>{order.customerName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-3.5 w-3.5 text-brand shrink-0" />
+                      <span>{order.customerPhone}</span>
+                    </div>
+                    {order.customerEmail && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3.5 w-3.5 text-brand shrink-0" />
+                        <span className="truncate">{order.customerEmail}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Address</h4>
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-3.5 w-3.5 text-brand shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        {addr.line1 && <div>{addr.line1}</div>}
+                        {addr.line2 && <div className="text-muted-foreground">{addr.line2}</div>}
+                        <div>{addr.city}{addr.city && addr.state ? ', ' : ''}{addr.state} {addr.pincode}</div>
+                        {addr.addressType && (
+                          <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] bg-brand-soft text-brand font-medium capitalize">
+                            {addr.addressType}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Payment</h4>
+                  <div className="flex items-center gap-2 text-sm">
+                    <CreditCard className="h-3.5 w-3.5 text-brand shrink-0" />
+                    <span className="font-medium capitalize">{order.paymentMethod}</span>
+                    <span className={cn(
+                      'ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold',
+                      order.paymentStatus === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                      order.paymentStatus === 'partial_paid' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-700'
+                    )}>
+                      {order.paymentStatus.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                      <div className="text-xs text-muted-foreground">Paid</div>
+                      <div className="text-base font-bold text-emerald-600">{formatPrice(paidAmount)}</div>
+                    </div>
+                    {remainingAmount > 0 ? (
+                      <div className="rounded-lg bg-amber-50 p-3 text-center">
+                        <div className="text-xs text-muted-foreground">Pending (COD)</div>
+                        <div className="text-base font-bold text-amber-600">{formatPrice(remainingAmount)}</div>
+                      </div>
+                    ) : (
+                      <div className="rounded-lg bg-muted p-3 text-center">
+                        <div className="text-xs text-muted-foreground">Pending</div>
+                        <div className="text-base font-bold text-muted-foreground">₹0</div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>Subtotal: {formatPrice(order.subtotal)}</span>
+                    <span>Shipping: {order.shipping === 0 ? 'FREE' : formatPrice(order.shipping)}</span>
+                    <span>Total: {formatPrice(order.total)}</span>
+                  </div>
+                </div>
+
+                {/* Products */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Products ({order.items.length})</h4>
+                  {order.items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 rounded-lg border border-pink-100 p-2">
+                      <div className="h-12 w-12 rounded-md overflow-hidden bg-pink-50 shrink-0">
+                        {item.image && <img src={item.image} alt={item.title} className="h-full w-full object-cover" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-1">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{formatPrice(item.price)} × {item.quantity}</p>
+                      </div>
+                      <div className="text-sm font-semibold text-price shrink-0">{formatPrice(item.price * item.quantity)}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Notes */}
+                {order.notes && (
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Delivery Notes</h4>
+                    <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <StickyNote className="h-3.5 w-3.5 text-brand shrink-0 mt-0.5" />
+                      <span>{order.notes}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
