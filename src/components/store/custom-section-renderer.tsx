@@ -113,10 +113,22 @@ export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
       shadow = host.attachShadow({ mode: 'open' })
     }
 
+    // Extract CSS custom properties from :root blocks and inject them into :host
+    // so they're available inside the shadow DOM. :root in a shadow DOM refers
+    // to the document's <html> element, but CSS variables set on :root don't
+    // always cascade into shadow roots. Moving them to :host fixes this.
+    let rootVars = ''
+    let processedCss = css.replace(/:root\s*\{([^}]*)\}/gi, (_, content) => {
+      // Extract only custom properties (--var: value)
+      const varMatches = content.match(/--[\w-]+\s*:\s*[^;]+;?/g)
+      if (varMatches) rootVars += varMatches.join('\n      ') + '\n      '
+      return '' // Remove the :root block from CSS
+    })
+
     const styleEl = document.createElement('style')
     styleEl.textContent = `
-      :host { display: block; position: relative; }
-      ${css}
+      :host { display: block; position: relative; ${rootVars} }
+      ${processedCss}
     `
 
     const wrapper = document.createElement('div')
@@ -179,8 +191,15 @@ export function CustomSectionPreview({ section }: { section: Partial<CustomSecti
     } else {
       shadow = host.attachShadow({ mode: 'open' })
     }
+    // Same :root → :host variable extraction for the preview
+    let rootVars = ''
+    let processedCss = css.replace(/:root\s*\{([^}]*)\}/gi, (_, content) => {
+      const varMatches = content.match(/--[\w-]+\s*:\s*[^;]+;?/g)
+      if (varMatches) rootVars += varMatches.join('\n      ') + '\n      '
+      return ''
+    })
     const styleEl = document.createElement('style')
-    styleEl.textContent = `:host { display: block; padding: 16px; background: #fff; }\n${css}`
+    styleEl.textContent = `:host { display: block; padding: 16px; background: #fff; ${rootVars} }\n${processedCss}`
     const wrapper = document.createElement('div')
     wrapper.innerHTML = html
     shadow.innerHTML = ''
