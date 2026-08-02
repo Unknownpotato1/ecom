@@ -57,18 +57,11 @@ export function Storefront({ heroFallback }: Props) {
       .then(([secData, customData, settingsData]) => {
         if (!active) return
         const visibleSections = (secData.sections as Section[]).filter((s) => s.visible)
-        // Only render custom sections marked as 'storefront' (default) on the home page.
-        // 'product-below-actions' sections render on the product detail page instead.
-        const visibleCustom = (customData.sections as CustomSection[])
-          .filter((s) => s.visible && (
-            // Only render sections with 'storefront' or 'home-above-products' slot
-            // (legacy 'storefront' maps to 'home-above-products')
-            (s.slot || s.location || 'storefront') === 'storefront' ||
-            (s.slot || s.location) === 'home-above-products'
-          ))
-          .sort((a, b) => a.position - b.position)
+        // Custom sections are now rendered by HomeCustomSlot in page.tsx
+        // at specific positions (above-header, above-hero, above-products, etc.)
+        // The Storefront should NOT render any custom sections to avoid duplicates.
         setSections(visibleSections.sort((a, b) => a.position - b.position))
-        setCustomSections(visibleCustom)
+        setCustomSections([])
         // Load hero config from settings (where admin saves it)
         if (settingsData.settings?.hero) {
           try {
