@@ -15,7 +15,7 @@ let homeFetchPromise: Promise<CustomSection[]> | null = null
 async function fetchHomeSections(): Promise<CustomSection[]> {
   if (cachedHomeSections) return cachedHomeSections
   if (homeFetchPromise) return homeFetchPromise
-  homeFetchPromise = fetch('/api/custom-sections')
+  homeFetchPromise = fetch('/api/custom-sections', { cache: 'no-store' })
     .then((r) => r.json())
     .then((data) => {
       cachedHomeSections = (data.sections as CustomSection[]).filter((s) => s.visible)
@@ -32,11 +32,22 @@ export function HomeCustomSlot({ slot }: { slot: string }) {
     let active = true
     fetchHomeSections().then((all) => {
       if (!active) return
-      // Match by slot, or legacy 'storefront' (maps to home-above-products)
+      // Match by slot.
+      //
+      // ⚠️ NOTE: 'storefront' sections are NOT matched to any home slot here.
+      // Storefront-slotted sections (including the video section) are handled
+      // by the Storefront component itself — video sections are injected
+      // INTO the product grid after the 10th product (see storefront.tsx
+      // isVideoSection + ProductGrid insertAfterN).
+      //
+      // Previously, 'storefront' was mapped to 'home-above-products', which
+      // caused the video section to render BOTH above the products AND
+      // (if the Storefront was also rendering it) after 10 products — a
+      // duplicate. Removing the storefront→home-above-products mapping
+      // eliminates the duplicate above-products rendering.
       const filtered = all
         .filter((s) => {
           const sSlot = s.slot || s.location || 'storefront'
-          if (slot === 'home-above-products' && (sSlot === 'storefront' || sSlot === 'home-above-products')) return true
           return sSlot === slot
         })
         .sort((a, b) => a.position - b.position)
