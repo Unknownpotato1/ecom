@@ -12,6 +12,7 @@ import { Orders } from '@/components/store/orders'
 import { Profile } from '@/components/auth/profile'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { NavigationWatcher } from '@/components/store/navigation-watcher'
+import { HomeCustomSlot } from '@/components/store/home-custom-slot'
 import { useUI } from '@/lib/ui-store'
 import type { HeroConfig } from '@/lib/types'
 
@@ -41,9 +42,19 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col bg-background">
       <NavigationWatcher />
+
+      {/* Home page: above-header custom sections */}
+      {view === 'home' && <HomeCustomSlot slot="home-above-header" />}
+
       <Header />
 
+      {/* Home page: between header and storefront (above hero/banner) */}
+      {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}
+
       <div className="flex-1">
+        {/* Home page: above product list */}
+        {view === 'home' && <HomeCustomSlot slot="home-above-products" />}
+
         {view === 'home' && (
           <Storefront heroFallback={DEFAULT_HERO} />
         )}
@@ -55,7 +66,13 @@ export default function Home() {
         {view === 'search' && <SearchResults initialQuery={searchQuery} />}
         {view === 'orders' && <Orders />}
         {view === 'profile' && <Profile />}
+
+        {/* Home page: below product list */}
+        {view === 'home' && <HomeCustomSlot slot="home-below-products" />}
       </div>
+
+      {/* Home page: above footer */}
+      {view === 'home' && <HomeCustomSlot slot="home-above-footer" />}
 
       <Footer />
       <CartDrawer />

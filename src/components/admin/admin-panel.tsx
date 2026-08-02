@@ -64,7 +64,7 @@ import { CustomSectionPreview } from '@/components/store/custom-section-renderer
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Section, CustomSection, HeroConfig } from '@/lib/types'
-import { PRODUCT_SLOTS } from '@/lib/types'
+import { HOME_SLOTS, PRODUCT_SLOTS } from '@/lib/types'
 
 type SectionItem = Section
 
@@ -116,11 +116,13 @@ function SortableCustomRow({
   onToggle,
   onEdit,
   onRemove,
+  mode,
 }: {
   section: CustomSection
   onToggle: (id: string, visible: boolean) => void
   onEdit: (s: CustomSection) => void
   onRemove: (id: string) => void
+  mode: 'home' | 'product'
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id })
   const style = {
@@ -151,7 +153,7 @@ function SortableCustomRow({
               ? 'bg-brand-soft text-brand'
               : 'bg-brand text-white'
           )}>
-            {(PRODUCT_SLOTS.find((s) => s.value === (section.slot || section.location || 'storefront'))?.label || section.slot || section.location || 'storefront').replace(/^[^\s]+ /, '')}
+            {((mode === 'home' ? HOME_SLOTS : PRODUCT_SLOTS).find((s) => s.value === (section.slot || section.location || (mode === 'home' ? 'storefront' : 'product-after-buttons')))?.label || section.slot || section.location || '—').replace(/^[^\s]+ /, '')}
           </span>
         </div>
         <p className="text-xs text-muted-foreground line-clamp-1">
@@ -236,7 +238,10 @@ function AdminPanelInner() {
               <ImageIcon className="h-3.5 w-3.5" /> Hero & Banner
             </TabsTrigger>
             <TabsTrigger value="custom" className="gap-1.5">
-              <Code2 className="h-3.5 w-3.5" /> Custom Code
+              <Code2 className="h-3.5 w-3.5" /> Home Sections
+            </TabsTrigger>
+            <TabsTrigger value="product-sections" className="gap-1.5">
+              <Code2 className="h-3.5 w-3.5" /> Product Sections
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-1.5">
               <Settings className="h-3.5 w-3.5" /> Settings
@@ -256,7 +261,10 @@ function AdminPanelInner() {
             <AdminHero />
           </TabsContent>
           <TabsContent value="custom" className="mt-6">
-            <AdminCustomSections />
+            <AdminCustomSections mode="home" />
+          </TabsContent>
+          <TabsContent value="product-sections" className="mt-6">
+            <AdminCustomSections mode="product" />
           </TabsContent>
           <TabsContent value="settings" className="mt-6">
             <AdminSettings />
@@ -540,7 +548,7 @@ function AdminHero() {
   )
 }
 
-function AdminCustomSections() {
+function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
   const [sections, setSections] = useState<CustomSection[]>([])
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState<CustomSection | null>(null)
@@ -551,7 +559,7 @@ function AdminCustomSections() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // New section draft
+  // New section draft — default slot depends on mode
   const emptyDraft: CustomSection = {
     id: '',
     title: '',
@@ -561,8 +569,8 @@ function AdminCustomSections() {
     js: '',
     position: 0,
     visible: true,
-    slot: 'storefront',
-    location: 'storefront',
+    slot: mode === 'home' ? 'home-above-products' : 'product-after-buttons',
+    location: mode === 'home' ? 'home-above-products' : 'product-after-buttons',
     createdAt: '',
     updatedAt: '',
   }
@@ -572,7 +580,18 @@ function AdminCustomSections() {
     fetch('/api/custom-sections')
       .then((r) => r.json())
       .then((d) => {
-        setSections(d.sections || [])
+        const all = d.sections || []
+        // Filter by mode: home sections have home-* slots or legacy 'storefront',
+        // product sections have product-* slots or legacy 'product-below-actions'
+        const filtered = all.filter((s: CustomSection) => {
+          const slot = s.slot || s.location || 'storefront'
+          if (mode === 'home') {
+            return slot.startsWith('home-') || slot === 'storefront'
+          } else {
+            return slot.startsWith('product-') || slot === 'product-below-actions'
+          }
+        })
+        setSections(filtered)
         setLoading(false)
       })
   }
@@ -580,7 +599,7 @@ function AdminCustomSections() {
   useEffect(() => {
     load()
      
-  }, [])
+  }, [mode])
 
   const onDragEnd = (e: DragEndEvent) => {
     const { active, over } = e
@@ -710,6 +729,7 @@ function AdminCustomSections() {
                     onToggle={toggle}
                     onEdit={(sec) => openEditor(sec)}
                     onRemove={remove}
+                    mode={mode}
                   />
                 ))}
               </div>
@@ -737,7 +757,7 @@ function AdminCustomSections() {
                 onChange={(e) => setDraft((d) => ({ ...d, slot: e.target.value, location: e.target.value }))}
                 className="mt-1 w-full h-10 rounded-md border border-pink-200 bg-white px-3 text-sm"
               >
-                {PRODUCT_SLOTS.map((s) => (
+                {(mode === 'home' ? HOME_SLOTS : PRODUCT_SLOTS).map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
                 ))}
               </select>

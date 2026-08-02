@@ -166,13 +166,10 @@ export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
 
   return (
     <section className="relative w-full">
-      {/* Title rendering removed — per spec, custom sections no longer
-          show a title. Existing sections that still have a title stored
-          in Firestore will simply not render it. The `hideTitle` prop
-          is kept for backward compatibility but is now a no-op. */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div ref={hostRef} className="aurora-custom-host w-full" />
-      </div>
+      {/* Full-width — no max-w or padding wrapper. The section's own CSS
+          controls all width, padding, and layout. This matches the hero
+          banner (also full-width) for a consistent edge-to-edge look. */}
+      <div ref={hostRef} className="aurora-custom-host w-full" />
     </section>
   )
 }

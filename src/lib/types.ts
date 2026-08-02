@@ -85,18 +85,25 @@ export interface CustomSection {
   updatedAt: string
 }
 
-/** All valid product page slots for the dropdown */
+/** All valid slots for the dropdown — split into Home Page and Product Page */
+export const HOME_SLOTS = [
+  { value: 'home-above-header', label: '⬆️ Above header' },
+  { value: 'home-above-hero', label: '🖼️ Above banner image' },
+  { value: 'home-above-products', label: '🛍️ Above product list' },
+  { value: 'home-below-products', label: '🔽 Below product list' },
+  { value: 'home-above-footer', label: '⬇️ Above footer' },
+] as const
+
 export const PRODUCT_SLOTS = [
-  { value: 'storefront', label: '🏠 Home page (storefront)' },
-  { value: 'product-after-image', label: '📷 Product page — after image' },
-  { value: 'product-after-title', label: '📝 Product page — after title' },
-  { value: 'product-after-stars', label: '⭐ Product page — after rating stars' },
-  { value: 'product-after-price', label: '💰 Product page — after price' },
-  { value: 'product-after-pincode', label: '📦 Product page — after delivery check' },
-  { value: 'product-after-buttons', label: '🛍️ Product page — after Add to bag / Buy now' },
-  { value: 'product-after-trust', label: '🛡️ Product page — after trust badges' },
-  { value: 'product-after-tabs', label: '📋 Product page — after description tabs' },
-  { value: 'product-bottom', label: '🔽 Product page — bottom (before "You may also like")' },
+  { value: 'product-after-image', label: '📷 After product image' },
+  { value: 'product-after-title', label: '📝 After title' },
+  { value: 'product-after-stars', label: '⭐ After rating stars' },
+  { value: 'product-after-price', label: '💰 After price' },
+  { value: 'product-after-pincode', label: '📦 After delivery check' },
+  { value: 'product-after-buttons', label: '🛍️ After Add to bag / Buy now' },
+  { value: 'product-after-trust', label: '🛡️ After trust badges' },
+  { value: 'product-after-tabs', label: '📋 After description tabs' },
+  { value: 'product-bottom', label: '🔽 Bottom (before "You may also like")' },
 ] as const
 
 export interface Order {

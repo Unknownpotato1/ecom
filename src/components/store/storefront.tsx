@@ -61,7 +61,10 @@ export function Storefront({ heroFallback }: Props) {
         // 'product-below-actions' sections render on the product detail page instead.
         const visibleCustom = (customData.sections as CustomSection[])
           .filter((s) => s.visible && (
-            (s.slot || s.location || 'storefront') === 'storefront'
+            // Only render sections with 'storefront' or 'home-above-products' slot
+            // (legacy 'storefront' maps to 'home-above-products')
+            (s.slot || s.location || 'storefront') === 'storefront' ||
+            (s.slot || s.location) === 'home-above-products'
           ))
           .sort((a, b) => a.position - b.position)
         setSections(visibleSections.sort((a, b) => a.position - b.position))
