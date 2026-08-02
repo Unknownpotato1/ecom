@@ -29,7 +29,17 @@ export async function POST(req: NextRequest) {
     userId,
   } = body
 
-  if (!customerName || !customerEmail || !customerPhone || !Array.isArray(items) || items.length === 0) {
+  // ⚠️ customerEmail is NOT required.
+  // Many customers order as guests (not signed in). When the user isn't
+  // authenticated, `user?.email` is undefined and the client sends
+  // customerEmail: ''. The previous check `!customerEmail` rejected
+  // empty strings, which broke ordering on any new browser/device where
+  // the user hadn't signed in — payment succeeded but order creation
+  // failed with "Missing required fields".
+  //
+  // customerEmail is still stored if provided (for signed-in users),
+  // but guest orders with no email are now allowed.
+  if (!customerName || !customerPhone || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
