@@ -57,19 +57,11 @@ export function Storefront({ heroFallback }: Props) {
       .then(([secData, customData, settingsData]) => {
         if (!active) return
         const visibleSections = (secData.sections as Section[]).filter((s) => s.visible)
-        // Custom sections with slot='storefront' OR slot='home-in-grid' are
-        // handled HERE by the Storefront — they get injected into the product
-        // grid at their specified position (insertAfterProducts, defaults to 10).
-        // Other home-slot sections (home-above-header, home-above-hero, etc.)
-        // are rendered by HomeCustomSlot in page.tsx.
-        const visibleCustom = (customData.sections as CustomSection[])
-          .filter((s) => s.visible && (
-            (s.slot || s.location || 'storefront') === 'storefront' ||
-            (s.slot || s.location) === 'home-in-grid'
-          ))
-          .sort((a, b) => a.position - b.position)
+        // Custom sections are now rendered by HomeCustomSlot in page.tsx
+        // at specific positions (above-header, above-hero, above-products, etc.)
+        // The Storefront should NOT render any custom sections to avoid duplicates.
         setSections(visibleSections.sort((a, b) => a.position - b.position))
-        setCustomSections(visibleCustom)
+        setCustomSections([])
         // Load hero config from settings (where admin saves it)
         if (settingsData.settings?.hero) {
           try {
@@ -103,47 +95,24 @@ export function Storefront({ heroFallback }: Props) {
     )
   }
 
-  // Group storefront-slotted custom sections by their insertAfterProducts
-  // value. Each group is injected into the Explore Hampers grid after the
-  // corresponding number of products.
+  // Split custom sections into two groups:
+  //  - video sections → injected INTO the Explore Hampers grid after
+  //    the 10th product (handled by ProductGrid's insertAfterN prop)
+  //  - everything else → rendered in normal document flow
   //
-  // - 'home-in-grid' slot: uses the section's insertAfterProducts field
-  //   (defaults to 10 if not set). The admin can set this to 2, 4, 6, 8, 10, etc.
-  // - 'storefront' slot (legacy): defaults to 10 (VIDEO_INSERT_AFTER_N).
-  //
-  // Sections with the same insertAfterProducts value are stacked together
-  // at that position (sorted by their position field for consistent ordering).
-  //
-  // Example: if the admin creates:
-  //   - Section A: slot=home-in-grid, insertAfterProducts=4
-  //   - Section B: slot=home-in-grid, insertAfterProducts=8
-  //   - Section C: slot=storefront (defaults to 10)
-  // The grid will render:
-  //   [4 products] → [Section A] → [4 products] → [Section B] → [2 products] → [Section C] → [remaining products]
-  const insertsByPosition = new Map<number, CustomSection[]>()
-  for (const s of customSections) {
-    const afterN = s.insertAfterProducts ?? VIDEO_INSERT_AFTER_N
-    if (!insertsByPosition.has(afterN)) insertsByPosition.set(afterN, [])
-    insertsByPosition.get(afterN)!.push(s)
-  }
+  // If there are multiple video sections, they're all rendered inside
+  // the grid at the same insertion point (stacked vertically, since
+  // the insertContent wrapper is a single full-width cell).
+  const videoSections = customSections.filter(isVideoSection)
+  const otherCustomSections = customSections.filter((s) => !isVideoSection(s))
 
-  // Sort each group by position (for consistent stacking order)
-  for (const [, group] of insertsByPosition) {
-    group.sort((a, b) => a.position - b.position)
-  }
-
-  // Build the inserts array for ProductGrid — one entry per position
-  const inserts = Array.from(insertsByPosition.entries())
-    .map(([afterN, group]) => ({
-      afterN,
-      content: group.map((s) => (
-        <CustomSectionRenderer key={`insert-${s.id}`} section={s} />
-      )),
-    }))
-    .sort((a, b) => a.afterN - b.afterN)
-
-  // No custom sections render outside the grid anymore — all go into inserts
-  const otherCustomSections: CustomSection[] = []
+  // The JSX to inject after the 10th product (all video sections stacked)
+  const videoInsertContent =
+    videoSections.length > 0
+      ? videoSections.map((vs) => (
+          <CustomSectionRenderer key={`video-${vs.id}`} section={vs} />
+        ))
+      : null
 
   if (sections.length === 0 && otherCustomSections.length === 0) {
     return (
@@ -154,7 +123,8 @@ export function Storefront({ heroFallback }: Props) {
           filter="all"
           anchorId="all-hampers"
           listenToFilterEvents
-          inserts={inserts.length > 0 ? inserts : undefined}
+          insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
+          insertContent={videoInsertContent}
         />
       </>
     )
@@ -225,7 +195,8 @@ export function Storefront({ heroFallback }: Props) {
               filter="all"
               anchorId="all-hampers"
               listenToFilterEvents
-              inserts={inserts.length > 0 ? inserts : undefined}
+              insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
+              insertContent={videoInsertContent}
             />
           )
         }
@@ -252,7 +223,8 @@ export function Storefront({ heroFallback }: Props) {
           filter="all"
           anchorId="all-hampers"
           listenToFilterEvents
-          inserts={inserts.length > 0 ? inserts : undefined}
+          insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
+          insertContent={videoInsertContent}
         />
       )}
     </>
