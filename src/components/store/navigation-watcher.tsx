@@ -91,6 +91,17 @@ export function NavigationWatcher() {
   const selectedProductId = useUI((s) => s.selectedProductId)
   const searchQuery = useUI((s) => s.searchQuery)
 
+  // On mount: disable the browser's native scroll restoration.
+  // Browsers default to 'auto' which tries to restore scroll position
+  // on popstate — but this fights with our own scroll restoration logic
+  // (which needs to wait for React to un-hide the Storefront before
+  // scrolling). Setting to 'manual' gives us full control.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+  }, [])
+
   // On mount: reconcile the current view with the URL / history.state.
   useEffect(() => {
     // Priority 1: parse the URL. This is the ONLY reliable signal on a
