@@ -142,7 +142,16 @@ export const useUI = create<UIState>()(
         // page, so when the user taps the browser back button to return to
         // home, we can restore the exact same scroll position.
         const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0
+        // Debug: store in a global so we can verify it's saved
+        if (typeof window !== 'undefined') {
+          (window as unknown as { __homeScrollY?: number }).__homeScrollY = currentScroll
+        }
         set({ view: 'product', selectedProductId: productId, homeScrollY: currentScroll })
+        // Debug: verify it was saved in the store
+        if (typeof window !== 'undefined') {
+          const saved = get().homeScrollY
+          ;(window as unknown as { __storeHomeScrollY?: number }).__storeHomeScrollY = saved
+        }
         pushHistory('product', productId)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
@@ -183,6 +192,11 @@ export const useUI = create<UIState>()(
         // pushing another history entry (otherwise back button loops).
         const isReturningToHome = state.view === 'home' && get().view !== 'home'
         const savedScrollY = get().homeScrollY
+        // Debug
+        if (typeof window !== 'undefined') {
+          ;(window as unknown as { __restoreSavedY?: number }).__restoreSavedY = savedScrollY
+          ;(window as unknown as { __restoreIsReturning?: boolean }).__restoreIsReturning = isReturningToHome
+        }
         set({
           view: state.view,
           selectedProductId: state.selectedProductId ?? null,
