@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { title, code, html, css, js, position, visible, slot, location } = body
+  const { title, code, html, css, js, position, visible, slot, location, insertAfterProducts } = body
   // Title is no longer required — custom sections render content only,
   // no heading. We accept an empty string for backward schema compatibility.
   // Require at least code (or legacy html) so the section isn't empty.
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       visible,
       slot: slot || location || 'storefront',
       location,
+      insertAfterProducts: typeof insertAfterProducts === 'number' ? insertAfterProducts : undefined,
     })
     return NextResponse.json({ section })
   } catch (e) {

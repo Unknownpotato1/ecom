@@ -102,30 +102,47 @@ export function Storefront({ heroFallback }: Props) {
     )
   }
 
-  // All storefront-slotted custom sections are injected INTO the
-  // Explore Hampers grid after the 10th product. This includes:
-  //  - Video sections (detected by <video> tag in code)
-  //  - Testimonial sections (detected by 'testimonial' keyword in code)
-  //  - Any other storefront-slotted section the admin creates
+  // Group storefront-slotted custom sections by their insertAfterProducts
+  // value. Each group is injected into the Explore Hampers grid after the
+  // corresponding number of products.
   //
-  // They're all rendered at the same insertion point (after 10 products),
-  // stacked vertically in position order. The video section has a lower
-  // position, so it appears first, then the testimonial section after it.
+  // - 'home-in-grid' slot: uses the section's insertAfterProducts field
+  //   (defaults to 10 if not set). The admin can set this to 2, 4, 6, 8, 10, etc.
+  // - 'storefront' slot (legacy): defaults to 10 (VIDEO_INSERT_AFTER_N).
   //
-  // NOTE: This replaces the previous isVideoSection-only filter. The user
-  // requested the testimonial section be placed "after 10 products (after
-  // the visit our store / video section)" — so ALL storefront sections
-  // go into the grid, not just video ones.
-  const insertSections = customSections // all storefront-slotted sections
-  const otherCustomSections: CustomSection[] = [] // none — all go into the grid
+  // Sections with the same insertAfterProducts value are stacked together
+  // at that position (sorted by their position field for consistent ordering).
+  //
+  // Example: if the admin creates:
+  //   - Section A: slot=home-in-grid, insertAfterProducts=4
+  //   - Section B: slot=home-in-grid, insertAfterProducts=8
+  //   - Section C: slot=storefront (defaults to 10)
+  // The grid will render:
+  //   [4 products] → [Section A] → [4 products] → [Section B] → [2 products] → [Section C] → [remaining products]
+  const insertsByPosition = new Map<number, CustomSection[]>()
+  for (const s of customSections) {
+    const afterN = s.insertAfterProducts ?? VIDEO_INSERT_AFTER_N
+    if (!insertsByPosition.has(afterN)) insertsByPosition.set(afterN, [])
+    insertsByPosition.get(afterN)!.push(s)
+  }
 
-  // The JSX to inject after the 10th product (all storefront sections stacked)
-  const insertContent =
-    insertSections.length > 0
-      ? insertSections.map((s) => (
-          <CustomSectionRenderer key={`insert-${s.id}`} section={s} />
-        ))
-      : null
+  // Sort each group by position (for consistent stacking order)
+  for (const [, group] of insertsByPosition) {
+    group.sort((a, b) => a.position - b.position)
+  }
+
+  // Build the inserts array for ProductGrid — one entry per position
+  const inserts = Array.from(insertsByPosition.entries())
+    .map(([afterN, group]) => ({
+      afterN,
+      content: group.map((s) => (
+        <CustomSectionRenderer key={`insert-${s.id}`} section={s} />
+      )),
+    }))
+    .sort((a, b) => a.afterN - b.afterN)
+
+  // No custom sections render outside the grid anymore — all go into inserts
+  const otherCustomSections: CustomSection[] = []
 
   if (sections.length === 0 && otherCustomSections.length === 0) {
     return (
@@ -136,8 +153,7 @@ export function Storefront({ heroFallback }: Props) {
           filter="all"
           anchorId="all-hampers"
           listenToFilterEvents
-          insertAfterN={insertContent ? VIDEO_INSERT_AFTER_N : null}
-          insertContent={insertContent}
+          inserts={inserts.length > 0 ? inserts : undefined}
         />
       </>
     )
@@ -208,8 +224,7 @@ export function Storefront({ heroFallback }: Props) {
               filter="all"
               anchorId="all-hampers"
               listenToFilterEvents
-              insertAfterN={insertContent ? VIDEO_INSERT_AFTER_N : null}
-              insertContent={insertContent}
+              inserts={inserts.length > 0 ? inserts : undefined}
             />
           )
         }
@@ -236,8 +251,7 @@ export function Storefront({ heroFallback }: Props) {
           filter="all"
           anchorId="all-hampers"
           listenToFilterEvents
-          insertAfterN={insertContent ? VIDEO_INSERT_AFTER_N : null}
-          insertContent={insertContent}
+          inserts={inserts.length > 0 ? inserts : undefined}
         />
       )}
     </>

@@ -571,6 +571,7 @@ function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
     visible: true,
     slot: mode === 'home' ? 'home-above-products' : 'product-after-buttons',
     location: mode === 'home' ? 'home-above-products' : 'product-after-buttons',
+    insertAfterProducts: 10,
     createdAt: '',
     updatedAt: '',
   }
@@ -652,6 +653,7 @@ function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
         ...section,
         code,
         slot: section.slot || section.location || 'storefront',
+        insertAfterProducts: section.insertAfterProducts ?? 10,
       })
     } else {
       setDraft({ ...emptyDraft, position: sections.length })
@@ -678,6 +680,9 @@ function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
         title: '', // no longer used — kept for schema compatibility
         code: draft.code || '',
         slot: draft.slot || draft.location || 'storefront',
+        insertAfterProducts: (draft.slot === 'home-in-grid' || draft.slot === 'storefront')
+          ? Number(draft.insertAfterProducts) || 10
+          : null,
       }),
     })
     setSaving(false)
@@ -762,9 +767,34 @@ function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
                 ))}
               </select>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Place this section between any two elements on the product page, or on the home page. Choose the exact position from the list above. Video sections on the home page are automatically placed after the 10th product.
+                Place this section between any two elements on the product page, or on the home page. Choose the exact position from the list above.
               </p>
             </div>
+
+            {/* Insert-after-N-products input — only shown for 'home-in-grid' and 'storefront' slots.
+                These slots inject the section INTO the Explore Hampers product grid after a
+                custom number of products (e.g. 2, 4, 6, 8, 10...). */}
+            {(draft.slot === 'home-in-grid' || draft.slot === 'storefront') && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-brand-soft/50 border border-pink-100">
+                <Label className="text-xs font-medium whitespace-nowrap">
+                  Insert after
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  step={1}
+                  value={draft.insertAfterProducts ?? 10}
+                  onChange={(e) => setDraft((d) => ({ ...d, insertAfterProducts: Number(e.target.value) }))}
+                  className="w-20 h-9"
+                  placeholder="10"
+                />
+                <span className="text-xs text-muted-foreground">
+                  products — this section will appear after the Nth product in the Explore Hampers grid.
+                  Use 2, 4, 6, 8, 10, etc.
+                </span>
+              </div>
+            )}
 
             {/* Single code box — HTML + CSS + JS all in one */}
             <div>

@@ -7,15 +7,29 @@ import type { Product } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 
+interface InsertPosition {
+  /** After how many products to insert (1-based: 2 = after the 2nd product) */
+  afterN: number
+  /** The content to render at this position */
+  content: ReactNode
+}
+
 interface Props {
   title: string
   filter: 'all' | 'best' | 'trending' | 'festive' | 'birthday' | 'anniversary'
   anchorId?: string
   listenToFilterEvents?: boolean
   /**
-   * Optional React nodes to render INSIDE the product grid, after the
-   * Nth product. Used to inject custom sections (e.g. a video banner)
-   * between products on the home page.
+   * Optional insertion positions for custom sections inside the product
+   * grid. Each entry specifies after how many products to insert and
+   * what content to render there.
+   *
+   * Multiple sections can be inserted at different positions, e.g.:
+   *   inserts={[
+   *     { afterN: 4, content: <BannerA /> },
+   *     { afterN: 8, content: <BannerB /> },
+   *     { afterN: 10, content: <VideoSection /> },
+   *   ]}
    *
    * The inserted content spans the full grid width (lg:col-span-4 on
    * desktop, col-span-2 on mobile) so it breaks the grid row cleanly.
@@ -24,9 +38,10 @@ interface Props {
    */
   insertAfterN?: number | null
   insertContent?: ReactNode
+  inserts?: InsertPosition[]
 }
 
-export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, insertAfterN, insertContent }: Props) {
+export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, insertAfterN, insertContent, inserts }: Props) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [overrideFilter, setOverrideFilter] = useState<string | null>(null)
@@ -111,15 +126,47 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, ins
     )
   }
 
-  // If insertAfterN is set and we have enough products, split the list
-  // so the inserted content renders as a full-width row after the Nth
-  // product. On desktop (4 cols), the inserted content uses col-span-4
-  // to break the grid row cleanly. On mobile (2 cols), col-span-2.
-  const shouldInsert =
-    insertContent != null &&
-    typeof insertAfterN === 'number' &&
-    insertAfterN > 0 &&
-    insertAfterN < filtered.length
+  // Build the list of insert positions.
+  // Supports BOTH the legacy single-insert API (insertAfterN + insertContent)
+  // and the new multi-insert API (inserts array).
+  // All positions are merged and sorted by afterN so sections render
+  // in the correct order regardless of which API was used.
+  const allInserts: InsertPosition[] = []
+  if (inserts && inserts.length > 0) {
+    allInserts.push(...inserts.filter((ins) => ins.afterN > 0 && ins.afterN < filtered.length))
+  }
+  if (insertContent != null && typeof insertAfterN === 'number' && insertAfterN > 0 && insertAfterN < filtered.length) {
+    allInserts.push({ afterN: insertAfterN, content: insertContent })
+  }
+  allInserts.sort((a, b) => a.afterN - b.afterN)
+
+  // Build the final grid children array by interleaving products with
+  // inserted sections at the correct positions.
+  let gridChildren: ReactNode[]
+  if (allInserts.length > 0) {
+    gridChildren = []
+    let productIndex = 0
+    for (const ins of allInserts) {
+      // Add products up to the insert position
+      while (productIndex < ins.afterN && productIndex < filtered.length) {
+        gridChildren.push(<ProductCard key={filtered[productIndex].id} product={filtered[productIndex]} />)
+        productIndex++
+      }
+      // Add the inserted section (full-width row)
+      gridChildren.push(
+        <div key={`__insert_${ins.afterN}__`} className="col-span-2 lg:col-span-4">
+          {ins.content}
+        </div>
+      )
+    }
+    // Add remaining products after the last insert
+    while (productIndex < filtered.length) {
+      gridChildren.push(<ProductCard key={filtered[productIndex].id} product={filtered[productIndex]} />)
+      productIndex++
+    }
+  } else {
+    gridChildren = filtered.map((p) => <ProductCard key={p.id} product={p} />)
+  }
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id={anchorId} ref={ref}>
@@ -135,21 +182,7 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, ins
         </Button>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {shouldInsert
-          ? [
-              ...filtered.slice(0, insertAfterN!).map((p) => (
-                <ProductCard key={p.id} product={p} />
-              )),
-              <div key="__inserted-content__" className="col-span-2 lg:col-span-4">
-                {insertContent}
-              </div>,
-              ...filtered.slice(insertAfterN!).map((p) => (
-                <ProductCard key={p.id} product={p} />
-              )),
-            ]
-          : filtered.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+        {gridChildren}
       </div>
     </section>
   )

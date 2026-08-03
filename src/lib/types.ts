@@ -66,27 +66,30 @@ export interface CustomSection {
   visible: boolean
   /**
    * Where the section renders. Options:
-   * - 'storefront' — home page
-   * - 'product-after-image' — between product image and title
-   * - 'product-after-title' — between title and review stars
-   * - 'product-after-stars' — between stars and price
-   * - 'product-after-price' — between price and pincode checker
-   * - 'product-after-pincode' — between pincode and quantity picker
-   * - 'product-after-buttons' — after Add to bag / Buy now
-   * - 'product-after-trust' — after trust badges
-   * - 'product-after-tabs' — after description/specs/reviews tabs
-   * - 'product-bottom' — at the very bottom before "You may also like"
+   * - 'storefront' — home page (injected into product grid after 10 products by default)
+   * - 'home-in-grid' — home page, injected into product grid after a CUSTOM number
+   *   of products (see insertAfterProducts below)
+   * - 'home-above-header' / 'home-above-hero' / etc. — fixed positions around the home page
+   * - 'product-after-image' / 'product-after-title' / etc. — product page slots
    * Legacy: 'product-below-actions' maps to 'product-after-buttons'
    */
   slot?: string
   /** Legacy field — maps to slot */
   location?: string
+  /**
+   * For 'home-in-grid' slot: after how many products should this section
+   * be inserted into the Explore Hampers grid? e.g. 2, 4, 6, 8, 10...
+   * Defaults to 10 if not set. Only used when slot === 'home-in-grid'
+   * or slot === 'storefront' (storefront defaults to 10).
+   */
+  insertAfterProducts?: number
   createdAt: string
   updatedAt: string
 }
 
 /** All valid slots for the dropdown — split into Home Page and Product Page */
 export const HOME_SLOTS = [
+  { value: 'home-in-grid', label: '🔢 Inside product grid (custom position)' },
   { value: 'home-above-header', label: '⬆️ Above header' },
   { value: 'home-above-hero', label: '🖼️ Above banner image' },
   { value: 'home-above-products', label: '🛍️ Above product list' },

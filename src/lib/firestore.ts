@@ -197,6 +197,8 @@ export interface CustomSectionDoc {
   visible: boolean
   slot?: string
   location?: string
+  /** After how many products to insert (for 'home-in-grid' slot) */
+  insertAfterProducts?: number
   createdAt: string
   updatedAt: string
 }
@@ -630,6 +632,7 @@ export async function listCustomSections(): Promise<CustomSectionDoc[]> {
       visible: data.visible ?? true,
       slot: data.slot || data.location || 'storefront',
       location: data.location || data.slot || 'storefront',
+      insertAfterProducts: typeof data.insertAfterProducts === 'number' ? data.insertAfterProducts : undefined,
       createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
       updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
     } as CustomSectionDoc
@@ -648,6 +651,7 @@ export async function createCustomSection(input: {
   visible?: boolean
   slot?: string
   location?: string
+  insertAfterProducts?: number
 }): Promise<CustomSectionDoc> {
   const database = db()
   if (!database) throw new Error('Database not available')
@@ -666,6 +670,7 @@ export async function createCustomSection(input: {
     visible: input.visible ?? true,
     slot,
     location: slot,
+    insertAfterProducts: typeof input.insertAfterProducts === 'number' ? input.insertAfterProducts : null,
     createdAt: now,
     updatedAt: now,
   }
@@ -684,6 +689,11 @@ export async function updateCustomSection(id: string, updates: Record<string, un
   const updateData: Record<string, unknown> = { ...updates, updatedAt: new Date() }
   if (updateData.position !== undefined) updateData.position = Number(updateData.position)
   if (updateData.visible !== undefined) updateData.visible = !!updateData.visible
+  if (updateData.insertAfterProducts !== undefined) {
+    updateData.insertAfterProducts = updateData.insertAfterProducts === null
+      ? null
+      : Number(updateData.insertAfterProducts)
+  }
   await database.collection('customSections').doc(id).update(updateData)
 }
 
