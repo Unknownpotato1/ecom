@@ -192,15 +192,14 @@ export const useUI = create<UIState>()(
           if (isReturningToHome && savedScrollY > 0) {
             // Returning to home via back button — restore the saved scroll
             // position so the user sees the exact same spot they were at.
-            // Use requestAnimationFrame (runs after React re-renders and
-            // the browser paints) to ensure the Storefront is visible
-            // (hidden class removed) before we scroll. A double-rAF
-            // ensures the layout has settled.
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
-              })
-            })
+            // Use setTimeout (not rAF) because React needs time to:
+            //   1. Re-render (remove 'hidden' class from Storefront wrapper)
+            //   2. Browser needs to lay out the now-visible Storefront
+            //   3. Page needs scrollable height before scrollTo works
+            // A 50ms delay is enough for all of this without being noticeable.
+            setTimeout(() => {
+              window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
+            }, 50)
           } else {
             // Navigating to a non-home view (or forward to home) — scroll to top.
             window.scrollTo({ top: 0 })
