@@ -102,22 +102,28 @@ export function Storefront({ heroFallback }: Props) {
     )
   }
 
-  // Split custom sections into two groups:
-  //  - video sections → injected INTO the Explore Hampers grid after
-  //    the 10th product (handled by ProductGrid's insertAfterN prop)
-  //  - everything else → rendered in normal document flow
+  // All storefront-slotted custom sections are injected INTO the
+  // Explore Hampers grid after the 10th product. This includes:
+  //  - Video sections (detected by <video> tag in code)
+  //  - Testimonial sections (detected by 'testimonial' keyword in code)
+  //  - Any other storefront-slotted section the admin creates
   //
-  // If there are multiple video sections, they're all rendered inside
-  // the grid at the same insertion point (stacked vertically, since
-  // the insertContent wrapper is a single full-width cell).
-  const videoSections = customSections.filter(isVideoSection)
-  const otherCustomSections = customSections.filter((s) => !isVideoSection(s))
+  // They're all rendered at the same insertion point (after 10 products),
+  // stacked vertically in position order. The video section has a lower
+  // position, so it appears first, then the testimonial section after it.
+  //
+  // NOTE: This replaces the previous isVideoSection-only filter. The user
+  // requested the testimonial section be placed "after 10 products (after
+  // the visit our store / video section)" — so ALL storefront sections
+  // go into the grid, not just video ones.
+  const insertSections = customSections // all storefront-slotted sections
+  const otherCustomSections: CustomSection[] = [] // none — all go into the grid
 
-  // The JSX to inject after the 10th product (all video sections stacked)
-  const videoInsertContent =
-    videoSections.length > 0
-      ? videoSections.map((vs) => (
-          <CustomSectionRenderer key={`video-${vs.id}`} section={vs} />
+  // The JSX to inject after the 10th product (all storefront sections stacked)
+  const insertContent =
+    insertSections.length > 0
+      ? insertSections.map((s) => (
+          <CustomSectionRenderer key={`insert-${s.id}`} section={s} />
         ))
       : null
 
@@ -130,8 +136,8 @@ export function Storefront({ heroFallback }: Props) {
           filter="all"
           anchorId="all-hampers"
           listenToFilterEvents
-          insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
-          insertContent={videoInsertContent}
+          insertAfterN={insertContent ? VIDEO_INSERT_AFTER_N : null}
+          insertContent={insertContent}
         />
       </>
     )
@@ -202,8 +208,8 @@ export function Storefront({ heroFallback }: Props) {
               filter="all"
               anchorId="all-hampers"
               listenToFilterEvents
-              insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
-              insertContent={videoInsertContent}
+              insertAfterN={insertContent ? VIDEO_INSERT_AFTER_N : null}
+              insertContent={insertContent}
             />
           )
         }
@@ -230,8 +236,8 @@ export function Storefront({ heroFallback }: Props) {
           filter="all"
           anchorId="all-hampers"
           listenToFilterEvents
-          insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
-          insertContent={videoInsertContent}
+          insertAfterN={insertContent ? VIDEO_INSERT_AFTER_N : null}
+          insertContent={insertContent}
         />
       )}
     </>
