@@ -191,9 +191,10 @@ export const useUI = create<UIState>()(
       restoreFromHistory: (state) => {
         // Restore the in-memory view from a history entry WITHOUT
         // pushing another history entry (otherwise back button loops).
-        const isReturningToHome = state.view === 'home' && get().view !== 'home'
-        // Read saved scroll position from sessionStorage (not the Zustand
-        // store, which may have been re-hydrated and reset homeScrollY).
+        // Check if we have a saved scroll position in sessionStorage —
+        // this is more reliable than checking get().view (which may have
+        // been re-hydrated by the persist middleware and already set to
+        // 'home', making the isReturningToHome check unreliable).
         let savedScrollY = 0
         if (typeof window !== 'undefined') {
           try {
@@ -203,31 +204,22 @@ export const useUI = create<UIState>()(
             // sessionStorage blocked — default to 0
           }
         }
+        const isReturningToHome = state.view === 'home' && savedScrollY > 0
         set({
           view: state.view,
           selectedProductId: state.selectedProductId ?? null,
           ...(state.searchQuery !== undefined ? { searchQuery: state.searchQuery } : {}),
         })
         if (typeof window !== 'undefined') {
-          if (isReturningToHome && savedScrollY > 0) {
+          if (isReturningToHome) {
             // Returning to home via back button — restore the saved scroll
             // position so the user sees the exact same spot they were at.
             // Use setTimeout to allow React to re-render and un-hide the
-            // Storefront before we scroll. The Storefront wrapper has
-            // className='hidden' (display:none) when on the product page —
-            // we need to wait for React to remove that class and for the
-            // browser to lay out the now-visible Storefront (giving the
-            // page scrollable height) before scrollTo will work.
+            // Storefront before we scroll.
             setTimeout(() => {
-              if (typeof window !== 'undefined') {
-                ;(window as unknown as { __auroraDebug?: Record<string, unknown> }).__auroraDebug = {
-                  savedScrollY,
-                  bodyHeight: document.body.scrollHeight,
-                  maxScroll: document.body.scrollHeight - window.innerHeight,
-                  hiddenDivs: document.querySelectorAll('.hidden').length,
-                }
-              }
               window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
+              // Clear the saved scroll so a subsequent navigation doesn't
+              // jump to a stale position.
               try {
                 sessionStorage.removeItem('aurora:home-scroll-y')
               } catch {
@@ -235,7 +227,7 @@ export const useUI = create<UIState>()(
               }
             }, 200)
           } else {
-            // Navigating to a non-home view (or forward to home) — scroll to top.
+            // Navigating to a non-home view (or no saved scroll) — scroll to top.
             window.scrollTo({ top: 0 })
           }
         }
