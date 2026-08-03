@@ -182,19 +182,25 @@ export const useUI = create<UIState>()(
         // Restore the in-memory view from a history entry WITHOUT
         // pushing another history entry (otherwise back button loops).
         const isReturningToHome = state.view === 'home' && get().view !== 'home'
+        const savedScrollY = get().homeScrollY
         set({
           view: state.view,
           selectedProductId: state.selectedProductId ?? null,
           ...(state.searchQuery !== undefined ? { searchQuery: state.searchQuery } : {}),
         })
         if (typeof window !== 'undefined') {
-          if (isReturningToHome) {
+          if (isReturningToHome && savedScrollY > 0) {
             // Returning to home via back button — restore the saved scroll
             // position so the user sees the exact same spot they were at.
-            // Use a microtask delay to allow React to re-render the home
-            // view (which may have been hidden via CSS) before scrolling.
-            const savedY = get().homeScrollY
-            Promise.resolve().then(() => window.scrollTo({ top: savedY, behavior: 'instant' as ScrollBehavior }))
+            // Use requestAnimationFrame (runs after React re-renders and
+            // the browser paints) to ensure the Storefront is visible
+            // (hidden class removed) before we scroll. A double-rAF
+            // ensures the layout has settled.
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
+              })
+            })
           } else {
             // Navigating to a non-home view (or forward to home) — scroll to top.
             window.scrollTo({ top: 0 })
