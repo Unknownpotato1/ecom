@@ -96,6 +96,14 @@ interface UIState {
   searchQuery: string
   searchOpen: boolean
   mobileMenuOpen: boolean
+  /**
+   * Saved vertical scroll position of the home page, captured when the
+   * user navigates away from home (e.g. to a product page). When the
+   * user navigates back to home via the browser back button, this
+   * position is restored so the user sees the exact same scroll
+   * position they were at — no jarring jump to the top.
+   */
+  homeScrollY: number
   // navigation
   goHome: () => void
   goProduct: (productId: string) => void
@@ -117,19 +125,24 @@ interface UIState {
 
 export const useUI = create<UIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       view: 'home',
       selectedProductId: null,
       searchQuery: '',
       searchOpen: false,
       mobileMenuOpen: false,
+      homeScrollY: 0,
       goHome: () => {
         set({ view: 'home', selectedProductId: null })
         pushHistory('home', null)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
       goProduct: (productId) => {
-        set({ view: 'product', selectedProductId: productId })
+        // Save the current scroll position BEFORE navigating to the product
+        // page, so when the user taps the browser back button to return to
+        // home, we can restore the exact same scroll position.
+        const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0
+        set({ view: 'product', selectedProductId: productId, homeScrollY: currentScroll })
         pushHistory('product', productId)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
@@ -168,12 +181,25 @@ export const useUI = create<UIState>()(
       restoreFromHistory: (state) => {
         // Restore the in-memory view from a history entry WITHOUT
         // pushing another history entry (otherwise back button loops).
+        const isReturningToHome = state.view === 'home' && get().view !== 'home'
         set({
           view: state.view,
           selectedProductId: state.selectedProductId ?? null,
           ...(state.searchQuery !== undefined ? { searchQuery: state.searchQuery } : {}),
         })
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0 })
+        if (typeof window !== 'undefined') {
+          if (isReturningToHome) {
+            // Returning to home via back button — restore the saved scroll
+            // position so the user sees the exact same spot they were at.
+            // Use a microtask delay to allow React to re-render the home
+            // view (which may have been hidden via CSS) before scrolling.
+            const savedY = get().homeScrollY
+            Promise.resolve().then(() => window.scrollTo({ top: savedY, behavior: 'instant' as ScrollBehavior }))
+          } else {
+            // Navigating to a non-home view (or forward to home) — scroll to top.
+            window.scrollTo({ top: 0 })
+          }
+        }
       },
     }),
     {
