@@ -220,11 +220,14 @@ export const useUI = create<UIState>()(
             // page scrollable height) before scrollTo will work.
             setTimeout(() => {
               if (typeof window !== 'undefined') {
-                console.log('[Aurora] Restoring scroll to', savedScrollY, 'bodyHeight=', document.body.scrollHeight, 'maxScroll=', document.body.scrollHeight - window.innerHeight)
+                ;(window as unknown as { __auroraDebug?: Record<string, unknown> }).__auroraDebug = {
+                  savedScrollY,
+                  bodyHeight: document.body.scrollHeight,
+                  maxScroll: document.body.scrollHeight - window.innerHeight,
+                  hiddenDivs: document.querySelectorAll('.hidden').length,
+                }
               }
               window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
-              // Clear the saved scroll so a subsequent forward→back doesn't
-              // jump to a stale position.
               try {
                 sessionStorage.removeItem('aurora:home-scroll-y')
               } catch {
