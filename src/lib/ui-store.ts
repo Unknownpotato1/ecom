@@ -141,17 +141,18 @@ export const useUI = create<UIState>()(
         // Save the current scroll position BEFORE navigating to the product
         // page, so when the user taps the browser back button to return to
         // home, we can restore the exact same scroll position.
-        const currentScroll = typeof window !== 'undefined' ? window.scrollY : 0
-        // Debug: store in a global so we can verify it's saved
+        // We use sessionStorage (not the Zustand store) because the persist
+        // middleware can re-hydrate and reset non-persisted fields like
+        // homeScrollY. sessionStorage is tab-scoped and survives SPA
+        // navigations within the same tab.
         if (typeof window !== 'undefined') {
-          (window as unknown as { __homeScrollY?: number }).__homeScrollY = currentScroll
+          try {
+            sessionStorage.setItem('aurora:home-scroll-y', String(window.scrollY))
+          } catch {
+            // sessionStorage might be blocked — fail silently
+          }
         }
-        set({ view: 'product', selectedProductId: productId, homeScrollY: currentScroll })
-        // Debug: verify it was saved in the store
-        if (typeof window !== 'undefined') {
-          const saved = get().homeScrollY
-          ;(window as unknown as { __storeHomeScrollY?: number }).__storeHomeScrollY = saved
-        }
+        set({ view: 'product', selectedProductId: productId })
         pushHistory('product', productId)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
@@ -191,11 +192,16 @@ export const useUI = create<UIState>()(
         // Restore the in-memory view from a history entry WITHOUT
         // pushing another history entry (otherwise back button loops).
         const isReturningToHome = state.view === 'home' && get().view !== 'home'
-        const savedScrollY = get().homeScrollY
-        // Debug
+        // Read saved scroll position from sessionStorage (not the Zustand
+        // store, which may have been re-hydrated and reset homeScrollY).
+        let savedScrollY = 0
         if (typeof window !== 'undefined') {
-          ;(window as unknown as { __restoreSavedY?: number }).__restoreSavedY = savedScrollY
-          ;(window as unknown as { __restoreIsReturning?: boolean }).__restoreIsReturning = isReturningToHome
+          try {
+            const raw = sessionStorage.getItem('aurora:home-scroll-y')
+            savedScrollY = raw ? parseInt(raw, 10) || 0 : 0
+          } catch {
+            // sessionStorage blocked — default to 0
+          }
         }
         set({
           view: state.view,
@@ -206,13 +212,21 @@ export const useUI = create<UIState>()(
           if (isReturningToHome && savedScrollY > 0) {
             // Returning to home via back button — restore the saved scroll
             // position so the user sees the exact same spot they were at.
-            // Use setTimeout (not rAF) because React needs time to:
-            //   1. Re-render (remove 'hidden' class from Storefront wrapper)
-            //   2. Browser needs to lay out the now-visible Storefront
-            //   3. Page needs scrollable height before scrollTo works
-            // A 50ms delay is enough for all of this without being noticeable.
+            // Use setTimeout to allow React to re-render and un-hide the
+            // Storefront before we scroll. The Storefront wrapper has
+            // className='hidden' (display:none) when on the product page —
+            // we need to wait for React to remove that class and for the
+            // browser to lay out the now-visible Storefront (giving the
+            // page scrollable height) before scrollTo will work.
             setTimeout(() => {
               window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
+              // Clear the saved scroll so a subsequent forward→back doesn't
+              // jump to a stale position.
+              try {
+                sessionStorage.removeItem('aurora:home-scroll-y')
+              } catch {
+                // ignore
+              }
             }, 50)
           } else {
             // Navigating to a non-home view (or forward to home) — scroll to top.
