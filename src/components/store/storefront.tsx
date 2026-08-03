@@ -57,14 +57,15 @@ export function Storefront({ heroFallback }: Props) {
       .then(([secData, customData, settingsData]) => {
         if (!active) return
         const visibleSections = (secData.sections as Section[]).filter((s) => s.visible)
-        // Custom sections with slot='storefront' are handled HERE by the
-        // Storefront (video sections get injected into the product grid
-        // after the 10th product). Other home-slot sections (home-above-
-        // header, home-above-hero, home-above-products, etc.) are rendered
-        // by HomeCustomSlot in page.tsx.
+        // Custom sections with slot='storefront' OR slot='home-in-grid' are
+        // handled HERE by the Storefront — they get injected into the product
+        // grid at their specified position (insertAfterProducts, defaults to 10).
+        // Other home-slot sections (home-above-header, home-above-hero, etc.)
+        // are rendered by HomeCustomSlot in page.tsx.
         const visibleCustom = (customData.sections as CustomSection[])
           .filter((s) => s.visible && (
-            (s.slot || s.location || 'storefront') === 'storefront'
+            (s.slot || s.location || 'storefront') === 'storefront' ||
+            (s.slot || s.location) === 'home-in-grid'
           ))
           .sort((a, b) => a.position - b.position)
         setSections(visibleSections.sort((a, b) => a.position - b.position))
