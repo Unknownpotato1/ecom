@@ -225,7 +225,7 @@ export const useUI = create<UIState>()(
               } catch {
                 // ignore
               }
-            }, 200)
+            }, 100)
           } else {
             // Navigating to a non-home view (or no saved scroll) — scroll to top.
             window.scrollTo({ top: 0 })
