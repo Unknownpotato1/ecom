@@ -219,6 +219,9 @@ export const useUI = create<UIState>()(
             // browser to lay out the now-visible Storefront (giving the
             // page scrollable height) before scrollTo will work.
             setTimeout(() => {
+              if (typeof window !== 'undefined') {
+                console.log('[Aurora] Restoring scroll to', savedScrollY, 'bodyHeight=', document.body.scrollHeight, 'maxScroll=', document.body.scrollHeight - window.innerHeight)
+              }
               window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
               // Clear the saved scroll so a subsequent forward→back doesn't
               // jump to a stale position.
@@ -227,7 +230,7 @@ export const useUI = create<UIState>()(
               } catch {
                 // ignore
               }
-            }, 50)
+            }, 200)
           } else {
             // Navigating to a non-home view (or forward to home) — scroll to top.
             window.scrollTo({ top: 0 })
