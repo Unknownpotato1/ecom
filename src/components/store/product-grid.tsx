@@ -152,9 +152,14 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, ins
         gridChildren.push(<ProductCard key={filtered[productIndex].id} product={filtered[productIndex]} />)
         productIndex++
       }
-      // Add the inserted section (full-width row)
+      // Add the inserted section (full-width row).
+      // The negative margins (-mx-4 sm:-mx-6 lg:-mx-8) counteract the
+      // parent grid section's px-4 sm:px-6 lg:px-8 padding, so the
+      // inserted content spans the FULL viewport width (edge-to-edge)
+      // like the header and hero banner. This is important for custom
+      // sections like testimonials that need to be full-width on mobile.
       gridChildren.push(
-        <div key={`__insert_${ins.afterN}__`} className="col-span-2 lg:col-span-4">
+        <div key={`__insert_${ins.afterN}__`} className="col-span-2 lg:col-span-4 -mx-4 sm:-mx-6 lg:-mx-8">
           {ins.content}
         </div>
       )
