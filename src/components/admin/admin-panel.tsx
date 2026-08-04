@@ -24,6 +24,7 @@ import {
   CreditCard,
   User,
   StickyNote,
+  ShoppingCart,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -234,6 +235,9 @@ function AdminPanelInner() {
             <TabsTrigger value="orders" className="gap-1.5">
               <ShoppingBag className="h-3.5 w-3.5" /> Orders
             </TabsTrigger>
+            <TabsTrigger value="abandoned" className="gap-1.5">
+              <ShoppingCart className="h-3.5 w-3.5" /> Abandoned
+            </TabsTrigger>
             <TabsTrigger value="hero" className="gap-1.5">
               <ImageIcon className="h-3.5 w-3.5" /> Hero & Banner
             </TabsTrigger>
@@ -256,6 +260,9 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="orders" className="mt-6">
             <AdminOrders />
+          </TabsContent>
+          <TabsContent value="abandoned" className="mt-6">
+            <AdminAbandonedCheckouts />
           </TabsContent>
           <TabsContent value="hero" className="mt-6">
             <AdminHero />
@@ -1220,6 +1227,236 @@ function AdminOrders() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ─── Abandoned Checkouts ──────────────────────────────────────────────
+// Shows customers who filled in their contact + shipping details on the
+// checkout page but didn't complete the order. This helps the admin see
+// how many customers changed their mind after seeing the ₹49 COD partial
+// payment option.
+function AdminAbandonedCheckouts() {
+  const [checkouts, setCheckouts] = useState<Array<{
+    id: string
+    customerName: string
+    customerPhone: string
+    customerEmail: string
+    shippingAddress: Record<string, string>
+    items: Array<{ title: string; price: number; quantity: number; image?: string | null }>
+    subtotal: number
+    total: number
+    paymentMethodViewed: string
+    convertedToOrder: boolean
+    createdAt: string
+    updatedAt: string
+  }>>([])
+  const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const load = () => {
+    fetch('/api/abandoned-checkouts', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        setCheckouts(d.checkouts || [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const formatPrice = (n: number) => '₹' + Math.round(n).toLocaleString('en-IN')
+
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      })
+    } catch { return iso }
+  }
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true)
+    try {
+      await fetch(`/api/abandoned-checkouts?id=${id}`, { method: 'DELETE' })
+      setCheckouts((c) => c.filter((x) => x.id !== id))
+      toast.success('Abandoned checkout deleted')
+    } catch {
+      toast.error('Failed to delete')
+    }
+    setDeleting(false)
+  }
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading abandoned checkouts...</div>
+  }
+
+  if (checkouts.length === 0) {
+    return (
+      <Card className="border-pink-100">
+        <CardContent className="py-12 text-center">
+          <ShoppingCart className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-sm font-medium">No abandoned checkouts yet</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            When customers fill in their details but don't complete checkout, they'll appear here.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Summary banner */}
+      <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200 mb-2">
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="h-4 w-4 text-amber-600" />
+          <span className="text-sm font-medium text-amber-800">
+            {checkouts.length} abandoned checkout{checkouts.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        <span className="text-xs text-amber-600">
+          Total value: {formatPrice(checkouts.reduce((sum, c) => sum + c.total, 0))}
+        </span>
+      </div>
+
+      {checkouts.map((checkout) => {
+        const addr = checkout.shippingAddress || {}
+        const isExpanded = expandedId === checkout.id
+        const paymentLabel = checkout.paymentMethodViewed
+          ? checkout.paymentMethodViewed === 'cod' ? 'Viewed COD (₹49)' : 'Viewed Prepaid'
+          : 'Not viewed'
+
+        return (
+          <div key={checkout.id} className="rounded-xl border border-pink-100 overflow-hidden">
+            {/* Row header — click to expand */}
+            <button
+              onClick={() => setExpandedId(isExpanded ? null : checkout.id)}
+              className="w-full flex items-center justify-between p-4 hover:bg-brand-soft/30 transition-colors text-left"
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold">{checkout.customerName}</span>
+                <span className="text-xs text-muted-foreground">{checkout.customerPhone}</span>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-price">{formatPrice(checkout.total)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {checkout.items.length} item{checkout.items.length === 1 ? '' : 's'}
+                  </div>
+                </div>
+                <span className={cn(
+                  'px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap',
+                  checkout.paymentMethodViewed === 'cod'
+                    ? 'bg-amber-100 text-amber-700'
+                    : checkout.paymentMethodViewed === 'prepaid'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-gray-100 text-gray-500'
+                )}>
+                  {paymentLabel}
+                </span>
+              </div>
+            </button>
+
+            {/* Expanded details */}
+            {isExpanded && (
+              <div className="border-t border-pink-100 p-4 space-y-4 bg-muted/20">
+                {/* Date */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  <span>Last updated {formatDate(checkout.updatedAt)}</span>
+                </div>
+
+                {/* Customer + Address */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Customer</h4>
+                    <div className="flex items-center gap-2 text-sm">
+                      <User className="h-3.5 w-3.5 text-brand shrink-0" />
+                      <span>{checkout.customerName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-3.5 w-3.5 text-brand shrink-0" />
+                      <span>{checkout.customerPhone}</span>
+                    </div>
+                    {checkout.customerEmail && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="h-3.5 w-3.5 text-brand shrink-0" />
+                        <span className="truncate">{checkout.customerEmail}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shipping Address</h4>
+                    <div className="flex items-start gap-2 text-sm">
+                      <MapPin className="h-3.5 w-3.5 text-brand shrink-0 mt-0.5" />
+                      <div className="space-y-0.5">
+                        {addr.line1 && <div>{addr.line1}</div>}
+                        {addr.line2 && <div className="text-muted-foreground">{addr.line2}</div>}
+                        <div>{addr.city}{addr.city && addr.state ? ', ' : ''}{addr.state} {addr.pincode}</div>
+                        {addr.addressType && (
+                          <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] bg-brand-soft text-brand font-medium capitalize">
+                            {addr.addressType}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment method viewed */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Payment</h4>
+                  <div className="flex items-center gap-2 text-sm">
+                    <CreditCard className="h-3.5 w-3.5 text-brand shrink-0" />
+                    <span className="font-medium">{paymentLabel}</span>
+                    <span className="text-xs text-muted-foreground">
+                      (Total: {formatPrice(checkout.total)})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Products */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Products ({checkout.items.length})
+                  </h4>
+                  {checkout.items.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-lg border border-pink-100 p-2">
+                      <div className="h-12 w-12 rounded-md overflow-hidden bg-pink-50 shrink-0">
+                        {item.image && <img src={item.image} alt={item.title} className="h-full w-full object-cover" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-1">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{formatPrice(item.price)} × {item.quantity}</p>
+                      </div>
+                      <div className="text-sm font-semibold text-price shrink-0">
+                        {formatPrice(item.price * item.quantity)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Delete button */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive/30 hover:bg-destructive/5"
+                    disabled={deleting}
+                    onClick={() => handleDelete(checkout.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                  </Button>
+                </div>
               </div>
             )}
           </div>
