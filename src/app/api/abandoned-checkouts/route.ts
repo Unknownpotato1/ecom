@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  listAbandonedCheckouts,
+  createOrUpdateAbandonedCheckout,
+  deleteAbandonedCheckout,
+} from '@/lib/firestore'
 
 /**
  * GET /api/abandoned-checkouts
@@ -6,32 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
  */
 export async function GET() {
   try {
-    const { db } = await import('@/lib/firestore')
-    const database = db()
-    if (!database) return NextResponse.json({ checkouts: [] })
-
-    const snap = await database.collection('abandonedCheckouts')
-      .orderBy('updatedAt', 'desc')
-      .get()
-
-    const checkouts = snap.docs.map((d) => {
-      const data = d.data()
-      return {
-        id: d.id,
-        customerName: data.customerName || '',
-        customerPhone: data.customerPhone || '',
-        customerEmail: data.customerEmail || '',
-        shippingAddress: data.shippingAddress || {},
-        items: data.items || [],
-        subtotal: data.subtotal || 0,
-        total: data.total || 0,
-        paymentMethodViewed: data.paymentMethodViewed || '',
-        convertedToOrder: data.convertedToOrder || false,
-        createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
-        updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
-      }
-    })
-
+    const checkouts = await listAbandonedCheckouts()
     return NextResponse.json(
       { checkouts },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } }
@@ -66,12 +46,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'sessionKey is required' }, { status: 400 })
     }
 
-    const { db } = await import('@/lib/firestore')
-    const database = db()
-    if (!database) return NextResponse.json({ error: 'Database not available' }, { status: 500 })
-
-    const now = new Date()
-    const docData = {
+    const result = await createOrUpdateAbandonedCheckout({
       sessionKey,
       customerName: customerName || '',
       customerPhone: customerPhone || '',
@@ -81,31 +56,9 @@ export async function POST(req: NextRequest) {
       subtotal: Number(subtotal) || 0,
       total: Number(total) || 0,
       paymentMethodViewed: paymentMethodViewed || '',
-      convertedToOrder: false,
-      updatedAt: now,
-    }
+    })
 
-    // Check if a record with this sessionKey already exists
-    const existing = await database.collection('abandonedCheckouts')
-      .where('sessionKey', '==', sessionKey)
-      .limit(1)
-      .get()
-
-    if (!existing.empty) {
-      // Update existing record
-      const docId = existing.docs[0].id
-      await database.collection('abandonedCheckouts').doc(docId).update({
-        ...docData,
-        // Keep original createdAt
-        createdAt: existing.docs[0].data().createdAt || now,
-      })
-      return NextResponse.json({ ok: true, id: docId, action: 'updated' })
-    } else {
-      // Create new record
-      docData.createdAt = now
-      const ref = await database.collection('abandonedCheckouts').add(docData)
-      return NextResponse.json({ ok: true, id: ref.id, action: 'created' })
-    }
+    return NextResponse.json({ ok: true, ...result })
   } catch (e) {
     console.error('POST /api/abandoned-checkouts failed:', (e as Error).message)
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
@@ -125,11 +78,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 })
     }
 
-    const { db } = await import('@/lib/firestore')
-    const database = db()
-    if (!database) return NextResponse.json({ error: 'Database not available' }, { status: 500 })
-
-    await database.collection('abandonedCheckouts').doc(id).delete()
+    await deleteAbandonedCheckout(id)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('DELETE /api/abandoned-checkouts failed:', (e as Error).message)

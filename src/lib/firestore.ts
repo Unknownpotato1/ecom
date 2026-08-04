@@ -772,11 +772,109 @@ export async function upsertSettings(updates: Array<{ key: string; value: string
 export async function clearAllData(): Promise<void> {
   const database = db()
   if (!database) return
-  const collections = ['products', 'orders', 'reviews', 'sections', 'customSections', 'users', 'settings']
+  const collections = ['products', 'orders', 'reviews', 'sections', 'customSections', 'users', 'settings', 'abandonedCheckouts']
   for (const col of collections) {
     const snap = await database.collection(col).get()
     const batch = database.batch()
     snap.docs.forEach((d) => batch.delete(d.ref))
     await batch.commit()
   }
+}
+
+// --- Abandoned Checkouts ---
+
+export interface AbandonedCheckoutDoc {
+  id: string
+  sessionKey: string
+  customerName: string
+  customerPhone: string
+  customerEmail: string
+  shippingAddress: Record<string, unknown>
+  items: Array<{ title: string; price: number; quantity: number; image?: string | null }>
+  subtotal: number
+  total: number
+  paymentMethodViewed: string
+  convertedToOrder: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export async function listAbandonedCheckouts(): Promise<AbandonedCheckoutDoc[]> {
+  const database = db()
+  if (!database) return []
+  const snap = await database.collection('abandonedCheckouts').orderBy('updatedAt', 'desc').get()
+  return snap.docs.map((d) => {
+    const data = d.data()!
+    return {
+      id: d.id,
+      sessionKey: data.sessionKey || '',
+      customerName: data.customerName || '',
+      customerPhone: data.customerPhone || '',
+      customerEmail: data.customerEmail || '',
+      shippingAddress: data.shippingAddress || {},
+      items: data.items || [],
+      subtotal: data.subtotal || 0,
+      total: data.total || 0,
+      paymentMethodViewed: data.paymentMethodViewed || '',
+      convertedToOrder: !!data.convertedToOrder,
+      createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+    } as AbandonedCheckoutDoc
+  })
+}
+
+export async function createOrUpdateAbandonedCheckout(input: {
+  sessionKey: string
+  customerName: string
+  customerPhone: string
+  customerEmail: string
+  shippingAddress: Record<string, unknown>
+  items: Array<{ title: string; price: number; quantity: number; image?: string | null }>
+  subtotal: number
+  total: number
+  paymentMethodViewed: string
+}): Promise<{ id: string; action: 'created' | 'updated' }> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const now = new Date()
+
+  // Check if a record with this sessionKey already exists
+  const existing = await database.collection('abandonedCheckouts')
+    .where('sessionKey', '==', input.sessionKey)
+    .limit(1)
+    .get()
+
+  const docData = {
+    sessionKey: input.sessionKey,
+    customerName: input.customerName,
+    customerPhone: input.customerPhone,
+    customerEmail: input.customerEmail,
+    shippingAddress: input.shippingAddress,
+    items: input.items,
+    subtotal: Number(input.subtotal) || 0,
+    total: Number(input.total) || 0,
+    paymentMethodViewed: input.paymentMethodViewed,
+    convertedToOrder: false,
+    updatedAt: now,
+  }
+
+  if (!existing.empty) {
+    const docId = existing.docs[0].id
+    const existingData = existing.docs[0].data()!
+    await database.collection('abandonedCheckouts').doc(docId).update({
+      ...docData,
+      createdAt: existingData.createdAt || now,
+    })
+    return { id: docId, action: 'updated' }
+  } else {
+    const fullData = { ...docData, createdAt: now }
+    const ref = await database.collection('abandonedCheckouts').add(fullData)
+    return { id: ref.id, action: 'created' }
+  }
+}
+
+export async function deleteAbandonedCheckout(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('abandonedCheckouts').doc(id).delete()
 }
