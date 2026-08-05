@@ -13,6 +13,7 @@ import { Profile } from '@/components/auth/profile'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { HomeCustomSlot } from '@/components/store/home-custom-slot'
+import { VisitorTracker } from '@/components/store/visitor-tracker'
 import { useUI } from '@/lib/ui-store'
 import type { HeroConfig } from '@/lib/types'
 
@@ -56,6 +57,8 @@ export default function Home() {
   return (
     <main className="min-h-screen flex flex-col bg-background">
       <NavigationWatcher />
+      {/* Fire a visit-tracking ping on home view only (invisible, silent) */}
+      <VisitorTracker shouldTrack={view === 'home'} />
 
       {/* Home page: above-header custom sections.
           Hidden (not unmounted) when on product page to preserve state. */}

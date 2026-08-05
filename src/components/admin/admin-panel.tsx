@@ -25,6 +25,7 @@ import {
   User,
   StickyNote,
   ShoppingCart,
+  TrendingUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -238,6 +239,9 @@ function AdminPanelInner() {
             <TabsTrigger value="abandoned" className="gap-1.5">
               <ShoppingCart className="h-3.5 w-3.5" /> Abandoned
             </TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" /> Analytics
+            </TabsTrigger>
             <TabsTrigger value="hero" className="gap-1.5">
               <ImageIcon className="h-3.5 w-3.5" /> Hero & Banner
             </TabsTrigger>
@@ -263,6 +267,9 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="abandoned" className="mt-6">
             <AdminAbandonedCheckouts />
+          </TabsContent>
+          <TabsContent value="analytics" className="mt-6">
+            <AdminAnalytics />
           </TabsContent>
           <TabsContent value="hero" className="mt-6">
             <AdminHero />
@@ -1462,6 +1469,107 @@ function AdminAbandonedCheckouts() {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────
+function AdminAnalytics() {
+  const [stats, setStats] = useState<{
+    lifetime: { totalVisits: number; uniqueVisitors: number }
+    today: { totalVisits: number; uniqueVisitors: number }
+    daily: Array<{ date: string; totalVisits: number; uniqueVisitors: number }>
+    returningVisitors: number
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/analytics/stats', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        setStats(d.stats || null)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr)
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' })
+    } catch { return dateStr }
+  }
+
+  if (loading) return <div className="text-sm text-muted-foreground">Loading analytics...</div>
+  if (!stats) return <div className="text-sm text-muted-foreground">No analytics data yet.</div>
+
+  const newVisitors = stats.lifetime.uniqueVisitors - stats.returningVisitors
+  const returningPct = stats.lifetime.uniqueVisitors > 0
+    ? Math.round((stats.returningVisitors / stats.lifetime.uniqueVisitors) * 100)
+    : 0
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-pink-100 p-4">
+          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Lifetime Visits</div>
+          <div className="text-2xl font-bold text-foreground mt-1">{stats.lifetime.totalVisits.toLocaleString('en-IN')}</div>
+        </div>
+        <div className="rounded-xl border border-pink-100 p-4">
+          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Unique Visitors</div>
+          <div className="text-2xl font-bold text-foreground mt-1">{stats.lifetime.uniqueVisitors.toLocaleString('en-IN')}</div>
+        </div>
+        <div className="rounded-xl border border-pink-100 p-4 bg-brand-soft/30">
+          <div className="text-xs text-brand font-medium uppercase tracking-wide">Today Visits</div>
+          <div className="text-2xl font-bold text-brand mt-1">{stats.today.totalVisits.toLocaleString('en-IN')}</div>
+        </div>
+        <div className="rounded-xl border border-pink-100 p-4 bg-brand-soft/30">
+          <div className="text-xs text-brand font-medium uppercase tracking-wide">Today Unique</div>
+          <div className="text-2xl font-bold text-brand mt-1">{stats.today.uniqueVisitors.toLocaleString('en-IN')}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-pink-100 p-4">
+          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">New Visitors</div>
+          <div className="text-xl font-semibold text-emerald-600 mt-1">{newVisitors.toLocaleString('en-IN')}</div>
+        </div>
+        <div className="rounded-xl border border-pink-100 p-4">
+          <div className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Returning Visitors</div>
+          <div className="text-xl font-semibold text-amber-600 mt-1">
+            {stats.returningVisitors.toLocaleString('en-IN')}
+            <span className="text-sm text-muted-foreground ml-1">({returningPct}%)</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold mb-3">Last 30 Days</h3>
+        {stats.daily.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No daily data yet.</p>
+        ) : (
+          <div className="rounded-xl border border-pink-100 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-pink-100 bg-muted/30">
+                  <th className="text-left px-4 py-2 font-medium text-xs text-muted-foreground uppercase tracking-wide">Date</th>
+                  <th className="text-right px-4 py-2 font-medium text-xs text-muted-foreground uppercase tracking-wide">Visits</th>
+                  <th className="text-right px-4 py-2 font-medium text-xs text-muted-foreground uppercase tracking-wide">Unique</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.daily.map((day) => (
+                  <tr key={day.date} className="border-b border-pink-50 last:border-0 hover:bg-brand-soft/20 transition-colors">
+                    <td className="px-4 py-2">{formatDate(day.date)}</td>
+                    <td className="px-4 py-2 text-right font-medium">{day.totalVisits.toLocaleString('en-IN')}</td>
+                    <td className="px-4 py-2 text-right text-muted-foreground">{day.uniqueVisitors.toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

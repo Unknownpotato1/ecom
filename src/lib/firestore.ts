@@ -878,3 +878,134 @@ export async function deleteAbandonedCheckout(id: string): Promise<void> {
   if (!database) throw new Error('Database not available')
   await database.collection('abandonedCheckouts').doc(id).delete()
 }
+
+// --- Visitor Analytics ---
+
+/**
+ * Record a visit. Called from the client on page load.
+ * Updates both daily and lifetime stats.
+ */
+export async function recordVisit(visitorId: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const now = new Date()
+  const dateStr = now.toISOString().slice(0, 10) // YYYY-MM-DD
+
+  // --- Update daily stats ---
+  const dailyRef = database.collection('visitorStats').doc(dateStr)
+  const dailySnap = await dailyRef.get()
+  if (dailySnap.exists) {
+    const data = dailySnap.data()!
+    const visitorIds: string[] = data.visitorIds || []
+    const isNew = !visitorIds.includes(visitorId)
+    await dailyRef.update({
+      totalVisits: (data.totalVisits || 0) + 1,
+      uniqueVisitors: isNew ? (data.uniqueVisitors || 0) + 1 : data.uniqueVisitors || 0,
+      visitorIds: isNew ? [...visitorIds, visitorId] : visitorIds,
+      updatedAt: now,
+    })
+  } else {
+    await dailyRef.set({
+      date: dateStr, totalVisits: 1, uniqueVisitors: 1,
+      visitorIds: [visitorId], createdAt: now, updatedAt: now,
+    })
+  }
+
+  // --- Update lifetime stats ---
+  const lifeRef = database.collection('visitorStats').doc('lifetime')
+  const lifeSnap = await lifeRef.get()
+  if (lifeSnap.exists) {
+    const data = lifeSnap.data()!
+    const visitorIds: string[] = data.visitorIds || []
+    const isNew = !visitorIds.includes(visitorId)
+    await lifeRef.update({
+      totalVisits: (data.totalVisits || 0) + 1,
+      uniqueVisitors: isNew ? (data.uniqueVisitors || 0) + 1 : data.uniqueVisitors || 0,
+      visitorIds: isNew ? [...visitorIds, visitorId] : visitorIds,
+      updatedAt: now,
+    })
+  } else {
+    await lifeRef.set({
+      totalVisits: 1, uniqueVisitors: 1,
+      visitorIds: [visitorId], createdAt: now, updatedAt: now,
+    })
+  }
+}
+
+export interface VisitorStats {
+  lifetime: { totalVisits: number; uniqueVisitors: number }
+  today: { totalVisits: number; uniqueVisitors: number }
+  daily: Array<{ date: string; totalVisits: number; uniqueVisitors: number }>
+  returningVisitors: number
+}
+
+/**
+ * Fetch visitor stats for the admin panel.
+ * Returns lifetime totals, today's stats, and last 30 days breakdown.
+ */
+export async function getVisitorStats(): Promise<VisitorStats> {
+  const database = db()
+  if (!database) return {
+    lifetime: { totalVisits: 0, uniqueVisitors: 0 },
+    today: { totalVisits: 0, uniqueVisitors: 0 },
+    daily: [],
+    returningVisitors: 0,
+  }
+
+  const now = new Date()
+  const todayStr = now.toISOString().slice(0, 10)
+
+  // Fetch lifetime + today
+  const [lifeSnap, todaySnap] = await Promise.all([
+    database.collection('visitorStats').doc('lifetime').get(),
+    database.collection('visitorStats').doc(todayStr).get(),
+  ])
+
+  const lifetime = {
+    totalVisits: lifeSnap.exists ? (lifeSnap.data()!.totalVisits || 0) : 0,
+    uniqueVisitors: lifeSnap.exists ? (lifeSnap.data()!.uniqueVisitors || 0) : 0,
+  }
+  const today = {
+    totalVisits: todaySnap.exists ? (todaySnap.data()!.totalVisits || 0) : 0,
+    uniqueVisitors: todaySnap.exists ? (todaySnap.data()!.uniqueVisitors || 0) : 0,
+  }
+
+  // Fetch last 30 days
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const dailySnap = await database.collection('visitorStats')
+    .orderBy('date', 'desc')
+    .limit(30)
+    .get()
+
+  const daily: Array<{ date: string; totalVisits: number; uniqueVisitors: number }> = []
+  const allVisitorIds: Set<string> = new Set()
+  let totalUniqueAcrossDays = 0
+
+  for (const doc of dailySnap.docs) {
+    const data = doc.data()
+    if (doc.id === 'lifetime') continue // skip the lifetime doc
+    daily.push({
+      date: data.date || doc.id,
+      totalVisits: data.totalVisits || 0,
+      uniqueVisitors: data.uniqueVisitors || 0,
+    })
+    // Count unique visitors across all days for "returning" calculation
+    const ids: string[] = data.visitorIds || []
+    for (const id of ids) {
+      if (allVisitorIds.has(id)) {
+        // This visitor appeared on multiple days — they're a returning visitor
+      } else {
+        allVisitorIds.add(id)
+      }
+    }
+    totalUniqueAcrossDays += ids.length
+  }
+
+  // Returning visitors = total unique across days - lifetime unique
+  // (If someone visited on 3 different days, they count as 1 lifetime unique
+  //  but 3 daily uniques — the difference is "returning")
+  const returningVisitors = Math.max(0, totalUniqueAcrossDays - lifetime.uniqueVisitors)
+
+  return { lifetime, today, daily, returningVisitors }
+}
