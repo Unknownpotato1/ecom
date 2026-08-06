@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState, useRef, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
 
 interface StickyHeaderProps {
   /** The countdown/announcement custom section(s) to pin at the very top */
@@ -122,13 +121,18 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
           - When headerVisible: translateY(0) — normal position
           - When !headerVisible: translateY(-100%) — slides up out of view
           - transition for smooth slide animation
-          - z-40 (below countdown's z-50) */}
+          - z-40 (below countdown's z-50)
+          
+          Note: Using inline style for transform instead of Tailwind's
+          -translate-y-full class because Tailwind v4 uses CSS custom
+          properties for transforms which don't combine well with
+          position:sticky in some browsers. Inline style is more reliable. */}
       <div
-        className={cn(
-          'sticky z-40 transition-transform duration-300 ease-out',
-          headerVisible ? 'translate-y-0' : '-translate-y-full'
-        )}
-        style={{ top: `${countdownHeight}px` }}
+        className="sticky z-40 transition-transform duration-300 ease-out"
+        style={{
+          top: `${countdownHeight}px`,
+          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
+        }}
       >
         {children}
       </div>
