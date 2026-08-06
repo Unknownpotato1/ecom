@@ -14,6 +14,7 @@ import { AdminPanel } from '@/components/admin/admin-panel'
 import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { HomeCustomSlot } from '@/components/store/home-custom-slot'
 import { VisitorTracker } from '@/components/store/visitor-tracker'
+import { StickyHeader } from '@/components/store/sticky-header'
 import { useUI } from '@/lib/ui-store'
 import type { HeroConfig } from '@/lib/types'
 
@@ -60,11 +61,18 @@ export default function Home() {
       {/* Fire a visit-tracking ping on home view only (invisible, silent) */}
       <VisitorTracker shouldTrack={view === 'home'} />
 
-      {/* Home page: above-header custom sections.
-          Hidden (not unmounted) when on product page to preserve state. */}
-      {view === 'home' && <HomeCustomSlot slot="home-above-header" />}
-
-      <Header />
+      {/* StickyHeader wraps the countdown (always sticky) + Header (dynamic:
+          hides on scroll down, slides in on scroll up).
+          The countdown shows on both home and product pages. */}
+      <StickyHeader
+        countdownSlot={
+          (view === 'home' || view === 'product') ? (
+            <HomeCustomSlot slot="home-above-header" />
+          ) : null
+        }
+      >
+        <Header />
+      </StickyHeader>
 
       {/* Home page: between header and storefront (above hero/banner) */}
       {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}

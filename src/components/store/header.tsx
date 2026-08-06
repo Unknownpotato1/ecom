@@ -53,7 +53,7 @@ export function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-brand text-white">
+      <header className="bg-brand text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 grid grid-cols-3 items-center">
           {/* Left: menu */}
           <div className="flex items-center justify-start">
