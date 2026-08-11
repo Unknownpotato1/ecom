@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { trackAddToCart } from './meta-pixel'
 
 export interface CartItem {
   id: string
@@ -46,6 +47,13 @@ export const useCart = create<CartState>()(
         } else {
           set({ items: [...items, { ...item, quantity }], isOpen: true })
         }
+        // Fire AddToCart event for Meta Pixel
+        trackAddToCart({
+          id: item.productId,
+          title: item.title,
+          price: item.price,
+          quantity,
+        })
       },
       removeItem: (id) =>
         set((s) => ({ items: s.items.filter((i) => i.id !== id) })),

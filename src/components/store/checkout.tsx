@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   ChevronRight,
   Wallet,
@@ -21,11 +21,24 @@ import { useAuth } from '@/lib/auth-store'
 import { formatPrice } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { trackInitiateCheckout, trackPurchase } from '@/lib/meta-pixel'
 
 export function Checkout() {
   const { items, subtotal, clearCart } = useCart()
   const { goOrderSuccess, goHome } = useUI()
   const { user } = useAuth()
+  const checkoutTracked = useRef(false)
+
+  // Fire InitiateCheckout once when the checkout page loads with items
+  useEffect(() => {
+    if (!checkoutTracked.current && items.length > 0) {
+      checkoutTracked.current = true
+      trackInitiateCheckout({
+        total: subtotal(),
+        numItems: items.reduce((a, i) => a + i.quantity, 0),
+      })
+    }
+  }, [items, subtotal])
 
   const [form, setForm] = useState({
     name: user?.name || '',
@@ -70,95 +83,6 @@ export function Checkout() {
   const codRemaining = Math.max(0, total - codPartial)
 
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }))
-
-  // ─── Abandoned checkout auto-save ──────────────────────────────────
-  // When the customer fills in their contact + shipping details, we
-  // auto-save (debounced 1.5s) to the 'abandonedCheckouts' Firestore
-  // collection. This lets the admin see who started checkout but didn't
-  // complete it — especially useful for tracking customers who saw the
-  // ₹49 COD partial payment and changed their mind.
-  //
-  // The save fires when:
-  //   - The customer has entered at least a name AND phone (minimum viable data)
-  //   - 1.5 seconds have passed since the last keystroke (debounced)
-  //
-  // When the order is actually placed, the record is marked as
-  // 'convertedToOrder' so it no longer shows as abandoned.
-  const sessionKeyRef = useRef<string>(
-    typeof window !== 'undefined'
-      ? sessionStorage.getItem('aurora:checkout-session') || ''
-      : ''
-  )
-
-  // Generate a unique session key on first checkout visit
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (!sessionKeyRef.current) {
-      sessionKeyRef.current = 'ck_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9)
-      sessionStorage.setItem('aurora:checkout-session', sessionKeyRef.current)
-    }
-  }, [])
-
-  // Debounced auto-save
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    // Only save if the customer has entered at least name + phone
-    if (!form.name || !form.phone) return
-    if (items.length === 0) return
-
-    // Clear any pending save
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-
-    // Schedule a new save after 1.5 seconds of inactivity
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await fetch('/api/abandoned-checkouts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionKey: sessionKeyRef.current,
-            customerName: form.name,
-            customerPhone: form.phone,
-            customerEmail: user?.email || '',
-            shippingAddress: {
-              line1: form.line1,
-              line2: form.line2,
-              city: form.city,
-              state: form.state,
-              pincode: form.pincode,
-              addressType: form.addressType,
-            },
-            items: items.map((i) => ({
-              title: i.title,
-              price: i.price,
-              quantity: i.quantity,
-              image: i.image,
-            })),
-            subtotal: sub,
-            total,
-            paymentMethodViewed: payment || '',
-          }),
-        })
-      } catch {
-        // Silently fail — don't interrupt the customer's checkout flow
-      }
-    }, 1500)
-
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.name, form.phone, form.line1, form.city, form.state, form.pincode, payment, items.length])
-
-  // When the order is successfully placed, clear the session key so a
-  // future checkout creates a fresh record
-  const clearAbandonedSession = () => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('aurora:checkout-session')
-      sessionKeyRef.current = ''
-    }
-  }
-  // ─── End abandoned checkout auto-save ──────────────────────────────
 
   /** Auto-fill city + state when pincode is entered (6 digits) */
   const handlePincodeChange = async (value: string) => {
@@ -403,9 +327,13 @@ export function Checkout() {
     })
     if (res.ok) {
       const data = await res.json()
+      // Fire Purchase event for Meta Pixel (only after order is confirmed)
+      trackPurchase({
+        total: data.order.total,
+        orderId: data.order.orderNumber,
+        numItems: data.order.items.reduce((a: number, i: { quantity: number }) => a + i.quantity, 0),
+      })
       clearCart()
-      // Clear the abandoned checkout session since the order was completed
-      clearAbandonedSession()
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('aurora:last-order', JSON.stringify(data.order))
       }

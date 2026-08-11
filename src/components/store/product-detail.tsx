@@ -29,6 +29,7 @@ import { ProductCustomSections } from './product-custom-sections'
 import { YouMayAlsoLike } from './you-may-also-like'
 import { StickyActionBar } from './sticky-action-bar'
 import { ProductCustomSlot } from './product-custom-slot'
+import { trackViewContent } from '@/lib/meta-pixel'
 import { UpiDiscountBanner } from './upi-discount-banner'
 
 export function ProductDetail({ productId }: { productId: string }) {
@@ -57,6 +58,15 @@ export function ProductDetail({ productId }: { productId: string }) {
         if (!active) return
         setProduct(data.product)
         setLoading(false)
+        // Fire ViewContent event for Meta Pixel (only once per product load)
+        if (data.product) {
+          trackViewContent({
+            id: data.product.id,
+            title: data.product.title,
+            price: data.product.price,
+            category: data.product.category,
+          })
+        }
       })
       .catch(() => {
         if (active) setLoading(false)

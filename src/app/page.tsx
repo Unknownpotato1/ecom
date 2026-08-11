@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { Header } from '@/components/store/header'
 import { Footer } from '@/components/store/footer'
 import { Storefront } from '@/components/store/storefront'
@@ -13,8 +14,7 @@ import { Profile } from '@/components/auth/profile'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { HomeCustomSlot } from '@/components/store/home-custom-slot'
-import { VisitorTracker } from '@/components/store/visitor-tracker'
-import { StickyHeader } from '@/components/store/sticky-header'
+import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
 import type { HeroConfig } from '@/lib/types'
 
@@ -29,6 +29,17 @@ const DEFAULT_HERO: HeroConfig = {
 
 export default function Home() {
   const { view, selectedProductId, searchQuery } = useUI()
+  const lastTrackedView = useRef<string>('')
+
+  // Fire PageView on SPA view changes (deduplicated — only fires when
+  // the view actually changes, not on every re-render)
+  useEffect(() => {
+    const viewKey = `${view}:${selectedProductId || ''}`
+    if (viewKey !== lastTrackedView.current) {
+      lastTrackedView.current = viewKey
+      trackPageView()
+    }
+  }, [view, selectedProductId])
 
   // Admin panel is full-screen — no header/footer
   if (view === 'admin') {
@@ -41,38 +52,14 @@ export default function Home() {
     )
   }
 
-  // Determine if we should keep the Storefront mounted but hidden.
-  // When navigating home → product → back, the Storefront would normally
-  // unmount (destroying all state: carousels, countdowns, fetched data,
-  // scroll position) and remount from scratch on return. To prevent this,
-  // we keep the Storefront mounted whenever the view is 'home' OR 'product'
-  // — it's hidden via CSS (display:none) when on the product page, but
-  // its internal state is preserved. When the user taps back, the
-  // Storefront is simply un-hidden, instantly restoring the exact same
-  // state (including carousel positions, fetched products, etc.).
-  //
-  // For other views (checkout, orders, profile, search), the Storefront
-  // is NOT mounted — those are separate flows that don't need it.
-  const keepStorefrontAlive = view === 'home' || view === 'product'
-
   return (
     <main className="min-h-screen flex flex-col bg-background">
       <NavigationWatcher />
-      {/* Fire a visit-tracking ping on home view only (invisible, silent) */}
-      <VisitorTracker shouldTrack={view === 'home'} />
 
-      {/* StickyHeader wraps the countdown (always sticky) + Header (dynamic:
-          hides on scroll down, slides in on scroll up).
-          The countdown shows on both home and product pages. */}
-      <StickyHeader
-        countdownSlot={
-          (view === 'home' || view === 'product') ? (
-            <HomeCustomSlot slot="home-above-header" />
-          ) : null
-        }
-      >
-        <Header />
-      </StickyHeader>
+      {/* Home page: above-header custom sections */}
+      {view === 'home' && <HomeCustomSlot slot="home-above-header" />}
+
+      <Header />
 
       {/* Home page: between header and storefront (above hero/banner) */}
       {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}
@@ -81,19 +68,9 @@ export default function Home() {
         {/* Home page: above product list */}
         {view === 'home' && <HomeCustomSlot slot="home-above-products" />}
 
-        {/* Storefront — kept mounted (but hidden) when on product page
-            to preserve all state (carousels, countdowns, fetched data).
-            The 'hidden' class sets display:none, which preserves the
-            component's internal state in memory. */}
-        {keepStorefrontAlive && (
-          <div className={view === 'home' ? '' : 'hidden'}>
-            <Storefront heroFallback={DEFAULT_HERO} />
-          </div>
+        {view === 'home' && (
+          <Storefront heroFallback={DEFAULT_HERO} />
         )}
-
-        {/* Product detail — rendered on top of the hidden Storefront.
-            The Storefront is display:none, so this is the only visible
-            content. */}
         {view === 'product' && selectedProductId && (
           <ProductDetail key={selectedProductId} productId={selectedProductId} />
         )}
