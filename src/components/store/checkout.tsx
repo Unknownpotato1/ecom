@@ -82,6 +82,58 @@ export function Checkout() {
   const total = hasFlatTotalPromo ? (appliedPromo?.flatTotal ?? 2) : Math.max(0, sub - discount) + shipping
   const codRemaining = Math.max(0, total - codPartial)
 
+  // ── Abandoned checkout tracking ──────────────────────────────────
+  // Save the checkout form to the server whenever the customer types
+  // their details. If they leave without completing the order, the
+  // admin panel shows it under the "Abandoned" tab.
+  // Debounced: saves 3s after the last keystroke to avoid spamming.
+  const abandonSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!form.name && !form.phone && !form.line1 && !form.pincode) return
+    if (items.length === 0) return
+
+    if (abandonSaveTimer.current) clearTimeout(abandonSaveTimer.current)
+
+    abandonSaveTimer.current = setTimeout(() => {
+      // Generate or reuse a stable session ID
+      if (typeof window !== 'undefined' && !sessionStorage.getItem('aurora:session-id')) {
+        sessionStorage.setItem('aurora:session-id', Math.random().toString(36).slice(2))
+      }
+      fetch('/api/abandoned-checkouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionKey: 'session_' + (typeof window !== 'undefined' ? sessionStorage.getItem('aurora:session-id') || 'unknown' : 'unknown'),
+          customerName: form.name,
+          customerPhone: form.phone,
+          customerEmail: user?.email || '',
+          shippingAddress: {
+            line1: form.line1,
+            line2: form.line2,
+            city: form.city,
+            state: form.state,
+            pincode: form.pincode,
+            addressType: form.addressType,
+          },
+          items: items.map((i) => ({
+            title: i.title,
+            price: i.price,
+            quantity: i.quantity,
+            image: i.image,
+          })),
+          subtotal: sub,
+          total,
+          paymentMethodViewed: payment || '',
+        }),
+      }).catch(() => {})
+    }, 3000)
+
+    return () => {
+      if (abandonSaveTimer.current) clearTimeout(abandonSaveTimer.current)
+    }
+  }, [form, items, sub, total, payment, user])
+
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }))
 
   /** Auto-fill city + state when pincode is entered (6 digits) */

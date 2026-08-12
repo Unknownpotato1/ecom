@@ -46,7 +46,7 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
   // matches exactly (header sits right below the countdown)
   useEffect(() => {
     if (!countdownRef.current) {
-      setCountdownHeight(0)
+      Promise.resolve().then(() => setCountdownHeight(0))
       return
     }
 
