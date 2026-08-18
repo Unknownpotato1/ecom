@@ -25,10 +25,11 @@ const MENU_LINKS = [
 export function Header() {
   const itemCount = useCart((s) => s.items.reduce((a, i) => a + i.quantity, 0))
   const openCart = useCart((s) => s.openCart)
-  const { goHome, goAdmin, goOrders, searchOpen, setSearchOpen, mobileMenuOpen, setMobileMenuOpen, goSearch } = useUI()
+  const { goHome, goAdmin, goOrders, goCollection, searchOpen, setSearchOpen, mobileMenuOpen, setMobileMenuOpen, goSearch } = useUI()
   const { user, isAdmin, signOut } = useAuth()
   const [searchVal, setSearchVal] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -38,6 +39,15 @@ export function Header() {
       .then((r) => r.json())
       .then((d) => {
         if (d.settings?.logoUrl) setLogoUrl(d.settings.logoUrl)
+      })
+      .catch(() => {})
+    // Fetch collections for menu
+    fetch('/api/collections')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.collections) {
+          setCollections(d.collections.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })))
+        }
       })
       .catch(() => {})
   }, [])
@@ -168,6 +178,25 @@ export function Header() {
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </button>
             ))}
+            {/* Collections in menu */}
+            {collections.length > 0 && (
+              <div className="border-t border-pink-100 mt-2 pt-2">
+                <p className="px-4 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Collections</p>
+                {collections.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      setMobileMenuOpen(false)
+                      goCollection(c.id)
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-brand-soft transition-colors"
+                  >
+                    <span>{c.name}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="border-t border-pink-100 mt-2 pt-2">
               {user ? (
                 <>

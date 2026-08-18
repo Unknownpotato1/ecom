@@ -10,6 +10,7 @@ export type ViewName =
   | 'profile'
   | 'orders'
   | 'search'
+  | 'collection'
 
 /**
  * Shape of the history entry we push into the browser's session stack
@@ -93,16 +94,10 @@ export function replaceHistory(view: ViewName, selectedProductId: string | null,
 interface UIState {
   view: ViewName
   selectedProductId: string | null
+  selectedCollectionId: string | null
   searchQuery: string
   searchOpen: boolean
   mobileMenuOpen: boolean
-  /**
-   * Saved vertical scroll position of the home page, captured when the
-   * user navigates away from home (e.g. to a product page). When the
-   * user navigates back to home via the browser back button, this
-   * position is restored so the user sees the exact same scroll
-   * position they were at — no jarring jump to the top.
-   */
   homeScrollY: number
   // navigation
   goHome: () => void
@@ -113,6 +108,7 @@ interface UIState {
   goProfile: () => void
   goOrders: () => void
   goSearch: (query: string) => void
+  goCollection: (collectionId: string) => void
   setSearchOpen: (open: boolean) => void
   setMobileMenuOpen: (open: boolean) => void
   /**
@@ -128,6 +124,7 @@ export const useUI = create<UIState>()(
     (set, get) => ({
       view: 'home',
       selectedProductId: null,
+      selectedCollectionId: null,
       searchQuery: '',
       searchOpen: false,
       mobileMenuOpen: false,
@@ -184,6 +181,11 @@ export const useUI = create<UIState>()(
       goSearch: (query) => {
         set({ view: 'search', searchQuery: query })
         pushHistory('search', null, query)
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+      },
+      goCollection: (collectionId) => {
+        set({ view: 'collection', selectedCollectionId: collectionId })
+        pushHistory('collection', null)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
       setSearchOpen: (open) => set({ searchOpen: open }),

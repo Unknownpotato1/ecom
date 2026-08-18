@@ -14,6 +14,8 @@ import { Profile } from '@/components/auth/profile'
 import { AdminPanel } from '@/components/admin/admin-panel'
 import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { HomeCustomSlot } from '@/components/store/home-custom-slot'
+import { HomeCollections } from '@/components/store/home-collections'
+import { CollectionPage } from '@/components/store/collection-page'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
 import type { HeroConfig } from '@/lib/types'
@@ -28,7 +30,7 @@ const DEFAULT_HERO: HeroConfig = {
 }
 
 export default function Home() {
-  const { view, selectedProductId, searchQuery } = useUI()
+  const { view, selectedProductId, selectedCollectionId, searchQuery } = useUI()
   const lastTrackedView = useRef<string>('')
 
   // Fire PageView on SPA view changes (deduplicated — only fires when
@@ -68,11 +70,17 @@ export default function Home() {
         {/* Home page: above product list */}
         {view === 'home' && <HomeCustomSlot slot="home-above-products" />}
 
+        {/* Home page: collection carousels (between hero and product grid) */}
+        {view === 'home' && <HomeCollections />}
+
         {view === 'home' && (
           <Storefront heroFallback={DEFAULT_HERO} />
         )}
         {view === 'product' && selectedProductId && (
           <ProductDetail key={selectedProductId} productId={selectedProductId} />
+        )}
+        {view === 'collection' && selectedCollectionId && (
+          <CollectionPage collectionId={selectedCollectionId} />
         )}
         {view === 'checkout' && <Checkout />}
         {view === 'order-success' && <OrderSuccess />}

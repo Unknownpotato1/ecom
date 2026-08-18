@@ -109,6 +109,20 @@ export const PRODUCT_SLOTS = [
   { value: 'product-bottom', label: '🔽 Bottom (before "You may also like")' },
 ] as const
 
+export interface Collection {
+  id: string
+  name: string
+  slug: string
+  /** All product IDs in this collection */
+  productIds: string[]
+  /** Up to 5 product IDs to feature on the homepage carousel */
+  featuredProductIds: string[]
+  visible: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface Order {
   id: string
   orderNumber: string

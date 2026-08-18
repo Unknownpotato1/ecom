@@ -62,6 +62,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { useUI } from '@/lib/ui-store'
 import { useAuth, ADMIN_EMAIL } from '@/lib/auth-store'
 import { AdminProducts } from './admin-products'
+import { AdminCollections } from './admin-collections'
 import { CustomSectionPreview } from '@/components/store/custom-section-renderer'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -236,6 +237,9 @@ function AdminPanelInner() {
             <TabsTrigger value="orders" className="gap-1.5">
               <ShoppingBag className="h-3.5 w-3.5" /> Orders
             </TabsTrigger>
+            <TabsTrigger value="collections" className="gap-1.5">
+              <Package className="h-3.5 w-3.5" /> Collections
+            </TabsTrigger>
             <TabsTrigger value="abandoned" className="gap-1.5">
               <ShoppingCart className="h-3.5 w-3.5" /> Abandoned
             </TabsTrigger>
@@ -264,6 +268,9 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="orders" className="mt-6">
             <AdminOrders />
+          </TabsContent>
+          <TabsContent value="collections" className="mt-6">
+            <AdminCollections />
           </TabsContent>
           <TabsContent value="abandoned" className="mt-6">
             <AdminAbandonedCheckouts />

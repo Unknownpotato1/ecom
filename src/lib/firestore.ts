@@ -1009,3 +1009,104 @@ export async function getVisitorStats(): Promise<VisitorStats> {
 
   return { lifetime, today, daily, returningVisitors }
 }
+
+// --- Collections ---
+
+export interface CollectionDoc {
+  id: string
+  name: string
+  slug: string
+  productIds: string[]
+  featuredProductIds: string[]
+  visible: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+export async function listCollections(all = false): Promise<CollectionDoc[]> {
+  const database = db()
+  if (!database) return []
+  const snap = await database.collection('collections').orderBy('position', 'asc').get()
+  const collections = snap.docs.map((d) => {
+    const data = d.data()!
+    return {
+      id: d.id,
+      name: data.name || '',
+      slug: data.slug || '',
+      productIds: data.productIds || [],
+      featuredProductIds: data.featuredProductIds || [],
+      visible: data.visible ?? true,
+      position: data.position ?? 0,
+      createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+    } as CollectionDoc
+  })
+  if (!all) return collections.filter((c) => c.visible)
+  return collections
+}
+
+export async function getCollection(id: string): Promise<CollectionDoc | null> {
+  const database = db()
+  if (!database) return null
+  const snap = await database.collection('collections').doc(id).get()
+  if (!snap.exists) return null
+  const data = snap.data()!
+  return {
+    id: snap.id,
+    name: data.name || '',
+    slug: data.slug || '',
+    productIds: data.productIds || [],
+    featuredProductIds: data.featuredProductIds || [],
+    visible: data.visible ?? true,
+    position: data.position ?? 0,
+    createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+    updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+  }
+}
+
+export async function createCollection(input: {
+  name: string
+  productIds?: string[]
+  featuredProductIds?: string[]
+  visible?: boolean
+}): Promise<CollectionDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const snap = await database.collection('collections').orderBy('position', 'desc').limit(1).get()
+  const maxPos = snap.empty ? -1 : (snap.docs[0].data()!.position ?? 0)
+  const now = new Date()
+  const slug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  const docData = {
+    name: input.name,
+    slug,
+    productIds: input.productIds || [],
+    featuredProductIds: input.featuredProductIds || [],
+    visible: input.visible ?? true,
+    position: maxPos + 1,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const ref = await database.collection('collections').add(docData)
+  return {
+    id: ref.id,
+    ...docData,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  } as CollectionDoc
+}
+
+export async function updateCollection(id: string, updates: Record<string, unknown>): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const updateData: Record<string, unknown> = { ...updates, updatedAt: new Date() }
+  if (updateData.position !== undefined) updateData.position = Number(updateData.position)
+  if (updateData.visible !== undefined) updateData.visible = !!updateData.visible
+  await database.collection('collections').doc(id).update(updateData)
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('collections').doc(id).delete()
+}
