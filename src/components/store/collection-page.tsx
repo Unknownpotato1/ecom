@@ -44,18 +44,21 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
         const coll = (collData.collections || []).find((c: Collection) => c.id === collectionId)
         if (coll) {
           setCollection(coll)
-          // Step 2: Fetch ALL products (single fetch) but only SHOW the first batch
-          return fetch('/api/products').then((r) => r.json())
+          // Store productIds in a ref so it's available in the next .then()
+          allProductsRef.current = [] // will be filled with products, not IDs
+          // Pass the collection to the next step via closure
+          return fetch('/api/products').then((r) => r.json()).then((prodData) => ({ prodData, coll }))
         }
         setLoading(false)
         return null
       })
-      .then((prodData) => {
-        if (!active || !prodData) return
+      .then((result) => {
+        if (!active || !result) return
+        const { prodData, coll } = result
         const all = prodData.products || []
         // Order products by the collection's productIds order
         const ordered: Product[] = []
-        for (const id of collection?.productIds || []) {
+        for (const id of coll.productIds || []) {
           const found = all.find((p: Product) => p.id === id)
           if (found) ordered.push(found)
         }
