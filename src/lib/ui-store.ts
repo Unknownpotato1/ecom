@@ -192,10 +192,22 @@ export const useUI = create<UIState>()(
       },
       goCollection: (collectionId) => {
         set({ view: 'collection', selectedCollectionId: collectionId })
-        pushHistory('collection', null)
-        // Scroll to top immediately (not smooth) so the user sees the
-        // collection page header, not the footer from the homepage.
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
+        // Build URL and state directly (don't rely on buildUrl reading state,
+        // since get() might not see the updated value yet in some edge cases)
+        const url = `/collection/${collectionId}`
+        const state: HistoryEntryState = {
+          view: 'collection',
+          selectedProductId: null,
+          selectedCollectionId: collectionId,
+        }
+        try {
+          if (typeof window !== 'undefined') {
+            window.history.pushState(state, '', url)
+            window.scrollTo({ top: 0, behavior: 'auto' })
+          }
+        } catch {
+          // pushState can throw — fail silently
+        }
       },
       setSearchOpen: (open) => set({ searchOpen: open }),
       setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
