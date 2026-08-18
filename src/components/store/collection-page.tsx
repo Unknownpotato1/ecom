@@ -95,20 +95,21 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
     }, 200)
   }, [loadingMore, hasMore])
 
-  // Infinite scroll via IntersectionObserver
+  // Infinite scroll via IntersectionObserver — re-creates observer
+  // whenever loadMore changes (i.e. when products are added)
   useEffect(() => {
-    if (!sentinelRef.current) return
+    if (!sentinelRef.current || !hasMore) return
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
           loadMore()
         }
       },
-      { rootMargin: '200px' }
+      { rootMargin: '300px' }
     )
     observer.observe(sentinelRef.current)
     return () => observer.disconnect()
-  }, [loadMore])
+  }, [loadMore, hasMore, products.length])
 
   if (loading) {
     return (

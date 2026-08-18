@@ -20,12 +20,21 @@ function parseUrlToState(): HistoryEntryState | null {
   const search = window.location.search
 
   // /product/<id> — capture everything after /product/ as the id
-  // (product ids may contain characters that need decoding)
   const productMatch = path.match(/^\/product\/(.+)$/)
   if (productMatch) {
     return {
       view: 'product',
       selectedProductId: decodeURIComponent(productMatch[1]),
+    }
+  }
+
+  // /collection/<id> — capture everything after /collection/ as the id
+  const collectionMatch = path.match(/^\/collection\/(.+)$/)
+  if (collectionMatch) {
+    return {
+      view: 'collection',
+      selectedProductId: null,
+      selectedCollectionId: decodeURIComponent(collectionMatch[1]),
     }
   }
 

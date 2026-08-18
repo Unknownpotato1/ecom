@@ -21,6 +21,7 @@ export type ViewName =
 export interface HistoryEntryState {
   view: ViewName
   selectedProductId: string | null
+  selectedCollectionId?: string | null
   searchQuery?: string
 }
 
@@ -69,12 +70,16 @@ function buildUrl(view: ViewName, selectedProductId: string | null, searchQuery?
 function pushHistory(view: ViewName, selectedProductId: string | null, searchQuery?: string) {
   if (typeof window === 'undefined') return
   const url = buildUrl(view, selectedProductId, searchQuery)
-  const state: HistoryEntryState = { view, selectedProductId, searchQuery }
+  const state: HistoryEntryState = {
+    view,
+    selectedProductId,
+    searchQuery,
+    selectedCollectionId: view === 'collection' ? get().selectedCollectionId : null,
+  }
   try {
     window.history.pushState(state, '', url)
   } catch {
-    // pushState can throw on cross-origin or file:// — fail silently,
-    // the in-memory view state has already been set by the caller.
+    // pushState can throw on cross-origin or file:// — fail silently
   }
 }
 
@@ -188,7 +193,9 @@ export const useUI = create<UIState>()(
       goCollection: (collectionId) => {
         set({ view: 'collection', selectedCollectionId: collectionId })
         pushHistory('collection', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        // Scroll to top immediately (not smooth) so the user sees the
+        // collection page header, not the footer from the homepage.
+        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'auto' })
       },
       setSearchOpen: (open) => set({ searchOpen: open }),
       setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
@@ -212,6 +219,7 @@ export const useUI = create<UIState>()(
         set({
           view: state.view,
           selectedProductId: state.selectedProductId ?? null,
+          selectedCollectionId: state.selectedCollectionId ?? null,
           ...(state.searchQuery !== undefined ? { searchQuery: state.searchQuery } : {}),
         })
         if (typeof window !== 'undefined') {
