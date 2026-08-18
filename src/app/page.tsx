@@ -67,11 +67,7 @@ export default function Home() {
         {/* Home page: above product list */}
         {view === 'home' && <HomeCustomSlot slot="home-above-products" />}
 
-        {view === 'home' && (
-          <Storefront heroFallback={DEFAULT_HERO} />
-        )}
-
-        {/* Home page: collection carousels (BELOW the product grid) */}
+        {/* Home page: ONLY collection carousels (product grid removed per user request) */}
         {view === 'home' && <HomeCollections />}
         {view === 'product' && selectedProductId && (
           <ProductDetail key={selectedProductId} productId={selectedProductId} />

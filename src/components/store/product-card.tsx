@@ -38,7 +38,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article
-      className="group relative flex flex-col overflow-hidden border border-pink-100 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer"
+      className="group relative flex flex-col overflow-hidden border border-black/15 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer"
       onClick={() => goProduct(product.id)}
     >
       <div className="relative aspect-square overflow-hidden bg-pink-50">

@@ -13,9 +13,11 @@ interface Props {
 
 /**
  * Horizontal-scrolling carousel for a collection on the homepage.
- * Shows the admin-selected featured products (up to 5).
- * On mobile, shows ~1.75 products at a time with smooth horizontal
- * snapping scroll. "View All" button navigates to the full collection page.
+ *
+ * - Shows 2.25 products at a time on mobile (snap to show 2 full + 0.25 peek)
+ * - Left margin so the first product doesn't touch the screen edge
+ * - Smooth touch-responsive swipe with CSS scroll-snap
+ * - "View All" button at the end navigates to the collection page
  */
 export function CollectionCarousel({ collection }: Props) {
   const { goCollection } = useUI()
@@ -23,19 +25,22 @@ export function CollectionCarousel({ collection }: Props) {
   const [loading, setLoading] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  // Each card takes 1/2.25 of the viewport width on mobile,
+  // so exactly 2.25 cards are visible at any time.
+  // On desktop, cards are a fixed 220px wide.
+  const CARD_WIDTH_MOBILE = 'calc((100vw - 2rem) / 2.25)' // 2.25 visible with 1rem padding each side
+  const CARD_WIDTH_DESKTOP = '220px'
+
   useEffect(() => {
     let active = true
-    // Fetch all products, then filter by the collection's featured IDs
     fetch('/api/products')
       .then((r) => r.json())
       .then((data) => {
         if (!active) return
         const all = data.products || []
-        // Show featured products first (in the admin's chosen order)
         const featured = collection.featuredProductIds
           .map((id) => all.find((p: Product) => p.id === id))
           .filter(Boolean) as Product[]
-        // If fewer than 5 featured, fill from the collection's productIds
         if (featured.length < 5) {
           const remaining = collection.productIds
             .filter((id) => !collection.featuredProductIds.includes(id))
@@ -60,9 +65,9 @@ export function CollectionCarousel({ collection }: Props) {
         <div className="px-4 sm:px-6 lg:px-8 mb-3 flex items-center justify-between">
           <h2 className="text-xl font-semibold tracking-tight">{collection.name}</h2>
         </div>
-        <div className="flex gap-3 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="flex gap-3 pl-4 sm:pl-6 lg:pl-8 overflow-hidden">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="shrink-0 w-[57vw] sm:w-[220px] aspect-[3/4] rounded-lg" />
+            <Skeleton key={i} className="shrink-0 w-[calc((100vw-2rem)/2.25)] sm:w-[220px] aspect-[3/4] rounded-lg" />
           ))}
         </div>
       </section>
@@ -87,19 +92,24 @@ export function CollectionCarousel({ collection }: Props) {
       {/* Horizontal scroll carousel */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory"
+        className="flex gap-3 overflow-x-auto no-scrollbar"
         style={{
           scrollSnapType: 'x mandatory',
           WebkitOverflowScrolling: 'touch',
           paddingLeft: '1rem',
           paddingRight: '1rem',
+          scrollPaddingLeft: '1rem',
         }}
       >
         {products.map((product) => (
           <div
             key={product.id}
-            className="shrink-0 snap-start"
-            style={{ width: '57vw', maxWidth: '220px' }}
+            className="shrink-0"
+            style={{
+              width: CARD_WIDTH_MOBILE,
+              maxWidth: CARD_WIDTH_DESKTOP,
+              scrollSnapAlign: 'start',
+            }}
           >
             <ProductCard product={product} />
           </div>
@@ -107,8 +117,13 @@ export function CollectionCarousel({ collection }: Props) {
         {/* View All card at the end */}
         <button
           onClick={() => goCollection(collection.id)}
-          className="shrink-0 snap-start flex flex-col items-center justify-center gap-2 border-2 border-dashed border-brand rounded-lg text-brand hover:bg-brand-soft transition-colors"
-          style={{ width: '57vw', maxWidth: '220px', aspectRatio: '3/4' }}
+          className="shrink-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-brand rounded-lg text-brand hover:bg-brand-soft transition-colors"
+          style={{
+            width: CARD_WIDTH_MOBILE,
+            maxWidth: CARD_WIDTH_DESKTOP,
+            aspectRatio: '3/4',
+            scrollSnapAlign: 'start',
+          }}
         >
           <ChevronRight className="h-6 w-6" />
           <span className="text-sm font-medium">View All</span>
