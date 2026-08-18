@@ -239,7 +239,7 @@ export const useUI = create<UIState>()(
     }),
     {
       name: 'aurora-ui',
-      partialize: (s) => ({ view: s.view, selectedProductId: s.selectedProductId }),
+      partialize: (s) => ({ view: s.view, selectedProductId: s.selectedProductId, selectedCollectionId: s.selectedCollectionId }),
     }
   )
 )
