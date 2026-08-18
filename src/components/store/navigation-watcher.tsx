@@ -118,15 +118,15 @@ export function NavigationWatcher() {
     const fromUrl = parseUrlToState()
     if (fromUrl) {
       useUI.getState().restoreFromHistory(fromUrl)
-      // Sync history.state to match the URL (replaceState, not pushState,
-      // so we don't add a duplicate entry to the stack).
-      replaceHistory(fromUrl.view, fromUrl.selectedProductId, fromUrl.searchQuery)
       return
     }
 
     // Priority 2: history.state. Present after in-app navigations where
     // ui-store.ts already pushed state.
-    const current = (window.history.state ?? null) as HistoryEntryState | null
+    // Next.js wraps history.state in { state: {...}, __NA: true, ... }
+    // so we need to unwrap it.
+    const rawState = window.history.state ?? null
+    const current = (rawState?.state ?? rawState ?? null) as HistoryEntryState | null
     if (current && current.view) {
       useUI.getState().restoreFromHistory(current)
       return
@@ -142,12 +142,12 @@ export function NavigationWatcher() {
   // corresponding view from history.state.
   useEffect(() => {
     function onPopState(e: PopStateEvent) {
-      const state = (e.state ?? null) as HistoryEntryState | null
+      const rawState = (e.state ?? null) as HistoryEntryState | { state?: HistoryEntryState } | null
+      const state = (rawState && typeof rawState === 'object' && 'state' in rawState ? rawState.state : rawState) as HistoryEntryState | null
       if (state && state.view) {
         useUI.getState().restoreFromHistory(state)
       } else {
-        // No state — fall back to parsing the URL (some browsers fire
-        // popstate with null state on hash-only navigations).
+        // No state — fall back to parsing the URL
         const fromUrl = parseUrlToState()
         if (fromUrl) {
           useUI.getState().restoreFromHistory(fromUrl)
