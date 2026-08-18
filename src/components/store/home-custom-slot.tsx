@@ -32,23 +32,16 @@ export function HomeCustomSlot({ slot }: { slot: string }) {
     let active = true
     fetchHomeSections().then((all) => {
       if (!active) return
-      // Match by slot.
-      //
-      // ⚠️ NOTE: 'storefront' sections are NOT matched to any home slot here.
-      // Storefront-slotted sections (including the video section) are handled
-      // by the Storefront component itself — video sections are injected
-      // INTO the product grid after the 10th product (see storefront.tsx
-      // isVideoSection + ProductGrid insertAfterN).
-      //
-      // Previously, 'storefront' was mapped to 'home-above-products', which
-      // caused the video section to render BOTH above the products AND
-      // (if the Storefront was also rendering it) after 10 products — a
-      // duplicate. Removing the storefront→home-above-products mapping
-      // eliminates the duplicate above-products rendering.
+      // Match by slot name. Also map legacy slots:
+      // - 'storefront' → renders at 'home-above-products' (the default homepage slot)
+      // - 'home-in-grid' → renders at 'home-above-products' (between header and collections)
       const filtered = all
         .filter((s) => {
           const sSlot = s.slot || s.location || 'storefront'
-          return sSlot === slot
+          if (sSlot === slot) return true
+          // Legacy mapping: storefront and home-in-grid both render at home-above-products
+          if (slot === 'home-above-products' && (sSlot === 'storefront' || sSlot === 'home-in-grid')) return true
+          return false
         })
         .sort((a, b) => a.position - b.position)
       setSections(filtered)
