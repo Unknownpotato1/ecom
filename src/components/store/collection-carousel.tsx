@@ -28,7 +28,7 @@ export function CollectionCarousel({ collection }: Props) {
   // Each card takes 1/2.25 of the viewport width on mobile,
   // so exactly 2.25 cards are visible at any time.
   // On desktop, cards are a fixed 220px wide.
-  const CARD_WIDTH_MOBILE = 'calc((100vw - 2rem) / 2.25)' // 2.25 visible with 1rem padding each side
+  const CARD_WIDTH_MOBILE = 'calc((100vw - 1rem - 1.25 * 0.75rem) / 2.25)' // 2.25 visible: viewport - left padding - gaps between 2.25 cards
   const CARD_WIDTH_DESKTOP = '220px'
 
   useEffect(() => {
