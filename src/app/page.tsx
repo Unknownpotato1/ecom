@@ -3,7 +3,6 @@
 import { useEffect, useRef } from 'react'
 import { Header } from '@/components/store/header'
 import { Footer } from '@/components/store/footer'
-import { Storefront } from '@/components/store/storefront'
 import { CartDrawer } from '@/components/store/cart-drawer'
 import { ProductDetail } from '@/components/store/product-detail'
 import { Checkout } from '@/components/store/checkout'
@@ -18,16 +17,6 @@ import { HomeCollections } from '@/components/store/home-collections'
 import { CollectionPage } from '@/components/store/collection-page'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
-import type { HeroConfig } from '@/lib/types'
-
-const DEFAULT_HERO: HeroConfig = {
-  imageUrl: 'https://images.unsplash.com/photo-1513885535751-8b9238bd345a?w=1600&q=80&auto=format&fit=crop',
-  title: 'Gifts that glow',
-  subtitle: 'Thoughtfully curated hampers for every occasion — hand-packed with love from Bengaluru.',
-  ctaText: 'Shop Best Sellers',
-  badge: 'New Spring Collection',
-  align: 'left',
-}
 
 export default function Home() {
   const { view, selectedProductId, selectedCollectionId, searchQuery } = useUI()
@@ -62,6 +51,9 @@ export default function Home() {
       {view === 'home' && <HomeCustomSlot slot="home-above-header" />}
 
       <Header />
+
+      {/* Home page: above banner (between header and content) */}
+      {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}
 
       <div className="flex-1">
         {/* Home page: above product list */}

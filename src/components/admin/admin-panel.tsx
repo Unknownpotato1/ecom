@@ -246,9 +246,6 @@ function AdminPanelInner() {
             <TabsTrigger value="analytics" className="gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" /> Analytics
             </TabsTrigger>
-            <TabsTrigger value="hero" className="gap-1.5">
-              <ImageIcon className="h-3.5 w-3.5" /> Hero & Banner
-            </TabsTrigger>
             <TabsTrigger value="custom" className="gap-1.5">
               <Code2 className="h-3.5 w-3.5" /> Home Sections
             </TabsTrigger>
@@ -277,9 +274,6 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="analytics" className="mt-6">
             <AdminAnalytics />
-          </TabsContent>
-          <TabsContent value="hero" className="mt-6">
-            <AdminHero />
           </TabsContent>
           <TabsContent value="custom" className="mt-6">
             <AdminCustomSections mode="home" />
@@ -387,7 +381,6 @@ function AdminSections() {
               </DialogHeader>
               <div className="space-y-2">
                 {[
-                  { type: 'hero', label: 'Hero Banner', desc: 'Large image with text overlay' },
                   { type: 'products', label: 'Product Grid', desc: 'Best sellers / trending / all' },
                   { type: 'text', label: 'Text Block', desc: 'Custom title + paragraph' },
                 ].map((s) => (
