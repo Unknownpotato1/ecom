@@ -1,40 +1,71 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ChevronRight, ArrowLeft } from 'lucide-react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { ChevronRight, ArrowLeft, Loader2 } from 'lucide-react'
 import { useUI } from '@/lib/ui-store'
 import { ProductCard } from './product-card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Product, Collection } from '@/lib/types'
 
+const BATCH_SIZE = 8
+
 /**
- * Shows all products in a collection in a grid layout.
- * Accessed from the homepage carousel "View All" button.
+ * Shows all products in a collection with infinite scroll.
+ * Loads the collection metadata first (fast), then fetches products
+ * in batches of 8 as the user scrolls down.
  */
 export function CollectionPage({ collectionId }: { collectionId: string }) {
   const { goHome } = useUI()
   const [collection, setCollection] = useState<Collection | null>(null)
   const [products, setProducts] = useState<Product[]>([])
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const allProductsRef = useRef<Product[]>([])
+  const loadedCountRef = useRef(0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      fetch('/api/collections').then((r) => r.json()),
-      fetch('/api/products').then((r) => r.json()),
-    ])
-      .then(([collData, prodData]) => {
+    Promise.resolve().then(() => {
+      setLoading(true)
+      setProducts([])
+      setHasMore(true)
+      loadedCountRef.current = 0
+    })
+
+    // Step 1: Fetch the collection metadata (fast — just IDs)
+    fetch('/api/collections')
+      .then((r) => r.json())
+      .then((collData) => {
         if (!active) return
         const coll = (collData.collections || []).find((c: Collection) => c.id === collectionId)
-        const allProducts = prodData.products || []
         if (coll) {
           setCollection(coll)
-          const collProducts = coll.productIds
-            .map((id: string) => allProducts.find((p: Product) => p.id === id))
-            .filter(Boolean) as Product[]
-          setProducts(collProducts)
+          // Step 2: Fetch ALL products (single fetch) but only SHOW the first batch
+          return fetch('/api/products').then((r) => r.json())
         }
+        setLoading(false)
+        return null
+      })
+      .then((prodData) => {
+        if (!active || !prodData) return
+        const all = prodData.products || []
+        // Order products by the collection's productIds order
+        const ordered: Product[] = []
+        for (const id of collection?.productIds || []) {
+          const found = all.find((p: Product) => p.id === id)
+          if (found) ordered.push(found)
+        }
+        allProductsRef.current = ordered
+        setTotalCount(ordered.length)
+        // Show first batch
+        const firstBatch = ordered.slice(0, BATCH_SIZE)
+        setProducts(firstBatch)
+        loadedCountRef.current = firstBatch.length
+        setHasMore(ordered.length > BATCH_SIZE)
         setLoading(false)
       })
       .catch(() => {
@@ -44,6 +75,37 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
       active = false
     }
   }, [collectionId])
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    // Simulate a slight delay so the spinner is visible
+    setTimeout(() => {
+      const next = allProductsRef.current.slice(
+        loadedCountRef.current,
+        loadedCountRef.current + BATCH_SIZE
+      )
+      setProducts((prev) => [...prev, ...next])
+      loadedCountRef.current += next.length
+      setHasMore(loadedCountRef.current < allProductsRef.current.length)
+      setLoadingMore(false)
+    }, 200)
+  }, [loadingMore, hasMore])
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   if (loading) {
     return (
@@ -71,7 +133,6 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 fade-up">
-      {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
         <button onClick={goHome} className="hover:text-brand">Home</button>
         <ChevronRight className="h-3 w-3" />
@@ -79,18 +140,29 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
       </nav>
 
       <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{collection.name}</h1>
-      <p className="text-sm text-muted-foreground mb-6">{products.length} product{products.length === 1 ? '' : 's'}</p>
+      <p className="text-sm text-muted-foreground mb-6">
+        {totalCount} product{totalCount === 1 ? '' : 's'}
+      </p>
 
       {products.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-pink-200 rounded-xl">
           <p className="text-muted-foreground">No products in this collection yet.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {products.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {products.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+
+          {/* Infinite scroll sentinel */}
+          {hasMore && (
+            <div ref={sentinelRef} className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-brand" />
+            </div>
+          )}
+        </>
       )}
     </div>
   )

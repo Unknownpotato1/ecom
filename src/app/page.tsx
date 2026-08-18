@@ -63,19 +63,16 @@ export default function Home() {
 
       <Header />
 
-      {/* Home page: between header and storefront (above hero/banner) */}
-      {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}
-
       <div className="flex-1">
         {/* Home page: above product list */}
         {view === 'home' && <HomeCustomSlot slot="home-above-products" />}
 
-        {/* Home page: collection carousels (between hero and product grid) */}
-        {view === 'home' && <HomeCollections />}
-
         {view === 'home' && (
           <Storefront heroFallback={DEFAULT_HERO} />
         )}
+
+        {/* Home page: collection carousels (BELOW the product grid) */}
+        {view === 'home' && <HomeCollections />}
         {view === 'product' && selectedProductId && (
           <ProductDetail key={selectedProductId} productId={selectedProductId} />
         )}

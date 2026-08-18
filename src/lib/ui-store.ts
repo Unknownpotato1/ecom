@@ -51,6 +51,8 @@ function buildUrl(view: ViewName, selectedProductId: string | null, searchQuery?
       return '/orders'
     case 'search':
       return `/search?q=${encodeURIComponent(searchQuery ?? '')}`
+    case 'collection':
+      return `/collection/${get().selectedCollectionId ?? ''}`
     case 'home':
     default:
       return '/'

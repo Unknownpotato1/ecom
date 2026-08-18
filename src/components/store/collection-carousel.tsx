@@ -87,8 +87,13 @@ export function CollectionCarousel({ collection }: Props) {
       {/* Horizontal scroll carousel */}
       <div
         ref={scrollRef}
-        className="flex gap-3 px-4 sm:px-6 lg:px-8 overflow-x-auto no-scrollbar snap-x snap-mandatory"
-        style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+        className="flex gap-3 overflow-x-auto no-scrollbar snap-x snap-mandatory"
+        style={{
+          scrollSnapType: 'x mandatory',
+          WebkitOverflowScrolling: 'touch',
+          paddingLeft: '1rem',
+          paddingRight: '1rem',
+        }}
       >
         {products.map((product) => (
           <div

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Trash2, Save, Loader2, X, Search } from 'lucide-react'
+import { Plus, Trash2, Save, Loader2, X, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -141,6 +141,28 @@ export function AdminCollections() {
     })
   }
 
+  const moveCollection = async (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    if (newIndex < 0 || newIndex >= collections.length) return
+    const reordered = [...collections]
+    const [moved] = reordered.splice(index, 1)
+    reordered.splice(newIndex, 0, moved)
+    // Update positions locally
+    const withPositions = reordered.map((c, i) => ({ ...c, position: i }))
+    setCollections(withPositions)
+    // Save positions to server
+    await Promise.all(
+      withPositions.map((c) =>
+        fetch(`/api/collections/${c.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ position: c.position }),
+        })
+      )
+    )
+    toast.success('Collection order updated')
+  }
+
   const filteredProducts = allProducts.filter((p) =>
     p.title.toLowerCase().includes(productSearch.toLowerCase())
   )
@@ -170,8 +192,31 @@ export function AdminCollections() {
           </div>
         ) : (
           <div className="space-y-2">
-            {collections.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-pink-100 bg-card">
+            {collections.map((c, idx) => (
+              <div key={c.id} className="flex items-center gap-2 p-3 rounded-lg border border-pink-100 bg-card">
+                {/* Up/Down buttons */}
+                <div className="flex flex-col gap-0.5 shrink-0">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    disabled={idx === 0}
+                    onClick={() => moveCollection(idx, 'up')}
+                    aria-label="Move up"
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    disabled={idx === collections.length - 1}
+                    onClick={() => moveCollection(idx, 'down')}
+                    aria-label="Move down"
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{c.name}</p>
                   <p className="text-xs text-muted-foreground">
