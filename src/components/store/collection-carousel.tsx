@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
 import { useUI } from '@/lib/ui-store'
 import { ProductCard } from './product-card'
 import type { Product, Collection } from '@/lib/types'
@@ -78,8 +77,7 @@ export function CollectionCarousel({ collection }: Props) {
 
   return (
     <section className="py-6">
-      {/* Title only — "View All" link removed per user request.
-          The View All card at the end of the carousel still exists. */}
+      {/* Title only — "View All" link removed from title row per user request. */}
       <div className="px-4 sm:px-6 lg:px-8 mb-3">
         <h2 className="text-xl font-semibold tracking-tight">{collection.name}</h2>
       </div>
@@ -109,21 +107,19 @@ export function CollectionCarousel({ collection }: Props) {
             <ProductCard product={product} />
           </div>
         ))}
-        {/* View All card at the end */}
-        <button
-          onClick={() => goCollection(collection.id)}
-          className="shrink-0 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-brand rounded-lg text-brand hover:bg-brand-soft transition-colors"
-          style={{
-            width: CARD_WIDTH_MOBILE,
-            maxWidth: CARD_WIDTH_DESKTOP,
-            aspectRatio: '3/4',
-            scrollSnapAlign: 'start',
-          }}
-        >
-          <ChevronRight className="h-6 w-6" />
-          <span className="text-sm font-medium">View All</span>
-        </button>
       </div>
+
+      {/* "View All" button — full-width, below the carousel.
+          Automatically rendered for EVERY collection (existing + future).
+          No slot assignment needed — it's built into the carousel component.
+          Styled to match the store: brand pink, white text, no radius,
+          14px font, 600 weight, full width minus 16px side margin. */}
+      <button
+        onClick={() => goCollection(collection.id)}
+        className="block mx-4 sm:mx-6 lg:mx-8 mt-4 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] py-3 bg-brand text-white text-center text-sm font-semibold hover:opacity-85 transition-opacity"
+      >
+        View All
+      </button>
     </section>
   )
 }
