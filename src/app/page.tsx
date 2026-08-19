@@ -52,9 +52,6 @@ export default function Home() {
 
       <Header />
 
-      {/* Home page: above banner (between header and content) */}
-      {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}
-
       <div className="flex-1">
         {/* Home page: collections + custom sections (interleaved layout) */}
         {view === 'home' && <HomeCollections />}

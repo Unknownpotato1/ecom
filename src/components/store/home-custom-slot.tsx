@@ -32,19 +32,13 @@ export function HomeCustomSlot({ slot }: { slot: string }) {
     let active = true
     fetchHomeSections().then((all) => {
       if (!active) return
-      // Match by slot name. Also map legacy slots:
-      // - 'storefront' → renders at 'home-above-hero'
-      // - 'home-in-grid' → renders at 'home-above-hero'
-      // - 'home-above-products' → renders at 'home-above-hero'
-      // - 'home-below-products' → renders at 'home-after-collections'
+      // Match by slot name exactly. Legacy slots are NOT auto-mapped here —
+      // they must be explicitly re-assigned via the admin panel to the new
+      // before/after collection slots.
       const filtered = all
         .filter((s) => {
           const sSlot = s.slot || s.location || 'storefront'
-          if (sSlot === slot) return true
-          // Legacy mappings
-          if (slot === 'home-above-hero' && (sSlot === 'storefront' || sSlot === 'home-in-grid' || sSlot === 'home-above-products')) return true
-          if (slot === 'home-after-collections' && (sSlot === 'home-below-products' || sSlot === 'home-above-footer')) return true
-          return false
+          return sSlot === slot
         })
         .sort((a, b) => a.position - b.position)
       setSections(filtered)
