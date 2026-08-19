@@ -56,10 +56,7 @@ export default function Home() {
       {view === 'home' && <HomeCustomSlot slot="home-above-hero" />}
 
       <div className="flex-1">
-        {/* Home page: above product list */}
-        {view === 'home' && <HomeCustomSlot slot="home-above-products" />}
-
-        {/* Home page: ONLY collection carousels (product grid removed per user request) */}
+        {/* Home page: collections + custom sections (interleaved layout) */}
         {view === 'home' && <HomeCollections />}
         {view === 'product' && selectedProductId && (
           <ProductDetail key={selectedProductId} productId={selectedProductId} />
@@ -72,13 +69,7 @@ export default function Home() {
         {view === 'search' && <SearchResults initialQuery={searchQuery} />}
         {view === 'orders' && <Orders />}
         {view === 'profile' && <Profile />}
-
-        {/* Home page: below product list */}
-        {view === 'home' && <HomeCustomSlot slot="home-below-products" />}
       </div>
-
-      {/* Home page: above footer */}
-      {view === 'home' && <HomeCustomSlot slot="home-above-footer" />}
 
       <Footer />
       <CartDrawer />

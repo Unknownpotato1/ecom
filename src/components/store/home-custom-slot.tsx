@@ -33,14 +33,17 @@ export function HomeCustomSlot({ slot }: { slot: string }) {
     fetchHomeSections().then((all) => {
       if (!active) return
       // Match by slot name. Also map legacy slots:
-      // - 'storefront' → renders at 'home-above-products' (the default homepage slot)
-      // - 'home-in-grid' → renders at 'home-above-products' (between header and collections)
+      // - 'storefront' → renders at 'home-above-hero'
+      // - 'home-in-grid' → renders at 'home-above-hero'
+      // - 'home-above-products' → renders at 'home-above-hero'
+      // - 'home-below-products' → renders at 'home-after-collections'
       const filtered = all
         .filter((s) => {
           const sSlot = s.slot || s.location || 'storefront'
           if (sSlot === slot) return true
-          // Legacy mapping: storefront and home-in-grid both render at home-above-products
-          if (slot === 'home-above-products' && (sSlot === 'storefront' || sSlot === 'home-in-grid')) return true
+          // Legacy mappings
+          if (slot === 'home-above-hero' && (sSlot === 'storefront' || sSlot === 'home-in-grid' || sSlot === 'home-above-products')) return true
+          if (slot === 'home-after-collections' && (sSlot === 'home-below-products' || sSlot === 'home-above-footer')) return true
           return false
         })
         .sort((a, b) => a.position - b.position)

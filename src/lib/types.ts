@@ -89,11 +89,17 @@ export interface CustomSection {
 
 /** All valid slots for the dropdown — split into Home Page and Product Page */
 export const HOME_SLOTS = [
-  { value: 'home-in-grid', label: '🔢 Inside product grid (custom position)' },
   { value: 'home-above-header', label: '⬆️ Above header' },
-  { value: 'home-above-hero', label: '🖼️ Above banner image' },
-  { value: 'home-above-products', label: '🛍️ Above product list' },
-  { value: 'home-below-products', label: '🔽 Below product list' },
+  { value: 'home-above-hero', label: '🖼️ Above collections' },
+  { value: 'home-before-collection-1', label: '📌 Before Collection 1' },
+  { value: 'home-after-collection-1', label: '📌 After Collection 1' },
+  { value: 'home-before-collection-2', label: '📌 Before Collection 2' },
+  { value: 'home-after-collection-2', label: '📌 After Collection 2' },
+  { value: 'home-before-collection-3', label: '📌 Before Collection 3' },
+  { value: 'home-after-collection-3', label: '📌 After Collection 3' },
+  { value: 'home-before-collection-4', label: '📌 Before Collection 4' },
+  { value: 'home-after-collection-4', label: '📌 After Collection 4' },
+  { value: 'home-after-collections', label: '⬇️ After all collections' },
   { value: 'home-above-footer', label: '⬇️ Above footer' },
 ] as const
 

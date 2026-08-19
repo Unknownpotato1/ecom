@@ -2,13 +2,30 @@
 
 import { useEffect, useState } from 'react'
 import { CollectionCarousel } from './collection-carousel'
+import { HomeCustomSlot } from './home-custom-slot'
 import type { Collection } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 
 /**
- * Fetches all visible collections and renders each as a horizontal
- * carousel on the homepage. Positioned between the hero and the
- * product grid.
+ * Renders the homepage body as an interleaved layout of collections
+ * and custom sections.
+ *
+ * Collections are rendered in position order. Between/before/after each
+ * collection, custom sections with matching slots are rendered:
+ *
+ *   [home-above-hero sections]
+ *   [home-before-collection-1 sections]
+ *   Collection 1
+ *   [home-after-collection-1 sections]
+ *   [home-before-collection-2 sections]
+ *   Collection 2
+ *   [home-after-collection-2 sections]
+ *   ... (up to 4 collections)
+ *   [home-after-collections sections]
+ *   [home-above-footer sections]
+ *
+ * Legacy slots (storefront, home-in-grid, home-above-products) are mapped
+ * to home-above-hero so existing sections still render.
  */
 export function HomeCollections() {
   const [collections, setCollections] = useState<Collection[]>([])
@@ -49,13 +66,44 @@ export function HomeCollections() {
     )
   }
 
-  if (collections.length === 0) return null
+  // Determine which legacy slots map to home-above-hero
+  // (so existing sections with those slots still render)
+  // This is handled inside HomeCustomSlot itself.
 
+  // Build the interleaved layout: custom sections + collections
   return (
     <>
-      {collections.map((c) => (
+      {/* Custom sections: above collections (between header and first collection) */}
+      <HomeCustomSlot slot="home-above-hero" />
+
+      {/* Interleave up to 4 collections with custom sections */}
+      {[0, 1, 2, 3].map((idx) => {
+        const collection = collections[idx]
+        const collectionNum = idx + 1
+        return (
+          <div key={idx}>
+            {/* Custom sections before this collection */}
+            <HomeCustomSlot slot={`home-before-collection-${collectionNum}`} />
+
+            {/* The collection carousel */}
+            {collection && <CollectionCarousel collection={collection} />}
+
+            {/* Custom sections after this collection */}
+            <HomeCustomSlot slot={`home-after-collection-${collectionNum}`} />
+          </div>
+        )
+      })}
+
+      {/* Any collections beyond the 4th (no slots between them) */}
+      {collections.slice(4).map((c) => (
         <CollectionCarousel key={c.id} collection={c} />
       ))}
+
+      {/* Custom sections: after all collections */}
+      <HomeCustomSlot slot="home-after-collections" />
+
+      {/* Custom sections: above footer */}
+      <HomeCustomSlot slot="home-above-footer" />
     </>
   )
 }
