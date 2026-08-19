@@ -15,12 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-const MENU_LINKS = [
-  { label: 'Explore Hampers', view: 'home', filter: 'all' },
-  { label: 'Festive', view: 'home', filter: 'festive' },
-  { label: 'Birthday', view: 'home', filter: 'birthday' },
-  { label: 'Anniversary', view: 'home', filter: 'anniversary' },
-] as const
+const MENU_LINKS = [] as const
 
 export function Header() {
   const itemCount = useCart((s) => s.items.reduce((a, i) => a + i.quantity, 0))
@@ -41,8 +36,8 @@ export function Header() {
         if (d.settings?.logoUrl) setLogoUrl(d.settings.logoUrl)
       })
       .catch(() => {})
-    // Fetch collections for menu
-    fetch('/api/collections')
+    // Fetch ALL collections for menu (including ones hidden from homepage)
+    fetch('/api/collections?all=1')
       .then((r) => r.json())
       .then((d) => {
         if (d.collections) {
@@ -162,39 +157,24 @@ export function Header() {
             </SheetTitle>
           </SheetHeader>
           <div className="py-2">
-            {MENU_LINKS.map((l) => (
-              <button
-                key={l.label}
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  goHome()
-                  if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('aurora:filter', { detail: l.filter }))
-                  }
-                }}
-                className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-brand-soft transition-colors"
-              >
-                <span>{l.label}</span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </button>
-            ))}
-            {/* Collections in menu */}
+            {/* Collections in menu — 2 per row */}
             {collections.length > 0 && (
-              <div className="border-t border-pink-100 mt-2 pt-2">
-                <p className="px-4 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Collections</p>
-                {collections.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => {
-                      setMobileMenuOpen(false)
-                      goCollection(c.id)
-                    }}
-                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-brand-soft transition-colors"
-                  >
-                    <span>{c.name}</span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                ))}
+              <div className="px-3 pt-2">
+                <p className="px-1 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Collections</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {collections.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        setMobileMenuOpen(false)
+                        goCollection(c.id)
+                      }}
+                      className="flex items-center justify-center px-3 py-3 text-sm font-medium rounded-lg bg-brand-soft/40 text-center hover:bg-brand-soft transition-colors truncate"
+                    >
+                      <span className="truncate">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             <div className="border-t border-pink-100 mt-2 pt-2">
