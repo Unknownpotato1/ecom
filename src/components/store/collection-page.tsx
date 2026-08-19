@@ -127,7 +127,7 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
   if (!collection) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-        <p className="text-lg font-medium">Collection not found.</p>
+        <p className="text-lg font-medium">Products are coming soon — stay tuned!</p>
         <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to home
         </Button>

@@ -78,15 +78,10 @@ export function CollectionCarousel({ collection }: Props) {
 
   return (
     <section className="py-6">
-      {/* Title + View All */}
-      <div className="px-4 sm:px-6 lg:px-8 mb-3 flex items-center justify-between">
+      {/* Title only — "View All" link removed per user request.
+          The View All card at the end of the carousel still exists. */}
+      <div className="px-4 sm:px-6 lg:px-8 mb-3">
         <h2 className="text-xl font-semibold tracking-tight">{collection.name}</h2>
-        <button
-          onClick={() => goCollection(collection.id)}
-          className="text-sm font-medium text-brand hover:text-brand-deep flex items-center gap-1"
-        >
-          View All <ChevronRight className="h-4 w-4" />
-        </button>
       </div>
 
       {/* Horizontal scroll carousel */}
