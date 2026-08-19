@@ -154,7 +154,64 @@ export function CustomSectionRenderer({ section, compact, hideTitle }: Props) {
         console.error('Custom section JS error:', e)
       }
     }
+
+    // When the browser tab becomes inactive (sleep, background tab),
+    // requestAnimationFrame is throttled/paused. When the tab becomes
+    // active again, some JS animations (especially custom slideshow
+    // sections) don't resume properly — the RAF loop is stuck.
+    // This listener detects visibility change and re-initializes the
+    // section's JS by re-running the effect.
   }, [html, css, js, section.id])
+
+  // Re-run the shadow DOM setup when the tab becomes visible again
+  // (fixes slideshow sections disappearing after browser idle/sleep)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const host = hostRef.current
+        if (!host) return
+        const shadow = host.shadowRoot
+        if (!shadow) return
+
+        // Re-run the JS by re-executing the setup
+        const { html: curHtml, css: curCss, js: curJs } = parseCode(section)
+        if (!curJs) return
+
+        // Clear and rebuild
+        let rootVars = ''
+        let processedCss = curCss.replace(/:root\s*\{([^}]*)\}/gi, (_, content) => {
+          const varMatches = content.match(/--[\w-]+\s*:\s*[^;]+;?/g)
+          if (varMatches) rootVars += varMatches.join('\n') + '\n'
+          return ''
+        })
+
+        const styleEl = document.createElement('style')
+        styleEl.textContent = `:host { display: block; position: relative; overflow-x: hidden; ${rootVars} }\n${processedCss}`
+
+        const wrapper = document.createElement('div')
+        wrapper.className = 'aurora-custom-section'
+        wrapper.innerHTML = curHtml
+
+        shadow.innerHTML = ''
+        shadow.appendChild(styleEl)
+        shadow.appendChild(wrapper)
+
+        try {
+          const docProxy = createDocumentProxy(shadow, wrapper)
+          const fn = new Function(
+            'root', 'shadow', 'document', 'window',
+            `"use strict";\n${curJs}`
+          )
+          fn(wrapper, shadow, docProxy, window)
+        } catch (e) {
+          console.error('Custom section JS re-init error:', e)
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [section.id, section.code, section.html, section.css, section.js])
 
   if (compact) {
     return (

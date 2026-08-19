@@ -150,7 +150,8 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
 
       {products.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-pink-200 rounded-xl">
-          <p className="text-muted-foreground">No products in this collection yet.</p>
+          <p className="text-lg font-medium">Products are coming soon</p>
+          <p className="text-sm text-muted-foreground mt-1">Stay tuned!</p>
         </div>
       ) : (
         <>
