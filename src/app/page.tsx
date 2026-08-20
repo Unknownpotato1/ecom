@@ -15,6 +15,7 @@ import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { HomeCustomSlot } from '@/components/store/home-custom-slot'
 import { HomeCollections } from '@/components/store/home-collections'
 import { CollectionPage } from '@/components/store/collection-page'
+import { StickyHeader } from '@/components/store/sticky-header'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
 
@@ -47,10 +48,15 @@ export default function Home() {
     <main className="min-h-screen flex flex-col bg-background">
       <NavigationWatcher />
 
-      {/* Home page: above-header custom sections */}
-      {view === 'home' && <HomeCustomSlot slot="home-above-header" />}
-
-      <Header />
+      {/* StickyHeader wraps the countdown (always sticky) + Header (dynamic:
+          hides on scroll down, slides in on scroll up — even 1px).
+          The countdown shows on ALL pages (home, product, collection, etc.)
+          so users always see it. */}
+      <StickyHeader
+        countdownSlot={<HomeCustomSlot slot="home-above-header" />}
+      >
+        <Header />
+      </StickyHeader>
 
       <div className="flex-1">
         {/* Home page: collections + custom sections (interleaved layout) */}

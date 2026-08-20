@@ -43,10 +43,14 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
   const ticking = useRef(false)
 
   // Measure the countdown height so the header's sticky top offset
-  // matches exactly (header sits right below the countdown)
+  // matches exactly (header sits right below the countdown).
+  // Uses both ResizeObserver AND a polling interval because the
+  // countdown content (HomeCustomSlot) loads asynchronously — the
+  // ref is attached immediately but the content inside it appears
+  // later after the API fetch completes. ResizeObserver catches most
+  // changes, but the interval ensures we catch the initial load too.
   useEffect(() => {
     if (!countdownRef.current) {
-      Promise.resolve().then(() => setCountdownHeight(0))
       return
     }
 
@@ -60,12 +64,20 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
     // Measure immediately
     measure()
 
-    // Re-measure on resize (countdown might change height on mobile/desktop)
+    // Poll for the first 3 seconds (covers async content loading)
+    const pollInterval = setInterval(measure, 300)
+    const pollTimeout = setTimeout(() => clearInterval(pollInterval), 3000)
+
+    // Also use ResizeObserver for ongoing changes
     const ro = new ResizeObserver(measure)
     ro.observe(countdownRef.current)
 
-    return () => ro.disconnect()
-  }, [countdownSlot])
+    return () => {
+      clearInterval(pollInterval)
+      clearTimeout(pollTimeout)
+      ro.disconnect()
+    }
+  }, [])
 
   // Scroll detection: show header on scroll up, hide on scroll down.
   // Triggers on ANY scroll up — even 1px — so the header immediately
