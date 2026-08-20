@@ -298,7 +298,7 @@ export function Checkout() {
         key: keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Aurora',
+        name: 'Eviola',
         description: description + ' • ₹' + amount,
         order_id: orderData.orderId,
         prefill: {

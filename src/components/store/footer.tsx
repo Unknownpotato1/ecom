@@ -26,12 +26,12 @@ export function Footer() {
       {/* Main footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
         <div className="col-span-2 lg:col-span-2">
-          {/* Logo only — no "Aurora" text. Uses uploaded logo or default "A" badge. */}
-          <button onClick={goHome} className="inline-flex items-center justify-center mb-3 hover:scale-105 transition-transform" aria-label="Aurora home">
+          {/* Logo only — no "Eviola" text. Uses uploaded logo or default "A" badge. */}
+          <button onClick={goHome} className="inline-flex items-center justify-center mb-3 hover:scale-105 transition-transform" aria-label="Eviola home">
             {logoUrl ? (
               <img
                 src={logoUrl}
-                alt="Aurora"
+                alt="Eviola"
                 className="block"
                 style={{ display: 'block', maxHeight: '48px', maxWidth: '180px', width: 'auto', height: 'auto' }}
               />
@@ -52,7 +52,7 @@ export function Footer() {
               <Phone className="h-4 w-4" /> <span>+91 80 4567 8910</span>
             </div>
             <div className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> <span>contact@aurora.com</span>
+              <Mail className="h-4 w-4" /> <span>contact@eviola.in</span>
             </div>
           </div>
         </div>
@@ -104,7 +104,7 @@ export function Footer() {
       <div className="border-t border-white/15">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="text-xs text-white/70">
-            © {new Date().getFullYear()} Aurora Gifts Pvt. Ltd. All rights reserved.
+            © {new Date().getFullYear()} Eviola Pvt. Ltd. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
             {['VISA', 'MC', 'UPI', 'COD'].map((p) => (

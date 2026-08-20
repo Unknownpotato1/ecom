@@ -54,7 +54,7 @@
   --card-foreground: oklch(0.18 0.02 350);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 350);
-  /* Aurora brand color #f9758d */
+  /* Eviola brand color #f9758d */
   --primary: oklch(0.70 0.156 11.5);
   --primary-foreground: oklch(1 0 0);
   --brand: #f9758d;
@@ -147,7 +147,7 @@
   }
 }
 
-/* Aurora custom utilities */
+/* Eviola custom utilities */
 .bg-brand {
   background-color: #f9758d;
 }

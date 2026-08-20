@@ -213,7 +213,7 @@ function AdminPanelInner() {
             </Button>
             <h1 className="text-base sm:text-lg font-semibold">Admin Panel</h1>
             <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-brand-soft text-brand text-[10px] font-semibold uppercase">
-              Aurora
+              Eviola
             </span>
           </div>
           <div className="flex items-center gap-2">

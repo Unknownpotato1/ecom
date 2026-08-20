@@ -45,8 +45,8 @@ export function Profile() {
     setLoading(true)
     try {
       const useDemo = !email.trim()
-      const demoEmail = email.trim() || 'guest@aurora.gifts'
-      const demoName = name.trim() || (useDemo ? 'Aurora Guest' : email.split('@')[0])
+      const demoEmail = email.trim() || 'guest@eviola.in'
+      const demoName = name.trim() || (useDemo ? 'Eviola Guest' : email.split('@')[0])
 
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -175,7 +175,7 @@ export function Profile() {
                 {(user.name || user.email)[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium">{user.name || 'Aurora Customer'}</p>
+                <p className="font-medium">{user.name || 'Eviola Customer'}</p>
                 <p className="text-sm text-muted-foreground truncate">{user.email}</p>
               </div>
               {isAdmin() && (
@@ -233,7 +233,7 @@ export function Profile() {
           <div className="h-12 w-12 mx-auto rounded-full bg-brand text-white font-bold inline-flex items-center justify-center text-xl mb-2">
             A
           </div>
-          <CardTitle className="text-xl">Welcome to Aurora</CardTitle>
+          <CardTitle className="text-xl">Welcome to Eviola</CardTitle>
           <p className="text-sm text-muted-foreground">Sign in to track orders, save favourites and check out faster.</p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -296,7 +296,7 @@ export function Profile() {
           </button>
 
           <p className="text-[11px] text-muted-foreground text-center mt-4">
-            By continuing you agree to Aurora's Terms of Service and Privacy Policy.
+            By continuing you agree to Eviola's Terms of Service and Privacy Policy.
             {firebaseAvailable ? (
               <span className="block mt-1 text-emerald-600">
                 Firebase Auth connected ({process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}).

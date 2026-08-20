@@ -10,11 +10,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Aurora — Curated Gift Hampers",
+  title: "Eviola — Curated Gift Hampers",
   description:
     "Hand-curated gift hampers for every celebration. Chocolate, festive, spa, coffee and more — packed with love from Bengaluru.",
   keywords: [
-    "Aurora",
+    "Eviola",
     "gift hampers",
     "gift box",
     "festive gifts",
@@ -22,12 +22,12 @@ export const metadata: Metadata = {
     "anniversary gifts",
     "India",
   ],
-  authors: [{ name: "Aurora Gifts" }],
+  authors: [{ name: "Eviola" }],
   openGraph: {
-    title: "Aurora — Curated Gift Hampers",
+    title: "Eviola — Curated Gift Hampers",
     description:
       "Hand-curated gift hampers for every celebration — packed with love.",
-    siteName: "Aurora",
+    siteName: "Eviola",
     type: "website",
   },
 };

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         amount: Math.round(amount * 100), // convert rupees to paise
         currency,
-        receipt: 'aurora_' + Date.now(),
+        receipt: 'eviola_' + Date.now(),
       }),
     })
 

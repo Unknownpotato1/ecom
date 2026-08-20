@@ -117,7 +117,7 @@ export function Storefront({ heroFallback }: Props) {
   if (sections.length === 0 && otherCustomSections.length === 0) {
     return (
       <>
-        <HeroSection config={heroFallback || { imageUrl: '', title: 'Aurora Gifts', subtitle: 'Curated hampers, hand-packed with love.' }} />
+        <HeroSection config={heroFallback || { imageUrl: '', title: 'Eviola', subtitle: 'Curated hampers, hand-packed with love.' }} />
         <ProductGrid
           title="Explore Hampers"
           filter="all"
@@ -174,7 +174,7 @@ export function Storefront({ heroFallback }: Props) {
           // So we check heroSetting first — if it has an imageUrl, use it.
           const sectionConfig: HeroConfig = s.config
             ? JSON.parse(s.config)
-            : heroFallback || { imageUrl: '', title: 'Aurora', subtitle: '' }
+            : heroFallback || { imageUrl: '', title: 'Eviola', subtitle: '' }
           const adminConfig = heroSetting
           const effectiveConfig: HeroConfig = adminConfig?.imageUrl
             ? adminConfig

@@ -79,12 +79,12 @@ export function Header() {
             <button
               onClick={goHome}
               className="inline-flex items-center justify-center hover:scale-105 transition-transform"
-              aria-label="Aurora home"
+              aria-label="Eviola home"
             >
               {logoUrl ? (
                 <img
                   src={logoUrl}
-                  alt="Aurora"
+                  alt="Eviola"
                   className="block"
                   style={{ display: 'block', maxHeight: '40px', maxWidth: '160px', width: 'auto', height: 'auto' }}
                 />
@@ -133,7 +133,7 @@ export function Header() {
           <SheetHeader className="p-4 border-b border-pink-100">
             <SheetTitle className="flex items-center gap-2">
               {logoUrl ? (
-                <img src={logoUrl} alt="Aurora" style={{ display: 'block', maxHeight: '32px', maxWidth: '120px', width: 'auto', height: 'auto' }} />
+                <img src={logoUrl} alt="Eviola" style={{ display: 'block', maxHeight: '32px', maxWidth: '120px', width: 'auto', height: 'auto' }} />
               ) : (
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand text-white font-bold">A</span>
               )}

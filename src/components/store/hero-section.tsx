@@ -28,7 +28,7 @@ export function HeroSection({ config }: { config: HeroConfig }) {
       */}
       <img
         src={config.imageUrl}
-        alt="Aurora hero"
+        alt="Eviola hero"
         className="block w-full h-auto"
         style={{ display: 'block', width: '100%', height: 'auto' }}
       />

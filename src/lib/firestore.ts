@@ -1,4 +1,4 @@
-// Firestore database layer for Aurora.
+// Firestore database layer for Eviola.
 // Uses Firebase Admin SDK (already initialized in firebase-admin.ts).
 // Collections: products, orders, reviews, sections, customSections, users, settings
 
