@@ -67,7 +67,9 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
     return () => ro.disconnect()
   }, [countdownSlot])
 
-  // Scroll detection: show header on scroll up, hide on scroll down
+  // Scroll detection: show header on scroll up, hide on scroll down.
+  // Triggers on ANY scroll up — even 1px — so the header immediately
+  // slides back in the moment the user scrolls up from anywhere.
   useEffect(() => {
     const handleScroll = () => {
       if (ticking.current) return
@@ -77,8 +79,9 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
         const currentY = window.scrollY
         const diff = currentY - lastScrollY.current
 
-        // Only trigger on meaningful scroll (avoid micro-scroll jitter)
-        if (Math.abs(diff) < 5) {
+        // Even 1px of scroll up should show the header.
+        // Only ignore 0px (no actual scroll movement).
+        if (diff === 0) {
           ticking.current = false
           return
         }
@@ -87,7 +90,7 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
           // Scrolling DOWN → hide header
           setHeaderVisible(false)
         } else {
-          // Scrolling UP → show header
+          // Scrolling UP (even 1px) → show header immediately
           setHeaderVisible(true)
         }
 

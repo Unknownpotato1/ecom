@@ -16,7 +16,6 @@ import {
   Eye,
   EyeOff,
   GripVertical,
-  ShoppingBag,
   Phone,
   Mail,
   MapPin,
@@ -24,9 +23,9 @@ import {
   CreditCard,
   User,
   StickyNote,
-  ShoppingCart,
   TrendingUp,
 } from 'lucide-react'
+import { BagIcon } from '@/components/store/bag-icon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -235,13 +234,13 @@ function AdminPanelInner() {
               <Package className="h-3.5 w-3.5" /> Products
             </TabsTrigger>
             <TabsTrigger value="orders" className="gap-1.5">
-              <ShoppingBag className="h-3.5 w-3.5" /> Orders
+              <BagIcon className="h-3.5 w-3.5" /> Orders
             </TabsTrigger>
             <TabsTrigger value="collections" className="gap-1.5">
               <Package className="h-3.5 w-3.5" /> Collections
             </TabsTrigger>
             <TabsTrigger value="abandoned" className="gap-1.5">
-              <ShoppingCart className="h-3.5 w-3.5" /> Abandoned
+              <BagIcon className="h-3.5 w-3.5" /> Abandoned
             </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" /> Analytics
@@ -1077,7 +1076,7 @@ function AdminOrders() {
     return (
       <Card className="border-pink-100">
         <CardContent className="py-12 text-center">
-          <ShoppingBag className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <BagIcon className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
           <p className="text-sm font-medium">No orders yet</p>
           <p className="text-xs text-muted-foreground mt-1">Orders will appear here when customers place them.</p>
         </CardContent>
@@ -1310,7 +1309,7 @@ function AdminAbandonedCheckouts() {
     return (
       <Card className="border-pink-100">
         <CardContent className="py-12 text-center">
-          <ShoppingCart className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <BagIcon className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
           <p className="text-sm font-medium">No abandoned checkouts yet</p>
           <p className="text-xs text-muted-foreground mt-1">
             When customers fill in their details but don't complete checkout, they'll appear here.
@@ -1325,7 +1324,7 @@ function AdminAbandonedCheckouts() {
       {/* Summary banner */}
       <div className="flex items-center justify-between p-4 rounded-xl bg-amber-50 border border-amber-200 mb-2">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="h-4 w-4 text-amber-600" />
+          <BagIcon className="h-4 w-4 text-amber-600" />
           <span className="text-sm font-medium text-amber-800">
             {checkouts.length} abandoned checkout{checkouts.length === 1 ? '' : 's'}
           </span>

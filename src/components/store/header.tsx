@@ -7,6 +7,7 @@ import {
   X,
   ChevronRight,
 } from 'lucide-react'
+import { BagIcon } from './bag-icon'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
 import { useAuth } from '@/lib/auth-store'
@@ -107,10 +108,7 @@ export function Header() {
               <Search className="h-5 w-5" />
             </Button>
 
-            {/* Bag icon — minimal premium design.
-                Custom SVG: a clean, thin-stroke shopping bag with a
-                subtle handle arc. No fill, no clutter — just elegant
-                lines. The count badge is small and understated. */}
+            {/* Bag icon — custom minimal SVG bag */}
             <Button
               variant="ghost"
               size="icon"
@@ -118,22 +116,7 @@ export function Header() {
               aria-label="Open bag"
               onClick={openCart}
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                {/* Bag body — clean trapezoid shape */}
-                <path d="M6 8h12l-1 12H7L6 8z" />
-                {/* Handle — single elegant arc */}
-                <path d="M9 8V6a3 3 0 0 1 6 0v2" />
-              </svg>
+              <BagIcon className="h-5 w-5" />
               {mounted && itemCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] px-1 inline-flex items-center justify-center rounded-full bg-white text-brand text-[9px] font-semibold leading-none">
                   {itemCount}

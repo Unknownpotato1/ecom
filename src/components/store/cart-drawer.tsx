@@ -1,6 +1,7 @@
 'use client'
 
-import { ShoppingBag, X, Minus, Plus, Trash2, ArrowRight } from 'lucide-react'
+import { X, Minus, Plus, Trash2, ArrowRight } from 'lucide-react'
+import { BagIcon } from './bag-icon'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
 import {
@@ -24,7 +25,7 @@ export function CartDrawer() {
       <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
         <SheetHeader className="p-4 border-b border-pink-100 flex-row items-center justify-between space-y-0">
           <SheetTitle className="flex items-center gap-2 text-base font-semibold">
-            <ShoppingBag className="h-5 w-5 text-brand" />
+            <BagIcon className="h-5 w-5 text-brand" />
             Your Bag ({items.length})
           </SheetTitle>
           <Button variant="ghost" size="icon" onClick={closeCart} className="h-8 w-8">
@@ -35,7 +36,7 @@ export function CartDrawer() {
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
             <div className="h-16 w-16 rounded-full bg-brand-soft flex items-center justify-center">
-              <ShoppingBag className="h-8 w-8 text-brand" />
+              <BagIcon className="h-8 w-8 text-brand" />
             </div>
             <div>
               <p className="font-medium">Your bag is empty</p>

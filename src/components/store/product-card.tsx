@@ -1,6 +1,7 @@
 'use client'
 
-import { ShoppingBag, Heart } from 'lucide-react'
+import { Heart } from 'lucide-react'
+import { BagIcon } from './bag-icon'
 import { StarRating } from './star-rating'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
@@ -104,7 +105,7 @@ export function ProductCard({ product }: { product: Product }) {
           >
             {added ? 'Added!' : (
               <>
-                <ShoppingBag className="h-3.5 w-3.5 mr-1" /> Add
+                <BagIcon className="h-3.5 w-3.5 mr-1" /> Add
               </>
             )}
           </Button>
