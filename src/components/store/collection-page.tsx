@@ -36,9 +36,11 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
       loadedCountRef.current = 0
     })
 
-    // Step 1: Fetch the collection metadata (fast — just IDs)
-    // Try to find by ID first, then by slug (for SEO-friendly URLs)
-    fetch('/api/collections')
+    // Step 1: Fetch ALL collections (including those hidden from homepage).
+    // A collection may be set to visible=false (don't show on homepage carousel)
+    // but still accessible via the menu — so we fetch with ?all=1 to include
+    // hidden collections. Then find by ID OR slug.
+    fetch('/api/collections?all=1')
       .then((r) => r.json())
       .then((collData) => {
         if (!active) return

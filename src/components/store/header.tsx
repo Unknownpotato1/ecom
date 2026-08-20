@@ -25,7 +25,7 @@ export function Header() {
   const { user, isAdmin, signOut } = useAuth()
   const [searchVal, setSearchVal] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
-  const [collections, setCollections] = useState<Array<{ id: string; name: string }>>([])
+  const [collections, setCollections] = useState<Array<{ id: string; name: string; slug: string }>>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function Header() {
       .then((r) => r.json())
       .then((d) => {
         if (d.collections) {
-          setCollections(d.collections.map((c: { id: string; name: string }) => ({ id: c.id, name: c.name })))
+          setCollections(d.collections.map((c: { id: string; name: string; slug: string }) => ({ id: c.id, name: c.name, slug: c.slug || '' })))
         }
       })
       .catch(() => {})
