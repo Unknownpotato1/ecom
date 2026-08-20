@@ -115,7 +115,7 @@ export function CollectionCarousel({ collection }: Props) {
           Styled to match the store: brand pink, white text, no radius,
           14px font, 600 weight, full width minus 16px side margin. */}
       <button
-        onClick={() => goCollection(collection.id)}
+        onClick={() => goCollection(collection.id, collection.slug)}
         className="block mx-4 sm:mx-6 lg:mx-8 mt-4 w-[calc(100%-2rem)] sm:w-[calc(100%-3rem)] lg:w-[calc(100%-4rem)] py-3 bg-brand text-white text-center text-sm font-semibold hover:opacity-85 transition-opacity"
       >
         View All

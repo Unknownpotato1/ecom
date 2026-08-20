@@ -37,11 +37,14 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
     })
 
     // Step 1: Fetch the collection metadata (fast — just IDs)
+    // Try to find by ID first, then by slug (for SEO-friendly URLs)
     fetch('/api/collections')
       .then((r) => r.json())
       .then((collData) => {
         if (!active) return
-        const coll = (collData.collections || []).find((c: Collection) => c.id === collectionId)
+        const all = collData.collections || []
+        const coll = all.find((c: Collection) => c.id === collectionId)
+          || all.find((c: Collection) => c.slug === collectionId)
         if (coll) {
           setCollection(coll)
           // Store productIds in a ref so it's available in the next .then()

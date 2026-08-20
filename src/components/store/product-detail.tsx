@@ -52,8 +52,19 @@ export function ProductDetail({ productId }: { productId: string }) {
 
   useEffect(() => {
     let active = true
+    // Try fetching by ID first. If that fails (404), try by slug.
     fetch(`/api/products/${productId}`, { cache: 'no-store' })
-      .then((r) => r.json())
+      .then((r) => {
+        if (r.ok) return r.json()
+        // ID fetch failed — try fetching all products and finding by slug
+        return fetch('/api/products', { cache: 'no-store' })
+          .then((r2) => r2.json())
+          .then((d2) => {
+            const found = (d2.products || []).find((p: Product) => p.slug === productId)
+            if (found) return { product: found }
+            return { product: null }
+          })
+      })
       .then((data) => {
         if (!active) return
         setProduct(data.product)

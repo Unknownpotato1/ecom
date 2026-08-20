@@ -150,7 +150,7 @@ export function Header() {
                       key={c.id}
                       onClick={() => {
                         setMobileMenuOpen(false)
-                        goCollection(c.id)
+                        goCollection(c.id, c.slug)
                       }}
                       className="flex items-center justify-center px-3 py-3 text-sm font-medium rounded-lg bg-brand-soft/40 text-center hover:bg-brand-soft transition-colors truncate"
                     >

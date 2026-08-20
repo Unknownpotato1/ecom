@@ -17,29 +17,41 @@ export type ViewName =
  * whenever the user navigates between views. Storing the view + product
  * id inside `history.state` lets us restore the exact UI state when the
  * user taps the browser/Android back or forward button.
+ *
+ * selectedProductSlug / selectedCollectionSlug: stored alongside the IDs
+ * so that when we restore from history.state, we know the slug to use
+ * in the URL.
  */
 export interface HistoryEntryState {
   view: ViewName
   selectedProductId: string | null
   selectedCollectionId?: string | null
+  selectedProductSlug?: string | null
+  selectedCollectionSlug?: string | null
   searchQuery?: string
 }
 
 /**
- * Build the URL that represents a given view. The URL is cosmetic (the
- * app is still a single-route SPA), but having distinct URLs means:
- *   - Browser back/forward buttons work
- *   - The user can refresh a product view and stay on it
- *   - Deep-link sharing is possible later
+ * Build the URL that represents a given view.
  *
- * NOTE: We deliberately DON'T use `pushState` for `home` (the root) —
- * we `replaceState` instead so we don't pile up duplicate `/` entries
- * in the history stack.
+ * Uses SEO-friendly slugs for product and collection URLs:
+ *   /product/{product-slug}
+ *   /collection/{collection-slug}
+ *
+ * For pages/policies, uses clean URLs:
+ *   /pages/about-us, /pages/contact-us
+ *   /policies/privacy-policy, /policies/terms-and-conditions, etc.
+ *
+ * Old ID-based URLs (/product/{id}, /collection/{id}) still work —
+ * the NavigationWatcher resolves them via API and 301-redirects.
  */
 function buildUrl(view: ViewName, selectedProductId: string | null, searchQuery?: string): string {
+  const state = get()
   switch (view) {
-    case 'product':
-      return `/product/${selectedProductId ?? ''}`
+    case 'product': {
+      const slug = state.selectedProductSlug
+      return `/product/${slug || selectedProductId || ''}`
+    }
     case 'checkout':
       return '/checkout'
     case 'order-success':
@@ -52,8 +64,10 @@ function buildUrl(view: ViewName, selectedProductId: string | null, searchQuery?
       return '/orders'
     case 'search':
       return `/search?q=${encodeURIComponent(searchQuery ?? '')}`
-    case 'collection':
-      return `/collection/${get().selectedCollectionId ?? ''}`
+    case 'collection': {
+      const slug = state.selectedCollectionSlug
+      return `/collection/${slug || state.selectedCollectionId || ''}`
+    }
     case 'home':
     default:
       return '/'
@@ -61,68 +75,71 @@ function buildUrl(view: ViewName, selectedProductId: string | null, searchQuery?
 }
 
 /**
- * Push a new history entry for the given view. Called from every
- * `goXxx` action below so the browser back button works.
- *
- * Guarded for SSR (typeof window check) — Zustand actions can fire
- * during hydration in some edge cases.
+ * Push a new history entry for the given view.
  */
 function pushHistory(view: ViewName, selectedProductId: string | null, searchQuery?: string) {
   if (typeof window === 'undefined') return
   const url = buildUrl(view, selectedProductId, searchQuery)
-  const state: HistoryEntryState = {
+  const state = get()
+  const historyState: HistoryEntryState = {
     view,
     selectedProductId,
+    selectedCollectionId: state.selectedCollectionId,
+    selectedProductSlug: state.selectedProductSlug,
+    selectedCollectionSlug: state.selectedCollectionSlug,
     searchQuery,
-    selectedCollectionId: view === 'collection' ? get().selectedCollectionId : null,
   }
   try {
-    window.history.pushState(state, '', url)
+    window.history.pushState(historyState, '', url)
   } catch {
     // pushState can throw on cross-origin or file:// — fail silently
   }
 }
 
 /**
- * Replace the current history entry (no new stack entry). Used during
- * initial hydration so the first back-tap behaves correctly.
+ * Replace the current history entry (no new stack entry).
  */
 export function replaceHistory(view: ViewName, selectedProductId: string | null, searchQuery?: string) {
   if (typeof window === 'undefined') return
   const url = buildUrl(view, selectedProductId, searchQuery)
-  const state: HistoryEntryState = { view, selectedProductId, searchQuery }
+  const state = get()
+  const historyState: HistoryEntryState = {
+    view,
+    selectedProductId,
+    selectedCollectionId: state.selectedCollectionId,
+    selectedProductSlug: state.selectedProductSlug,
+    selectedCollectionSlug: state.selectedCollectionSlug,
+    searchQuery,
+  }
   try {
-    window.history.replaceState(state, '', url)
+    window.history.replaceState(historyState, '', url)
   } catch {
-    // Same as pushHistory — fail silently.
+    // Same as pushHistory — fail silently
   }
 }
 
 interface UIState {
   view: ViewName
   selectedProductId: string | null
+  selectedProductSlug: string | null
   selectedCollectionId: string | null
+  selectedCollectionSlug: string | null
   searchQuery: string
   searchOpen: boolean
   mobileMenuOpen: boolean
   homeScrollY: number
   // navigation
   goHome: () => void
-  goProduct: (productId: string) => void
+  goProduct: (productId: string, slug?: string) => void
   goCheckout: () => void
   goOrderSuccess: () => void
   goAdmin: () => void
   goProfile: () => void
   goOrders: () => void
   goSearch: (query: string) => void
-  goCollection: (collectionId: string) => void
+  goCollection: (collectionId: string, slug?: string) => void
   setSearchOpen: (open: boolean) => void
   setMobileMenuOpen: (open: boolean) => void
-  /**
-   * Internal — called by the NavigationWatcher when the user taps the
-   * browser back/forward button. Restores view state from history.state
-   * WITHOUT pushing another history entry (otherwise we'd loop).
-   */
   restoreFromHistory: (state: HistoryEntryState) => void
 }
 
@@ -131,33 +148,34 @@ export const useUI = create<UIState>()(
     (set, get) => ({
       view: 'home',
       selectedProductId: null,
+      selectedProductSlug: null,
       selectedCollectionId: null,
+      selectedCollectionSlug: null,
       searchQuery: '',
       searchOpen: false,
       mobileMenuOpen: false,
       homeScrollY: 0,
       goHome: () => {
-        set({ view: 'home', selectedProductId: null })
+        set({ view: 'home', selectedProductId: null, selectedProductSlug: null })
         pushHistory('home', null)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
-      goProduct: (productId) => {
-        // Save the current scroll position BEFORE navigating to the product
-        // page, so when the user taps the browser back button to return to
-        // home, we can restore the exact same scroll position.
-        // We use sessionStorage (not the Zustand store) because the persist
-        // middleware can re-hydrate and reset non-persisted fields like
-        // homeScrollY. sessionStorage is tab-scoped and survives SPA
-        // navigations within the same tab.
+      goProduct: (productId, slug) => {
         if (typeof window !== 'undefined') {
           try {
             sessionStorage.setItem('aurora:home-scroll-y', String(window.scrollY))
-          } catch {
-            // sessionStorage might be blocked — fail silently
-          }
+          } catch {}
         }
-        set({ view: 'product', selectedProductId: productId })
-        pushHistory('product', productId)
+        // Resolve slug if not provided — fetch product data to get slug
+        if (!slug) {
+          // Slug not provided — use the ID in the URL as fallback.
+          // NavigationWatcher will resolve it to a slug on refresh.
+          set({ view: 'product', selectedProductId: productId, selectedProductSlug: null })
+          pushHistory('product', productId)
+        } else {
+          set({ view: 'product', selectedProductId: productId, selectedProductSlug: slug })
+          pushHistory('product', productId)
+        }
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
       goCheckout: () => {
@@ -190,68 +208,54 @@ export const useUI = create<UIState>()(
         pushHistory('search', null, query)
         if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
-      goCollection: (collectionId) => {
-        set({ view: 'collection', selectedCollectionId: collectionId })
-        // Build URL and state directly (don't rely on buildUrl reading state,
-        // since get() might not see the updated value yet in some edge cases)
-        const url = `/collection/${collectionId}`
-        const state: HistoryEntryState = {
+      goCollection: (collectionId, slug) => {
+        if (!slug) {
+          set({ view: 'collection', selectedCollectionId: collectionId, selectedCollectionSlug: null })
+        } else {
+          set({ view: 'collection', selectedCollectionId: collectionId, selectedCollectionSlug: slug })
+        }
+        // Build URL using slug if available, otherwise ID
+        const urlSlug = slug || collectionId
+        const url = `/collection/${urlSlug}`
+        const historyState: HistoryEntryState = {
           view: 'collection',
           selectedProductId: null,
           selectedCollectionId: collectionId,
+          selectedCollectionSlug: slug || null,
         }
         try {
           if (typeof window !== 'undefined') {
-            window.history.pushState(state, '', url)
+            window.history.pushState(historyState, '', url)
             window.scrollTo({ top: 0, behavior: 'auto' })
           }
-        } catch {
-          // pushState can throw — fail silently
-        }
+        } catch {}
       },
       setSearchOpen: (open) => set({ searchOpen: open }),
       setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
       restoreFromHistory: (state) => {
-        // Restore the in-memory view from a history entry WITHOUT
-        // pushing another history entry (otherwise back button loops).
-        // Check if we have a saved scroll position in sessionStorage —
-        // this is more reliable than checking get().view (which may have
-        // been re-hydrated by the persist middleware and already set to
-        // 'home', making the isReturningToHome check unreliable).
         let savedScrollY = 0
         if (typeof window !== 'undefined') {
           try {
             const raw = sessionStorage.getItem('aurora:home-scroll-y')
             savedScrollY = raw ? parseInt(raw, 10) || 0 : 0
-          } catch {
-            // sessionStorage blocked — default to 0
-          }
+          } catch {}
         }
         const isReturningToHome = state.view === 'home' && savedScrollY > 0
         set({
           view: state.view,
           selectedProductId: state.selectedProductId ?? null,
+          selectedProductSlug: state.selectedProductSlug ?? null,
           selectedCollectionId: state.selectedCollectionId ?? null,
+          selectedCollectionSlug: state.selectedCollectionSlug ?? null,
           ...(state.searchQuery !== undefined ? { searchQuery: state.searchQuery } : {}),
         })
         if (typeof window !== 'undefined') {
           if (isReturningToHome) {
-            // Returning to home via back button — restore the saved scroll
-            // position so the user sees the exact same spot they were at.
-            // Use setTimeout to allow React to re-render and un-hide the
-            // Storefront before we scroll.
             setTimeout(() => {
               window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior })
-              // Clear the saved scroll so a subsequent navigation doesn't
-              // jump to a stale position.
-              try {
-                sessionStorage.removeItem('aurora:home-scroll-y')
-              } catch {
-                // ignore
-              }
+              try { sessionStorage.removeItem('aurora:home-scroll-y') } catch {}
             }, 100)
           } else {
-            // Navigating to a non-home view (or no saved scroll) — scroll to top.
             window.scrollTo({ top: 0 })
           }
         }
@@ -259,7 +263,13 @@ export const useUI = create<UIState>()(
     }),
     {
       name: 'aurora-ui',
-      partialize: (s) => ({ view: s.view, selectedProductId: s.selectedProductId, selectedCollectionId: s.selectedCollectionId }),
+      partialize: (s) => ({
+        view: s.view,
+        selectedProductId: s.selectedProductId,
+        selectedCollectionId: s.selectedCollectionId,
+        selectedProductSlug: s.selectedProductSlug,
+        selectedCollectionSlug: s.selectedCollectionSlug,
+      }),
     }
   )
 )
