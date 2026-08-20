@@ -166,17 +166,21 @@ export const useUI = create<UIState>()(
             sessionStorage.setItem('aurora:home-scroll-y', String(window.scrollY))
           } catch {}
         }
-        // Resolve slug if not provided — fetch product data to get slug
-        if (!slug) {
-          // Slug not provided — use the ID in the URL as fallback.
-          // NavigationWatcher will resolve it to a slug on refresh.
-          set({ view: 'product', selectedProductId: productId, selectedProductSlug: null })
-          pushHistory('product', productId)
-        } else {
-          set({ view: 'product', selectedProductId: productId, selectedProductSlug: slug })
-          pushHistory('product', productId)
+        const urlSlug = slug || productId
+        set({ view: 'product', selectedProductId: productId, selectedProductSlug: slug || null })
+        // Push history directly with the slug URL — don't rely on buildUrl
+        // reading from get() because the persist middleware might not have
+        // committed the state yet.
+        if (typeof window !== 'undefined') {
+          const url = `/product/${urlSlug}`
+          const historyState: HistoryEntryState = {
+            view: 'product',
+            selectedProductId: productId,
+            selectedProductSlug: slug || null,
+          }
+          try { window.history.pushState(historyState, '', url) } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
         }
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
       },
       goCheckout: () => {
         set({ view: 'checkout' })
