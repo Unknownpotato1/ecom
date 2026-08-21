@@ -6,11 +6,25 @@ import { useUI } from '@/lib/ui-store'
 
 const CATEGORIES = ['Chocolate', 'Festive', 'Birthday', 'Anniversary', 'Spa', 'Coffee']
 const HELP_LINKS = ['Track Order', 'Shipping Policy', 'Returns & Refunds', 'FAQs', 'Contact Us']
-const COMPANY_LINKS = ['Our Story', 'Bulk & Corporate Gifting', 'Careers', 'Privacy Policy', 'Terms of Service']
+const COMPANY_LINKS = ['About Us', 'Bulk & Corporate Gifting', 'Careers', 'Privacy Policy', 'Terms of Service']
 
 export function Footer() {
   const { goHome, goSearch } = useUI()
   const [logoUrl, setLogoUrl] = useState('')
+
+  const handleCompanyLink = (link: string) => {
+    if (link === 'About Us') {
+      // Navigate to the About Us page
+      if (typeof window !== 'undefined') {
+        const state = { view: 'about', selectedProductId: null }
+        window.history.pushState(state, '', '/pages/about-us')
+        // Force a page reload so the SPA picks up the new route
+        window.location.href = '/pages/about-us'
+      }
+    } else {
+      goHome()
+    }
+  }
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
@@ -91,7 +105,7 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-white/80">
             {COMPANY_LINKS.map((l) => (
               <li key={l}>
-                <button className="hover:text-white transition-colors" onClick={() => goHome()}>
+                <button className="hover:text-white transition-colors" onClick={() => handleCompanyLink(l)}>
                   {l}
                 </button>
               </li>

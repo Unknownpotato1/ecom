@@ -11,6 +11,7 @@ export type ViewName =
   | 'orders'
   | 'search'
   | 'collection'
+  | 'about'
 
 /**
  * Shape of the history entry we push into the browser's session stack
@@ -68,6 +69,8 @@ function buildUrl(view: ViewName, selectedProductId: string | null, searchQuery?
       const slug = state.selectedCollectionSlug
       return `/collection/${slug || state.selectedCollectionId || ''}`
     }
+    case 'about':
+      return '/pages/about-us'
     case 'home':
     default:
       return '/'

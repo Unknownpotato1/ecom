@@ -51,11 +51,13 @@ function parseUrlToState(): HistoryEntryState | null {
     }
   }
 
-  // /pages/about-us, /pages/contact-us
-  if (path === '/pages/about-us' || path === '/pages/contact-us') {
-    // These render as static content pages — for now, route to home
-    // since we don't have dedicated page components yet.
-    // TODO: Add About/Contact page components
+  // /pages/about-us
+  if (path === '/pages/about-us') {
+    return { view: 'about', selectedProductId: null }
+  }
+
+  // /pages/contact-us — route to home for now (no contact page yet)
+  if (path === '/pages/contact-us') {
     return { view: 'home', selectedProductId: null }
   }
 

@@ -15,6 +15,7 @@ import { NavigationWatcher } from '@/components/store/navigation-watcher'
 import { HomeCustomSlot } from '@/components/store/home-custom-slot'
 import { HomeCollections } from '@/components/store/home-collections'
 import { CollectionPage } from '@/components/store/collection-page'
+import { AboutPage } from '@/components/store/about-page'
 import { StickyHeader } from '@/components/store/sticky-header'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
@@ -71,6 +72,7 @@ export default function Home() {
         {view === 'order-success' && <OrderSuccess />}
         {view === 'search' && <SearchResults initialQuery={searchQuery} />}
         {view === 'orders' && <Orders />}
+        {view === 'about' && <AboutPage />}
         {view === 'profile' && <Profile />}
       </div>
 
