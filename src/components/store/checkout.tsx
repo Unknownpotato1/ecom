@@ -677,31 +677,22 @@ export function Checkout() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-price">{formatPrice(sub)}</span>
               </div>
-              {hasFlatTotalPromo ? (
-                <div className="flex justify-between text-emerald-600 font-semibold">
-                  <span>FS99 special price</span>
-                  <span>{formatPrice(total)}</span>
+              {promoDiscount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Promo discount</span>
+                  <span>− {formatPrice(promoDiscount)}</span>
                 </div>
-              ) : (
-                <>
-                  {promoDiscount > 0 && (
-                    <div className="flex justify-between text-emerald-600">
-                      <span>Promo discount</span>
-                      <span>− {formatPrice(promoDiscount)}</span>
-                    </div>
-                  )}
-                  {prepaidExtraDiscount > 0 && (
-                    <div className="flex justify-between text-emerald-600">
-                      <span>Prepaid 10% off</span>
-                      <span>− {formatPrice(prepaidExtraDiscount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span>{shipping === 0 ? <span className="text-emerald-600 font-medium">FREE</span> : formatPrice(shipping)}</span>
-                  </div>
-                </>
               )}
+              {prepaidExtraDiscount > 0 && (
+                <div className="flex justify-between text-emerald-600">
+                  <span>Prepaid 10% off</span>
+                  <span>− {formatPrice(prepaidExtraDiscount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Shipping</span>
+                <span>{shipping === 0 ? <span className="text-emerald-600 font-medium">FREE</span> : formatPrice(shipping)}</span>
+              </div>
             </div>
             <Separator className="my-3" />
             <div className="flex justify-between text-base font-semibold">

@@ -30,14 +30,24 @@ interface CartState {
 export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
+      // Defensive: ensure items is ALWAYS an array, even if a corrupted
+      // localStorage payload (from an older app version, manual edit, or
+      // a partial write) hydrates `items` as null/undefined/object.
+      // Without this guard, `subtotal()` and `itemCount()` would call
+      // `.reduce` on a non-array and throw — crashing the render of any
+      // component that reads the cart (notably <Checkout />), which
+      // surfaces as Next.js's "Application error: a client-side
+      // exception has occurred" page.
       items: [],
       isOpen: false,
       addItem: (item, quantity = 1) => {
         const items = get().items
-        const existing = items.find((i) => i.productId === item.productId)
+        // Guard against a corrupted persisted state where items isn't an array
+        const safeItems = Array.isArray(items) ? items : []
+        const existing = safeItems.find((i) => i.productId === item.productId)
         if (existing) {
           set({
-            items: items.map((i) =>
+            items: safeItems.map((i) =>
               i.productId === item.productId
                 ? { ...i, quantity: Math.min(i.quantity + quantity, item.maxStock ?? 99) }
                 : i
@@ -45,7 +55,7 @@ export const useCart = create<CartState>()(
             isOpen: true,
           })
         } else {
-          set({ items: [...items, { ...item, quantity }], isOpen: true })
+          set({ items: [...safeItems, { ...item, quantity }], isOpen: true })
         }
         // Fire AddToCart event for Meta Pixel
         trackAddToCart({
@@ -56,10 +66,12 @@ export const useCart = create<CartState>()(
         })
       },
       removeItem: (id) =>
-        set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
+        set((s) => ({
+          items: (Array.isArray(s.items) ? s.items : []).filter((i) => i.id !== id),
+        })),
       updateQuantity: (id, quantity) =>
         set((s) => ({
-          items: s.items.map((i) =>
+          items: (Array.isArray(s.items) ? s.items : []).map((i) =>
             i.id === id
               ? { ...i, quantity: Math.max(1, Math.min(quantity, i.maxStock ?? 99)) }
               : i
@@ -69,10 +81,33 @@ export const useCart = create<CartState>()(
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set((s) => ({ isOpen: !s.isOpen })),
-      itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
-      subtotal: () =>
-        get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+      itemCount: () => {
+        const items = get().items
+        return Array.isArray(items) ? items.reduce((sum, i) => sum + i.quantity, 0) : 0
+      },
+      subtotal: () => {
+        const items = get().items
+        return Array.isArray(items)
+          ? items.reduce((sum, i) => sum + (Number(i.price) || 0) * (Number(i.quantity) || 0), 0)
+          : 0
+      },
     }),
-    { name: 'aurora-cart' }
+    {
+      name: 'aurora-cart',
+      // Only persist the data fields, never the action functions.
+      // This prevents a class of bugs where a stale localStorage
+      // payload (from before action signatures changed) replaces a
+      // function with undefined, breaking the store.
+      partialize: (s) => ({ items: s.items, isOpen: s.isOpen }),
+      // Merge guard: if the persisted `items` isn't an array, drop it
+      // and use the initial empty array. This is the fix for the
+      // "Proceed to checkout" client-side exception.
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as { items?: unknown; isOpen?: unknown }
+        const safeItems = Array.isArray(p.items) ? p.items : []
+        const safeIsOpen = typeof p.isOpen === 'boolean' ? p.isOpen : current.isOpen
+        return { ...current, items: safeItems, isOpen: safeIsOpen }
+      },
+    }
   )
 )

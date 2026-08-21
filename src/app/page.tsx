@@ -17,6 +17,7 @@ import { HomeCollections } from '@/components/store/home-collections'
 import { CollectionPage } from '@/components/store/collection-page'
 import { AboutPage } from '@/components/store/about-page'
 import { StickyHeader } from '@/components/store/sticky-header'
+import { ErrorBoundary } from '@/components/error-boundary'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
 
@@ -39,7 +40,9 @@ export default function Home() {
     return (
       <main className="min-h-screen flex flex-col bg-background">
         <NavigationWatcher />
-        <AdminPanel />
+        <ErrorBoundary>
+          <AdminPanel />
+        </ErrorBoundary>
         <CartDrawer />
       </main>
     )
@@ -63,20 +66,22 @@ export default function Home() {
       </StickyHeader>
 
       <div className="flex-1">
-        {/* Home page: collections + custom sections (interleaved layout) */}
-        {view === 'home' && <HomeCollections />}
-        {view === 'product' && selectedProductId && (
-          <ProductDetail key={selectedProductId} productId={selectedProductId} />
-        )}
-        {view === 'collection' && selectedCollectionId && (
-          <CollectionPage collectionId={selectedCollectionId} />
-        )}
-        {view === 'checkout' && <Checkout />}
-        {view === 'order-success' && <OrderSuccess />}
-        {view === 'search' && <SearchResults initialQuery={searchQuery} />}
-        {view === 'orders' && <Orders />}
-        {view === 'about' && <AboutPage />}
-        {view === 'profile' && <Profile />}
+        <ErrorBoundary>
+          {/* Home page: collections + custom sections (interleaved layout) */}
+          {view === 'home' && <HomeCollections />}
+          {view === 'product' && selectedProductId && (
+            <ProductDetail key={selectedProductId} productId={selectedProductId} />
+          )}
+          {view === 'collection' && selectedCollectionId && (
+            <CollectionPage collectionId={selectedCollectionId} />
+          )}
+          {view === 'checkout' && <Checkout />}
+          {view === 'order-success' && <OrderSuccess />}
+          {view === 'search' && <SearchResults initialQuery={searchQuery} />}
+          {view === 'orders' && <Orders />}
+          {view === 'about' && <AboutPage />}
+          {view === 'profile' && <Profile />}
+        </ErrorBoundary>
       </div>
 
       <Footer />

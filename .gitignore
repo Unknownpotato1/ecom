@@ -66,3 +66,9 @@ server.log
 Caddyfile
 .z-ai-config
 
+
+# Local debug files
+_home.html
+/tool-results/
+/dev.log
+/start.log
