@@ -12,6 +12,7 @@ export type ViewName =
   | 'search'
   | 'collection'
   | 'about'
+  | 'page'
 
 /**
  * Shape of the history entry we push into the browser's session stack
@@ -29,6 +30,7 @@ export interface HistoryEntryState {
   selectedCollectionId?: string | null
   selectedProductSlug?: string | null
   selectedCollectionSlug?: string | null
+  selectedPageSlug?: string | null
   searchQuery?: string
 }
 
@@ -127,6 +129,7 @@ interface UIState {
   selectedProductSlug: string | null
   selectedCollectionId: string | null
   selectedCollectionSlug: string | null
+  selectedPageSlug: string | null
   searchQuery: string
   searchOpen: boolean
   mobileMenuOpen: boolean
@@ -141,6 +144,7 @@ interface UIState {
   goOrders: () => void
   goSearch: (query: string) => void
   goCollection: (collectionId: string, slug?: string) => void
+  goPage: (slug: string) => void
   setSearchOpen: (open: boolean) => void
   setMobileMenuOpen: (open: boolean) => void
   restoreFromHistory: (state: HistoryEntryState) => void
@@ -154,6 +158,7 @@ export const useUI = create<UIState>()(
       selectedProductSlug: null,
       selectedCollectionId: null,
       selectedCollectionSlug: null,
+      selectedPageSlug: null,
       searchQuery: '',
       searchOpen: false,
       mobileMenuOpen: false,
@@ -260,6 +265,19 @@ export const useUI = create<UIState>()(
           }
         } catch {}
       },
+      goPage: (slug) => {
+        set({ view: 'page', selectedPageSlug: slug })
+        if (typeof window !== 'undefined') {
+          const url = `/${slug}`
+          const historyState: HistoryEntryState = {
+            view: 'page',
+            selectedProductId: null,
+            selectedPageSlug: slug,
+          }
+          try { window.history.pushState(historyState, '', url) } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      },
       setSearchOpen: (open) => set({ searchOpen: open }),
       setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
       restoreFromHistory: (state) => {
@@ -277,6 +295,7 @@ export const useUI = create<UIState>()(
           selectedProductSlug: state.selectedProductSlug ?? null,
           selectedCollectionId: state.selectedCollectionId ?? null,
           selectedCollectionSlug: state.selectedCollectionSlug ?? null,
+          selectedPageSlug: state.selectedPageSlug ?? null,
           ...(state.searchQuery !== undefined ? { searchQuery: state.searchQuery } : {}),
         })
         if (typeof window !== 'undefined') {
@@ -299,6 +318,7 @@ export const useUI = create<UIState>()(
         selectedCollectionId: s.selectedCollectionId,
         selectedProductSlug: s.selectedProductSlug,
         selectedCollectionSlug: s.selectedCollectionSlug,
+        selectedPageSlug: s.selectedPageSlug,
       }),
     }
   )

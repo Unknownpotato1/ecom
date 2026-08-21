@@ -63,6 +63,7 @@ import { useUI } from '@/lib/ui-store'
 import { useAuth, ADMIN_EMAIL } from '@/lib/auth-store'
 import { AdminProducts } from './admin-products'
 import { AdminCollections } from './admin-collections'
+import { AdminPages } from './admin-pages'
 import { CustomSectionPreview } from '@/components/store/custom-section-renderer'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -240,6 +241,9 @@ function AdminPanelInner() {
             <TabsTrigger value="collections" className="gap-1.5">
               <Package className="h-3.5 w-3.5" /> Collections
             </TabsTrigger>
+            <TabsTrigger value="pages" className="gap-1.5">
+              <Code2 className="h-3.5 w-3.5" /> Pages
+            </TabsTrigger>
             <TabsTrigger value="abandoned" className="gap-1.5">
               <BagIcon className="h-3.5 w-3.5" /> Abandoned
             </TabsTrigger>
@@ -271,6 +275,9 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="collections" className="mt-6">
             <AdminCollections />
+          </TabsContent>
+          <TabsContent value="pages" className="mt-6">
+            <AdminPages />
           </TabsContent>
           <TabsContent value="abandoned" className="mt-6">
             <AdminAbandonedCheckouts />

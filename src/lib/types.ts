@@ -129,6 +129,74 @@ export interface Collection {
   updatedAt: string
 }
 
+/**
+ * A custom page created by the admin (like a static landing page).
+ *
+ * Stored as a single `code` string — same pattern as CustomSection:
+ * HTML + inline <style> + inline <script>. Rendered in an isolated
+ * shadow DOM by PublicPage.
+ *
+ * URL pattern: https://eviola.in/{slug}
+ * Examples:
+ *   /about-us
+ *   /valentines-day-sale
+ *   /corporate-gifting
+ *
+ * Reserved slugs (cannot be used for a page — they're used by other features):
+ *   checkout, order-success, admin, profile, orders, search,
+ *   product, collection, pages, policies, api, _next
+ */
+export interface Page {
+  id: string
+  /** Display title (shown in admin + browser tab title) */
+  title: string
+  /** URL slug — lowercase letters, digits, hyphens only */
+  slug: string
+  /** Single code string: HTML + inline <style> + inline <script> */
+  code: string
+  /** If false, the page exists in admin but returns 404 on the storefront */
+  published: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+/** Slugs reserved by the app — pages cannot use these. */
+export const RESERVED_PAGE_SLUGS = [
+  'checkout',
+  'order-success',
+  'admin',
+  'profile',
+  'orders',
+  'search',
+  'product',
+  'collection',
+  'pages',
+  'policies',
+  'api',
+  '_next',
+  'about-us',
+  'contact-us',
+  'privacy-policy',
+  'terms-and-conditions',
+  'shipping-policy',
+  'refund-policy',
+  'faq',
+] as const
+
+/**
+ * Convert a title into a URL-safe slug:
+ *   "Valentine's Day Sale!" → "valentines-day-sale"
+ *   "About Us" → "about-us"
+ */
+export function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 export interface Order {
   id: string
   orderNumber: string

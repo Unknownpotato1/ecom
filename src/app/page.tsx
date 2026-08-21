@@ -17,12 +17,13 @@ import { HomeCollections } from '@/components/store/home-collections'
 import { CollectionPage } from '@/components/store/collection-page'
 import { AboutPage } from '@/components/store/about-page'
 import { StickyHeader } from '@/components/store/sticky-header'
+import { PublicPage } from '@/components/store/public-page'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
 
 export default function Home() {
-  const { view, selectedProductId, selectedCollectionId, searchQuery } = useUI()
+  const { view, selectedProductId, selectedCollectionId, selectedPageSlug, searchQuery } = useUI()
   const lastTrackedView = useRef<string>('')
 
   // Fire PageView on SPA view changes (deduplicated — only fires when
@@ -80,6 +81,9 @@ export default function Home() {
           {view === 'search' && <SearchResults initialQuery={searchQuery} />}
           {view === 'orders' && <Orders />}
           {view === 'about' && <AboutPage />}
+          {view === 'page' && selectedPageSlug && (
+            <PublicPage key={selectedPageSlug} slug={selectedPageSlug} />
+          )}
           {view === 'profile' && <Profile />}
         </ErrorBoundary>
       </div>

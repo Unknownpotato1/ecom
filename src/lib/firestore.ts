@@ -1111,6 +1111,125 @@ export async function deleteCollection(id: string): Promise<void> {
   await database.collection('collections').doc(id).delete()
 }
 
+// --- Pages (admin-authored landing pages) ---
+
+export interface PageDoc {
+  id: string
+  title: string
+  slug: string
+  code: string
+  published: boolean
+  position: number
+  createdAt: string
+  updatedAt: string
+}
+
+function snapToPage(id: string, data: Record<string, unknown>): PageDoc {
+  return {
+    id,
+    title: (data.title as string) || '',
+    slug: (data.slug as string) || '',
+    code: (data.code as string) || '',
+    published: data.published !== false,
+    position: (data.position as number) ?? 0,
+    createdAt: data.createdAt?.toISOString?.() || (data.createdAt as string) || new Date().toISOString(),
+    updatedAt: data.updatedAt?.toISOString?.() || (data.updatedAt as string) || new Date().toISOString(),
+  }
+}
+
+/**
+ * List all pages. Pass all=true to include unpublished pages (admin use).
+ */
+export async function listPages(all = false): Promise<PageDoc[]> {
+  const database = db()
+  if (!database) return []
+  const snap = await database.collection('pages').orderBy('position', 'asc').get()
+  const pages = snap.docs.map((d) => snapToPage(d.id, d.data()!))
+  if (!all) return pages.filter((p) => p.published)
+  return pages
+}
+
+export async function getPage(id: string): Promise<PageDoc | null> {
+  const database = db()
+  if (!database) return null
+  const snap = await database.collection('pages').doc(id).get()
+  if (!snap.exists) return null
+  return snapToPage(snap.id, snap.data()!)
+}
+
+/**
+ * Look up a page by its slug. Used by the storefront to resolve
+ * /{slug} URLs. Only returns published pages.
+ */
+export async function getPageBySlug(slug: string): Promise<PageDoc | null> {
+  const database = db()
+  if (!database) return null
+  const snap = await database.collection('pages').where('slug', '==', slug).limit(1).get()
+  if (snap.empty) return null
+  const doc = snap.docs[0]
+  const page = snapToPage(doc.id, doc.data()!)
+  return page.published ? page : null
+}
+
+export async function createPage(input: {
+  title: string
+  slug?: string
+  code?: string
+  published?: boolean
+}): Promise<PageDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const snap = await database.collection('pages').orderBy('position', 'desc').limit(1).get()
+  const maxPos = snap.empty ? -1 : (snap.docs[0].data()!.position ?? 0)
+  const now = new Date()
+  // Use admin-supplied slug if present, otherwise derive from title.
+  // slugify is duplicated here (instead of imported from types.ts) to
+  // keep the firestore module dependency-free at runtime.
+  const slug = (input.slug || input.title)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  const docData = {
+    title: input.title,
+    slug,
+    code: input.code || '',
+    published: input.published ?? true,
+    position: maxPos + 1,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const ref = await database.collection('pages').add(docData)
+  return {
+    id: ref.id,
+    ...docData,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  }
+}
+
+export async function updatePage(id: string, updates: Record<string, unknown>): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const updateData: Record<string, unknown> = { ...updates, updatedAt: new Date() }
+  if (updateData.position !== undefined) updateData.position = Number(updateData.position)
+  if (updateData.published !== undefined) updateData.published = !!updateData.published
+  if (typeof updateData.slug === 'string') {
+    updateData.slug = updateData.slug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+  }
+  await database.collection('pages').doc(id).update(updateData)
+}
+
+export async function deletePage(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('pages').doc(id).delete()
+}
+
 // --- Discount Codes ---
 
 export interface DiscountCodeDoc {

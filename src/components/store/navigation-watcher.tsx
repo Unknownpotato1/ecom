@@ -4,6 +4,26 @@ import { useEffect } from 'react'
 import { useUI, replaceHistory, type HistoryEntryState } from '@/lib/ui-store'
 
 /**
+ * Reserved top-level paths that are NOT page slugs. If the user lands
+ * on one of these, the SPA resolves them through the existing switch
+ * statement below — they are never treated as page slugs.
+ */
+const RESERVED_TOP_LEVEL = new Set([
+  'checkout',
+  'order-success',
+  'admin',
+  'profile',
+  'orders',
+  'search',
+  'product',
+  'collection',
+  'pages',
+  'policies',
+  'api',
+  '_next',
+])
+
+/**
  * Parse a URL path + query string into a HistoryEntryState.
  *
  * Supports both slug-based and legacy ID-based URLs:
@@ -18,6 +38,10 @@ import { useUI, replaceHistory, type HistoryEntryState } from '@/lib/ui-store'
  *   /policies/shipping-policy       → shipping policy page
  *   /policies/refund-policy         → refund policy page
  *   /checkout, /orders, /profile, /admin, /search?q=...
+ *
+ * For unknown top-level paths like /{slug}, returns a `page` view state
+ * with selectedPageSlug set. The PublicPage component will then attempt
+ * to fetch the page by slug — and fall back to a 404 if it doesn't exist.
  *
  * For product/collection URLs, we can't tell if the URL segment is a
  * slug or an ID just by looking at it. We store it as selectedProductId/
@@ -90,6 +114,19 @@ function parseUrlToState(): HistoryEntryState | null {
     case '/orders':
       return { view: 'orders', selectedProductId: null }
     default:
+      // Unknown top-level path — check if it's a page slug.
+      // /{slug} where slug isn't reserved → treat as a page.
+      // Multi-segment paths that don't match anything above fall through here too,
+      // but we only consider single-segment paths as page slugs.
+      if (path.startsWith('/') && !path.startsWith('//')) {
+        const segments = path.slice(1).split('/').filter(Boolean)
+        if (segments.length === 1) {
+          const slug = decodeURIComponent(segments[0])
+          if (!RESERVED_TOP_LEVEL.has(slug)) {
+            return { view: 'page', selectedProductId: null, selectedPageSlug: slug }
+          }
+        }
+      }
       return null
   }
 }
