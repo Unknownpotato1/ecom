@@ -59,27 +59,23 @@ export function Checkout() {
   const [pincodeLoading, setPincodeLoading] = useState(false)
   const [promo, setPromo] = useState('')
   /**
-   * Applied promo state.
-   * - discountPct: percentage off the subtotal (AURORA10, FESTIVE15)
-   * - freeShipping: makes shipping ₹0 regardless of order total (FS99).
-   *   Useful for orders under ₹249 where shipping would otherwise be ₹99.
-   *   The "99" in FS99 refers to the ₹99 shipping fee it waives.
+   * Applied discount code state (from /api/discount-codes/validate).
+   * Supports percentage and fixed amount discounts, with server-side
+   * validation for usage limits, expiry, min subtotal, etc.
    */
   const [appliedPromo, setAppliedPromo] = useState<
-    { code: string; discountPct: number; freeShipping?: boolean; flatTotal?: number } | null
+    { code: string; discountAmount: number; type: string; value: number } | null
   >(null)
+  const [promoLoading, setPromoLoading] = useState(false)
 
   const sub = subtotal()
-  const promoDiscount = appliedPromo ? Math.round((sub * appliedPromo.discountPct) / 100) : 0
+  const promoDiscount = appliedPromo?.discountAmount || 0
   const prepaidExtraDiscount = payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0
   const discount = promoDiscount + prepaidExtraDiscount
   const FREE_SHIPPING_THRESHOLD = 249
-  const hasFreeShippingPromo = appliedPromo?.freeShipping === true
-  const hasFlatTotalPromo = appliedPromo?.flatTotal != null
-  const shipping = hasFreeShippingPromo || sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
+  const shipping = sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
   const codPartial = 49
-  // FS99 promo: total becomes ₹2 flat (no matter original price)
-  const total = hasFlatTotalPromo ? (appliedPromo?.flatTotal ?? 2) : Math.max(0, sub - discount) + shipping
+  const total = Math.max(0, sub - discount) + shipping
   const codRemaining = Math.max(0, total - codPartial)
 
   // ── Abandoned checkout tracking ──────────────────────────────────
@@ -160,21 +156,33 @@ export function Checkout() {
     }
   }
 
-  const applyPromo = () => {
-    const code = promo.trim().toUpperCase()
+  const applyPromo = async () => {
+    const code = promo.trim()
     if (!code) return
-    if (code === 'AURORA10') {
-      setAppliedPromo({ code, discountPct: 10 })
-      toast.success('Promo AURORA10 applied — 10% off!')
-    } else if (code === 'FESTIVE15') {
-      setAppliedPromo({ code, discountPct: 15 })
-      toast.success('Promo FESTIVE15 applied — 15% off!')
-    } else if (code === 'FS99') {
-      setAppliedPromo({ code, discountPct: 0, flatTotal: 2 })
-      toast.success('Promo FS99 applied — Total is now just ₹2!')
-    } else {
-      toast.error('Invalid promo code')
+    setPromoLoading(true)
+    try {
+      const res = await fetch('/api/discount-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, subtotal: sub, customerPhone: form.phone }),
+      })
+      const data = await res.json()
+      if (data.valid && data.discountCode) {
+        setAppliedPromo({
+          code: data.discountCode.code,
+          discountAmount: data.discountAmount || 0,
+          type: data.discountCode.type,
+          value: data.discountCode.value,
+        })
+        toast.success(`Discount code ${data.discountCode.code} applied!`)
+      } else {
+        toast.error(data.error || 'Invalid discount code')
+        setAppliedPromo(null)
+      }
+    } catch {
+      toast.error('Failed to validate discount code')
     }
+    setPromoLoading(false)
   }
 
   const placeOrder = async () => {
@@ -375,10 +383,20 @@ export function Checkout() {
         paymentMethod: method,
         notes: form.notes,
         userId: user?.email,
+        discountCode: appliedPromo?.code || null,
+        discountAmount: promoDiscount || 0,
       }),
     })
     if (res.ok) {
       const data = await res.json()
+      // Increment the discount code usage counter
+      if (appliedPromo?.code) {
+        fetch('/api/discount-codes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: appliedPromo.code, incrementUsage: true }),
+        }).catch(() => {})
+      }
       // Fire Purchase event for Meta Pixel (only after order is confirmed)
       trackPurchase({
         total: data.order.total,
@@ -646,11 +664,9 @@ export function Checkout() {
             {appliedPromo && (
               <div className="mb-4 text-xs text-emerald-600 inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" /> {appliedPromo.code} applied
-                {appliedPromo.flatTotal != null
-                  ? ` (Total = ₹${appliedPromo.flatTotal})`
-                  : appliedPromo.freeShipping
-                  ? ' (Free shipping)'
-                  : ` (${appliedPromo.discountPct}% off)`}
+                {appliedPromo.type === 'percentage'
+                  ? ` (${appliedPromo.value}% off)`
+                  : ` (₹${appliedPromo.value} off)`}
               </div>
             )}
 

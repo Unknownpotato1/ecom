@@ -24,6 +24,7 @@ import {
   User,
   StickyNote,
   TrendingUp,
+  Ticket,
 } from 'lucide-react'
 import { BagIcon } from '@/components/store/bag-icon'
 import { Button } from '@/components/ui/button'
@@ -245,6 +246,9 @@ function AdminPanelInner() {
             <TabsTrigger value="analytics" className="gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" /> Analytics
             </TabsTrigger>
+            <TabsTrigger value="discounts" className="gap-1.5">
+              <Ticket className="h-3.5 w-3.5" /> Discounts
+            </TabsTrigger>
             <TabsTrigger value="custom" className="gap-1.5">
               <Code2 className="h-3.5 w-3.5" /> Home Sections
             </TabsTrigger>
@@ -273,6 +277,9 @@ function AdminPanelInner() {
           </TabsContent>
           <TabsContent value="analytics" className="mt-6">
             <AdminAnalytics />
+          </TabsContent>
+          <TabsContent value="discounts" className="mt-6">
+            <AdminDiscountCodes />
           </TabsContent>
           <TabsContent value="custom" className="mt-6">
             <AdminCustomSections mode="home" />
@@ -1569,6 +1576,171 @@ function AdminAnalytics() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── Discount Codes ──────────────────────────────────────────────────
+function AdminDiscountCodes() {
+  const [codes, setCodes] = useState<Array<{
+    id: string; code: string; type: string; value: number
+    minSubtotal: number; usageLimit: number; usageLimitPerCustomer: number
+    usedCount: number; expiresAt: string | null; active: boolean
+    createdAt: string
+  }>>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    code: '', type: 'percentage', value: '', minSubtotal: '',
+    usageLimit: '', usageLimitPerCustomer: '', expiresAt: '', active: true,
+  })
+
+  const load = () => {
+    fetch('/api/discount-codes', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => { setCodes(d.codes || []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }
+  useEffect(() => { load() }, [])
+
+  const formatDate = (iso: string | null) => {
+    if (!iso) return 'Never'
+    try { return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) }
+    catch { return iso }
+  }
+  const formatVal = (c: typeof codes[0]) => c.type === 'percentage' ? `${c.value}%` : `₹${c.value}`
+
+  const save = async () => {
+    if (!form.code || !form.value) { toast.error('Code and value are required'); return }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/discount-codes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: form.code.toUpperCase(), type: form.type, value: Number(form.value),
+          minSubtotal: Number(form.minSubtotal) || 0,
+          usageLimit: Number(form.usageLimit) || 0,
+          usageLimitPerCustomer: Number(form.usageLimitPerCustomer) || 0,
+          expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
+          active: form.active,
+        }),
+      })
+      const d = await res.json()
+      if (res.ok) { toast.success('Discount code created'); setShowForm(false); load() }
+      else { toast.error(d.error || 'Failed to create') }
+    } catch { toast.error('Failed to create') }
+    setSaving(false)
+  }
+
+  const del = async (id: string) => {
+    if (!confirm('Delete this discount code?')) return
+    await fetch(`/api/discount-codes?id=${id}`, { method: 'DELETE' })
+    setCodes((c) => c.filter((x) => x.id !== id))
+    toast.success('Deleted')
+  }
+
+  const toggle = async (id: string, active: boolean) => {
+    await fetch('/api/discount-codes', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, active }),
+    })
+    setCodes((c) => c.map((x) => x.id === id ? { ...x, active } : x))
+  }
+
+  if (loading) return <div className="text-sm text-muted-foreground">Loading discount codes...</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Discount Codes ({codes.length})</h3>
+        <Button size="sm" className="bg-brand text-white" onClick={() => { setForm({ code: '', type: 'percentage', value: '', minSubtotal: '', usageLimit: '', usageLimitPerCustomer: '', expiresAt: '', active: true }); setShowForm(!showForm) }}>
+          <Plus className="h-3.5 w-3.5 mr-1" /> {showForm ? 'Cancel' : 'Create Code'}
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="rounded-xl border border-pink-100 p-4 space-y-3 bg-muted/20">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">Code</Label>
+              <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="SUMMER20" className="mt-1 uppercase" />
+            </div>
+            <div>
+              <Label className="text-xs">Discount Type</Label>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="mt-1 w-full h-10 rounded-md border border-pink-200 bg-white px-3 text-sm">
+                <option value="percentage">Percentage (%)</option>
+                <option value="fixed">Fixed Amount (₹)</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">{form.type === 'percentage' ? 'Percentage Off (%)' : 'Amount Off (₹)'}</Label>
+              <Input type="number" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} placeholder="10" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Min Subtotal (₹) — 0 = none</Label>
+              <Input type="number" value={form.minSubtotal} onChange={(e) => setForm({ ...form, minSubtotal: e.target.value })} placeholder="0" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Total Usage Limit — 0 = unlimited</Label>
+              <Input type="number" value={form.usageLimit} onChange={(e) => setForm({ ...form, usageLimit: e.target.value })} placeholder="0" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Per Customer Limit — 0 = unlimited</Label>
+              <Input type="number" value={form.usageLimitPerCustomer} onChange={(e) => setForm({ ...form, usageLimitPerCustomer: e.target.value })} placeholder="0" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Expiry Date — empty = never</Label>
+              <Input type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2 pt-6">
+              <Switch checked={form.active} onCheckedChange={(v) => setForm({ ...form, active: v })} />
+              <span className="text-sm">Active</span>
+            </div>
+          </div>
+          <Button className="bg-brand text-white" disabled={saving} onClick={save}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Create
+          </Button>
+        </div>
+      )}
+
+      {codes.length === 0 ? (
+        <Card className="border-pink-100"><CardContent className="py-12 text-center">
+          <Ticket className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+          <p className="text-sm font-medium">No discount codes yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Create codes for percentage or fixed amount discounts.</p>
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-2">
+          {codes.map((c) => (
+            <div key={c.id} className="rounded-xl border border-pink-100 p-4 flex items-center justify-between">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold font-mono">{c.code}</span>
+                  <span className={cn('px-1.5 py-0.5 rounded-full text-[10px] font-semibold', c.active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
+                    {c.active ? 'Active' : 'Inactive'}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-brand-soft text-brand">
+                    {formatVal(c)} off
+                  </span>
+                </div>
+                <div className="text-xs text-muted-foreground flex gap-3 flex-wrap">
+                  <span>Used: {c.usedCount}{c.usageLimit > 0 ? `/${c.usageLimit}` : ''}</span>
+                  {c.usageLimitPerCustomer > 0 && <span>Per customer: {c.usageLimitPerCustomer}</span>}
+                  {c.minSubtotal > 0 && <span>Min: ₹{c.minSubtotal}</span>}
+                  <span>Expires: {formatDate(c.expiresAt)}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={c.active} onCheckedChange={(v) => toggle(c.id, v)} />
+                <Button size="sm" variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => del(c.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

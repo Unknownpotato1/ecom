@@ -1110,3 +1110,171 @@ export async function deleteCollection(id: string): Promise<void> {
   if (!database) throw new Error('Database not available')
   await database.collection('collections').doc(id).delete()
 }
+
+// --- Discount Codes ---
+
+export interface DiscountCodeDoc {
+  id: string
+  code: string
+  /** 'percentage' or 'fixed' */
+  type: 'percentage' | 'fixed'
+  /** Discount value — percentage (e.g. 10 = 10%) or fixed amount in ₹ */
+  value: number
+  /** Minimum subtotal required to use this code (₹). 0 = no minimum */
+  minSubtotal: number
+  /** Max total times this code can be used across all customers. 0 = unlimited */
+  usageLimit: number
+  /** Max times per customer (by phone number). 0 = unlimited */
+  usageLimitPerCustomer: number
+  /** How many times this code has been used */
+  usedCount: number
+  /** ISO date string when code expires. null = never expires */
+  expiresAt: string | null
+  /** Whether the code is active */
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export async function listDiscountCodes(): Promise<DiscountCodeDoc[]> {
+  const database = db()
+  if (!database) return []
+  const snap = await database.collection('discountCodes').orderBy('createdAt', 'desc').get()
+  return snap.docs.map((d) => {
+    const data = d.data()!
+    return {
+      id: d.id,
+      code: data.code || '',
+      type: data.type || 'percentage',
+      value: data.value || 0,
+      minSubtotal: data.minSubtotal || 0,
+      usageLimit: data.usageLimit || 0,
+      usageLimitPerCustomer: data.usageLimitPerCustomer || 0,
+      usedCount: data.usedCount || 0,
+      expiresAt: data.expiresAt ?? null,
+      active: data.active ?? true,
+      createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+    } as DiscountCodeDoc
+  })
+}
+
+export async function createDiscountCode(input: {
+  code: string
+  type: 'percentage' | 'fixed'
+  value: number
+  minSubtotal?: number
+  usageLimit?: number
+  usageLimitPerCustomer?: number
+  expiresAt?: string | null
+  active?: boolean
+}): Promise<DiscountCodeDoc> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  const now = new Date()
+  // Check if code already exists (case-insensitive)
+  const existing = await database.collection('discountCodes')
+    .where('code', '==', input.code.toUpperCase())
+    .limit(1)
+    .get()
+  if (!existing.empty) throw new Error('Discount code already exists')
+  const docData = {
+    code: input.code.toUpperCase(),
+    type: input.type,
+    value: Number(input.value) || 0,
+    minSubtotal: Number(input.minSubtotal) || 0,
+    usageLimit: Number(input.usageLimit) || 0,
+    usageLimitPerCustomer: Number(input.usageLimitPerCustomer) || 0,
+    usedCount: 0,
+    expiresAt: input.expiresAt || null,
+    active: input.active ?? true,
+    createdAt: now,
+    updatedAt: now,
+  }
+  const ref = await database.collection('discountCodes').add(docData)
+  return {
+    id: ref.id,
+    ...docData,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+  } as DiscountCodeDoc
+}
+
+export async function deleteDiscountCode(id: string): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('discountCodes').doc(id).delete()
+}
+
+export async function toggleDiscountCode(id: string, active: boolean): Promise<void> {
+  const database = db()
+  if (!database) throw new Error('Database not available')
+  await database.collection('discountCodes').doc(id).update({ active, updatedAt: new Date() })
+}
+
+export interface DiscountValidationResult {
+  valid: boolean
+  error?: string
+  discountCode?: DiscountCodeDoc
+  discountAmount?: number
+}
+
+export async function validateDiscountCode(code: string, subtotal: number, customerPhone?: string): Promise<DiscountValidationResult> {
+  const database = db()
+  if (!database) return { valid: false, error: 'Database not available' }
+  const upperCode = code.trim().toUpperCase()
+  const snap = await database.collection('discountCodes')
+    .where('code', '==', upperCode)
+    .limit(1)
+    .get()
+  if (snap.empty) return { valid: false, error: 'Invalid discount code' }
+  const doc = snap.docs[0]
+  const data = doc.data()!
+  const dc: DiscountCodeDoc = {
+    id: doc.id,
+    code: data.code || '',
+    type: data.type || 'percentage',
+    value: data.value || 0,
+    minSubtotal: data.minSubtotal || 0,
+    usageLimit: data.usageLimit || 0,
+    usageLimitPerCustomer: data.usageLimitPerCustomer || 0,
+    usedCount: data.usedCount || 0,
+    expiresAt: data.expiresAt ?? null,
+    active: data.active ?? true,
+    createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
+    updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
+  }
+  if (!dc.active) return { valid: false, error: 'This discount code is no longer active' }
+  if (dc.expiresAt && new Date(dc.expiresAt) < new Date()) return { valid: false, error: 'This discount code has expired' }
+  if (dc.usageLimit > 0 && dc.usedCount >= dc.usageLimit) return { valid: false, error: 'This discount code has reached its usage limit' }
+  if (dc.minSubtotal > 0 && subtotal < dc.minSubtotal) return { valid: false, error: `Minimum order subtotal of ₹${dc.minSubtotal} required for this code` }
+  // Check per-customer usage limit
+  if (dc.usageLimitPerCustomer > 0 && customerPhone) {
+    const ordersSnap = await database.collection('orders')
+      .where('customerPhone', '==', customerPhone)
+      .where('discountCode', '==', upperCode)
+      .get()
+    if (ordersSnap.size >= dc.usageLimitPerCustomer) return { valid: false, error: `You've already used this code ${dc.usageLimitPerCustomer} time(s)` }
+  }
+  // Calculate discount amount
+  let discountAmount = 0
+  if (dc.type === 'percentage') {
+    discountAmount = Math.round((subtotal * dc.value) / 100)
+  } else {
+    discountAmount = Math.min(dc.value, subtotal)
+  }
+  return { valid: true, discountCode: dc, discountAmount }
+}
+
+export async function incrementDiscountCodeUsage(code: string): Promise<void> {
+  const database = db()
+  if (!database) return
+  const snap = await database.collection('discountCodes')
+    .where('code', '==', code.toUpperCase())
+    .limit(1)
+    .get()
+  if (snap.empty) return
+  const doc = snap.docs[0]
+  const currentCount = doc.data()!.usedCount || 0
+  await doc.ref.update({ usedCount: currentCount + 1, updatedAt: new Date() })
+}
