@@ -160,8 +160,11 @@ export const useUI = create<UIState>()(
       homeScrollY: 0,
       goHome: () => {
         set({ view: 'home', selectedProductId: null, selectedProductSlug: null })
-        pushHistory('home', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (typeof window !== 'undefined') {
+          const hs: HistoryEntryState = { view: 'home', selectedProductId: null }
+          try { window.history.pushState(hs, '', '/') } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goProduct: (productId, slug) => {
         if (typeof window !== 'undefined') {
@@ -187,33 +190,53 @@ export const useUI = create<UIState>()(
       },
       goCheckout: () => {
         set({ view: 'checkout' })
-        pushHistory('checkout', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        // Push history directly — don't rely on pushHistory/buildUrl reading
+        // from get() because the persist middleware might not have committed.
+        if (typeof window !== 'undefined') {
+          const historyState: HistoryEntryState = { view: 'checkout', selectedProductId: null }
+          try { window.history.pushState(historyState, '', '/checkout') } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goOrderSuccess: () => {
         set({ view: 'order-success' })
-        pushHistory('order-success', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (typeof window !== 'undefined') {
+          const hs: HistoryEntryState = { view: 'order-success', selectedProductId: null }
+          try { window.history.pushState(hs, '', '/order-success') } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goAdmin: () => {
         set({ view: 'admin' })
-        pushHistory('admin', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (typeof window !== 'undefined') {
+          const hs: HistoryEntryState = { view: 'admin', selectedProductId: null }
+          try { window.history.pushState(hs, '', '/admin') } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goProfile: () => {
         set({ view: 'profile' })
-        pushHistory('profile', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (typeof window !== 'undefined') {
+          const hs: HistoryEntryState = { view: 'profile', selectedProductId: null }
+          try { window.history.pushState(hs, '', '/profile') } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goOrders: () => {
         set({ view: 'orders' })
-        pushHistory('orders', null)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (typeof window !== 'undefined') {
+          const hs: HistoryEntryState = { view: 'orders', selectedProductId: null }
+          try { window.history.pushState(hs, '', '/orders') } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goSearch: (query) => {
         set({ view: 'search', searchQuery: query })
-        pushHistory('search', null, query)
-        if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+        if (typeof window !== 'undefined') {
+          const hs: HistoryEntryState = { view: 'search', selectedProductId: null, searchQuery: query }
+          try { window.history.pushState(hs, '', `/search?q=${encodeURIComponent(query)}`) } catch {}
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }
       },
       goCollection: (collectionId, slug) => {
         if (!slug) {
