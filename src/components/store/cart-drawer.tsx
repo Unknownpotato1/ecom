@@ -47,8 +47,8 @@ export function CartDrawer() {
             <Button
               className="bg-brand hover:shadow-lg text-white"
               onClick={() => {
-                closeCart()
                 goHome()
+                closeCart()
               }}
             >
               Start shopping
@@ -126,8 +126,11 @@ export function CartDrawer() {
               <Button
                 className="w-full h-11 bg-brand hover:shadow-lg text-white"
                 onClick={() => {
-                  closeCart()
+                  // Navigate FIRST, then close the cart drawer.
+                  // If we close first, the Sheet's exit animation unmounts
+                  // the button before goCheckout() can execute.
                   goCheckout()
+                  closeCart()
                 }}
               >
                 Proceed to checkout <ArrowRight className="ml-2 h-4 w-4" />
