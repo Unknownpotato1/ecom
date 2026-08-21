@@ -49,12 +49,15 @@ export default function Home() {
     <main className="min-h-screen flex flex-col bg-background">
       <NavigationWatcher />
 
-      {/* StickyHeader wraps the countdown (always sticky) + Header (dynamic:
-          hides on scroll down, slides in on scroll up — even 1px).
-          The countdown shows on ALL pages (home, product, collection, etc.)
-          so users always see it. */}
+      {/* StickyHeader wraps the countdown (always sticky) + Header (dynamic).
+          The countdown only shows on home, product, and collection pages —
+          not on checkout, about, orders, profile, etc. */}
       <StickyHeader
-        countdownSlot={<HomeCustomSlot slot="home-above-header" />}
+        countdownSlot={
+          (view === 'home' || view === 'product' || view === 'collection') ? (
+            <HomeCustomSlot slot="home-above-header" />
+          ) : null
+        }
       >
         <Header />
       </StickyHeader>

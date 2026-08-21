@@ -11,29 +11,29 @@ const COMPANY_LINKS = ['About Us', 'Bulk & Corporate Gifting', 'Careers', 'Priva
 export function Footer() {
   const { goHome, goSearch } = useUI()
   const [logoUrl, setLogoUrl] = useState('')
-
-  const handleCompanyLink = (link: string) => {
-    if (link === 'About Us') {
-      // Navigate to the About Us page
-      if (typeof window !== 'undefined') {
-        const state = { view: 'about', selectedProductId: null }
-        window.history.pushState(state, '', '/pages/about-us')
-        // Force a page reload so the SPA picks up the new route
-        window.location.href = '/pages/about-us'
-      }
-    } else {
-      goHome()
-    }
-  }
+  const [visible, setVisible] = useState(true)
 
   useEffect(() => {
     fetch('/api/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         if (d.settings?.logoUrl) setLogoUrl(d.settings.logoUrl)
+        setVisible(d.settings?.footerVisible !== 'false')
       })
       .catch(() => {})
   }, [])
+
+  if (!visible) return null
+
+  const handleCompanyLink = (link: string) => {
+    if (link === 'About Us') {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/pages/about-us'
+      }
+    } else {
+      goHome()
+    }
+  }
 
   return (
     <footer className="mt-auto bg-brand text-white">

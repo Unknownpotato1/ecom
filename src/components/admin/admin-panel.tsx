@@ -146,9 +146,9 @@ function SortableCustomRow({
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          {/* Title removed — show a short code snippet as the label instead. */}
+          {/* Show section title if set, otherwise show a code snippet */}
           <p className="text-sm font-medium truncate">
-            {(section.code || section.html || '').replace(/<[^>]+>/g, '').trim().slice(0, 40) || 'Empty section'}
+            {section.title || (section.code || section.html || '').replace(/<[^>]+>/g, '').trim().slice(0, 40) || 'Empty section'}
           </p>
           <span className={cn(
             'px-1.5 py-0.5 text-[9px] font-semibold rounded-full uppercase tracking-wide',
@@ -697,7 +697,7 @@ function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        title: '', // no longer used — kept for schema compatibility
+        title: draft.title || '',
         code: draft.code || '',
         slot: draft.slot || draft.location || 'storefront',
         insertAfterProducts: (draft.slot === 'home-in-grid' || draft.slot === 'storefront')
@@ -770,9 +770,19 @@ function AdminCustomSections({ mode }: { mode: 'home' | 'product' }) {
             <DialogTitle>{editing ? 'Edit custom section' : 'New custom section'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {/* Title field removed — custom sections no longer show a
-                title. Existing sections that have a title stored in
-                Firestore will simply not render it (see custom-section-renderer.tsx). */}
+            {/* Section title — admin-only label for identification.
+                This does NOT render on the storefront. It's purely for the
+                admin to recognize what section this is in the list. */}
+            <div>
+              <Label className="text-xs font-medium">Section title (admin only — not shown on store)</Label>
+              <Input
+                value={draft.title || ''}
+                onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                placeholder="e.g. Festive Offer Banner, Video Section, Testimonials"
+                className="mt-1"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">This helps you identify the section in the admin panel. It does NOT appear on your store.</p>
+            </div>
 
             {/* Slot selector — free placement anywhere on product page */}
             <div>
@@ -857,17 +867,19 @@ function AdminSettings() {
   const [shippingFee, setShippingFee] = useState('99')
   const [freeThreshold, setFreeThreshold] = useState('249')
   const [logoUrl, setLogoUrl] = useState('')
+  const [footerVisible, setFooterVisible] = useState(true)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/settings')
+    fetch('/api/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
         setShippingFee(d.settings?.shippingFee || '99')
         setFreeThreshold(d.settings?.freeShippingThreshold || '249')
         setLogoUrl(d.settings?.logoUrl || '')
+        setFooterVisible(d.settings?.footerVisible !== 'false')
         setLoading(false)
       })
   }, [])
@@ -911,6 +923,7 @@ function AdminSettings() {
           { key: 'shippingFee', value: shippingFee },
           { key: 'freeShippingThreshold', value: freeThreshold },
           { key: 'logoUrl', value: logoUrl },
+          { key: 'footerVisible', value: footerVisible ? 'true' : 'false' },
         ],
       }),
     })
@@ -1008,6 +1021,16 @@ function AdminSettings() {
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Save settings
           </Button>
+        </CardContent>
+      </Card>
+      {/* Footer visibility toggle */}
+      <Card className="border-pink-100">
+        <CardHeader>
+          <CardTitle className="text-base">Footer visibility</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">Show or hide the footer section on the storefront.</p>
+          <Switch checked={footerVisible} onCheckedChange={setFooterVisible} />
         </CardContent>
       </Card>
     </div>
