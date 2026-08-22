@@ -803,7 +803,9 @@ export function Checkout() {
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Placing order...
                 </>
               ) : (
-                <>Place Order</>
+                <>
+                  {payment === 'cod' ? 'Place Order - Pay ₹49' : 'Place Order'}
+                </>
               )}
             </Button>
           </div>
@@ -893,7 +895,7 @@ export function Checkout() {
               }}
             >
               <Banknote className="h-4 w-4 mr-2" />
-              Confirm &amp; place order
+              Confirm &amp; Place COD Order
             </Button>
           </div>
         </div>
