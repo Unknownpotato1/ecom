@@ -9,6 +9,7 @@ import {
   Loader2,
   Tag,
   ArrowLeft,
+  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,6 +69,13 @@ export function Checkout() {
   >(null)
   const [promoLoading, setPromoLoading] = useState(false)
 
+  // COD confirmation bottom-sheet state.
+  // When the customer picks COD and taps "Place Order", we intercept the
+  // order placement and show a slide-in card offering them to switch to
+  // prepaid for an extra 10% off. This nudges customers toward prepaid
+  // (lower RTO, lower COD handling cost) WITHOUT removing the COD option.
+  const [showCodConfirm, setShowCodConfirm] = useState(false)
+
   const sub = subtotal()
   const promoDiscount = appliedPromo?.discountAmount || 0
   const prepaidExtraDiscount = payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0
@@ -77,6 +85,11 @@ export function Checkout() {
   const codPartial = 49
   const total = Math.max(0, sub - discount) + shipping
   const codRemaining = Math.max(0, total - codPartial)
+
+  // The extra amount the customer would save by switching from COD to
+  // prepaid (10% of the post-promo subtotal). Used to display a concrete
+  // ₹ saving amount on the COD→prepaid slide-in card.
+  const onlineSaving = Math.round((sub - promoDiscount) * 0.10)
 
   // ── Abandoned checkout tracking ──────────────────────────────────
   // Save the checkout form to the server whenever the customer types
@@ -200,85 +213,132 @@ export function Checkout() {
       return
     }
 
-    // For prepaid orders, process via Razorpay first (full amount)
+    // Prepaid — proceed directly.
     if (payment === 'prepaid') {
-      const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
-      if (!razorpayKeyId) {
-        toast.error('Online payment is not configured. Please try again later.')
-        return
-      }
+      return placePrepaidOrder()
+    }
 
-      setPlacing(true)
-      try {
-        const createRes = await fetch('/api/razorpay/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: total }),
-        })
-        const orderData = await createRes.json()
-        if (!createRes.ok || !orderData.orderId) {
-          toast.error(orderData.error || 'Failed to initiate payment')
-          setPlacing(false)
-          return
-        }
+    // COD — intercept with a slide-in card that nudges the customer
+    // toward prepaid (extra 10% off). They can still confirm COD or
+    // switch to prepaid from the card. The actual COD flow runs only
+    // when they tap "Confirm & place order" on the card.
+    if (payment === 'cod') {
+      setShowCodConfirm(true)
+      return
+    }
+  }
 
-        await loadRazorpayScript()
-
-        const paymentSuccess = await openRazorpayCheckout(razorpayKeyId, orderData, total, 'Full payment')
-
-        if (!paymentSuccess) {
-          setPlacing(false)
-          return
-        }
-
-        await createOrderRecord('prepaid', 'paid')
-      } catch (e) {
-        console.error(e)
-        toast.error('Payment error — please try again')
-        setPlacing(false)
-      }
+  // Prepaid order flow — extracted from placeOrder so it can be
+  // triggered both from the "Place Order" button (when the customer
+  // already has prepaid selected) AND from the COD confirmation card's
+  // "Pay online" button.
+  //
+  // When invoked from the COD card, the outer `payment` state may still
+  // be 'cod', so the outer `total` variable does NOT yet include the
+  // prepaid extra 10% discount (the state update from
+  // setPayment('prepaid') hasn't flushed). We therefore recompute the
+  // prepaid total locally to make sure Razorpay charges the correct
+  // (discounted) amount and the order record stores the correct totals.
+  const placePrepaidOrder = async () => {
+    const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (!razorpayKeyId) {
+      toast.error('Online payment is not configured. Please try again later.')
       return
     }
 
-    // For COD: pay ₹49 partial payment via Razorpay to confirm order
-    if (payment === 'cod') {
-      const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
-      if (!razorpayKeyId) {
-        toast.error('Online payment is not configured. Please try again later.')
+    // Recompute totals with the prepaid extra 10% discount included.
+    const prepaidExtra = Math.round((sub - promoDiscount) * 0.10)
+    const prepaidDiscountTotal = promoDiscount + prepaidExtra
+    const prepaidShipping =
+      sub - prepaidDiscountTotal >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
+    const prepaidTotal = Math.max(0, sub - prepaidDiscountTotal) + prepaidShipping
+
+    setPlacing(true)
+    try {
+      const createRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: prepaidTotal }),
+      })
+      const orderData = await createRes.json()
+      if (!createRes.ok || !orderData.orderId) {
+        toast.error(orderData.error || 'Failed to initiate payment')
+        setPlacing(false)
         return
       }
 
-      setPlacing(true)
-      try {
-        const createRes = await fetch('/api/razorpay/create-order', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: codPartial }),
-        })
-        const orderData = await createRes.json()
-        if (!createRes.ok || !orderData.orderId) {
-          toast.error(orderData.error || 'Failed to initiate payment')
-          setPlacing(false)
-          return
-        }
+      await loadRazorpayScript()
 
-        await loadRazorpayScript()
+      const paymentSuccess = await openRazorpayCheckout(
+        razorpayKeyId,
+        orderData,
+        prepaidTotal,
+        'Full payment'
+      )
 
-        const paymentSuccess = await openRazorpayCheckout(razorpayKeyId, orderData, codPartial, 'COD confirmation')
-
-        if (!paymentSuccess) {
-          setPlacing(false)
-          return
-        }
-
-        // ₹49 paid — create order with COD for the remaining amount
-        await createOrderRecord('cod', 'partial_paid')
-      } catch (e) {
-        console.error(e)
-        toast.error('Payment error — please try again')
+      if (!paymentSuccess) {
         setPlacing(false)
+        return
       }
+
+      await createOrderRecord('prepaid', 'paid', {
+        subtotal: sub - prepaidDiscountTotal,
+        shipping: prepaidShipping,
+        total: prepaidTotal,
+      })
+    } catch (e) {
+      console.error(e)
+      toast.error('Payment error — please try again')
+      setPlacing(false)
+    }
+  }
+
+  // COD order flow — extracted from placeOrder so it can be triggered
+  // from the COD confirmation card's "Confirm & place order" button.
+  // Uses the outer-scope `total` and `codPartial` which are correctly
+  // computed when `payment === 'cod'` (the only state in which this
+  // function is reachable).
+  const placeCodOrder = async () => {
+    const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (!razorpayKeyId) {
+      toast.error('Online payment is not configured. Please try again later.')
       return
+    }
+
+    setPlacing(true)
+    try {
+      const createRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: codPartial }),
+      })
+      const orderData = await createRes.json()
+      if (!createRes.ok || !orderData.orderId) {
+        toast.error(orderData.error || 'Failed to initiate payment')
+        setPlacing(false)
+        return
+      }
+
+      await loadRazorpayScript()
+
+      const paymentSuccess = await openRazorpayCheckout(
+        razorpayKeyId,
+        orderData,
+        codPartial,
+        'COD confirmation'
+      )
+
+      if (!paymentSuccess) {
+        setPlacing(false)
+        return
+      }
+
+      // ₹49 paid — create order with COD for the remaining amount
+      await createOrderRecord('cod', 'partial_paid')
+    } catch (e) {
+      console.error(e)
+      toast.error('Payment error — please try again')
+      setPlacing(false)
     }
   }
 
@@ -354,7 +414,21 @@ export function Checkout() {
     })
   }
 
-  async function createOrderRecord(method: string, paymentStatus: string) {
+  async function createOrderRecord(
+    method: string,
+    paymentStatus: string,
+    overrides?: { subtotal?: number; shipping?: number; total?: number }
+  ) {
+    // When `overrides` is provided, use the supplied totals — this is
+    // used by placePrepaidOrder when triggered from the COD confirmation
+    // card, where the outer-scope `total` doesn't yet reflect the prepaid
+    // extra 10% discount. When `overrides` is omitted (the default path
+    // for both prepaid-when-already-prepaid and COD), the outer-scope
+    // values are correct.
+    const orderSubtotal = overrides?.subtotal ?? sub - discount
+    const orderShipping = overrides?.shipping ?? shipping
+    const orderTotal = overrides?.total ?? total
+
     const res = await fetch('/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -377,9 +451,9 @@ export function Checkout() {
           quantity: i.quantity,
           image: i.image,
         })),
-        subtotal: sub - discount,
-        shipping,
-        total,
+        subtotal: orderSubtotal,
+        shipping: orderShipping,
+        total: orderTotal,
         paymentMethod: method,
         notes: form.notes,
         userId: user?.email,
@@ -734,6 +808,95 @@ export function Checkout() {
             </Button>
           </div>
         </aside>
+      </div>
+
+      {/*
+        COD confirmation bottom sheet.
+        Slides in from the bottom of the screen when a customer picks COD
+        and taps "Place Order". Offers them to switch to prepaid for an
+        extra 10% off (which they can accept or decline and proceed with
+        COD). The card has an X button to close, and two actions:
+          1. "Confirm & place order" — proceeds with the original COD flow.
+          2. "Pay online (save extra 10%)" — switches to prepaid and runs
+             the prepaid flow with the discounted total.
+        Backdrop click also closes the card. Nothing else in the checkout
+        flow is affected.
+      */}
+      <div
+        className={cn(
+          'fixed inset-0 z-50 flex items-end justify-center transition-opacity duration-300',
+          showCodConfirm ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        )}
+        aria-hidden={!showCodConfirm}
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Backdrop — click anywhere to close */}
+        <div
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setShowCodConfirm(false)}
+        />
+        {/* Card — slides up from the bottom on mobile, anchored bottom on desktop */}
+        <div
+          className={cn(
+            'relative w-full max-w-md bg-white rounded-t-3xl p-5 pb-8 shadow-2xl transition-transform duration-300 ease-out',
+            showCodConfirm ? 'translate-y-0' : 'translate-y-full'
+          )}
+        >
+          {/* Small grab handle */}
+          <div className="mx-auto h-1 w-10 rounded-full bg-muted mb-3" />
+          {/* X close button */}
+          <button
+            type="button"
+            onClick={() => setShowCodConfirm(false)}
+            className="absolute top-3 right-3 h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="text-center pt-1">
+            <div className="inline-flex h-12 w-12 rounded-full bg-emerald-50 items-center justify-center mb-3">
+              <Wallet className="h-6 w-6 text-emerald-600" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground">
+              Pay online &amp; save extra 10%
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+              Switch to online payment now to unlock an extra{' '}
+              <span className="font-semibold text-emerald-600">{formatPrice(onlineSaving)}</span>{' '}
+              off on this order. Pay securely via UPI, cards, or wallets.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-2">
+            {/* Recommended: Pay online (brand color, primary) */}
+            <Button
+              className="w-full h-12 bg-brand text-white hover:shadow-lg text-sm font-semibold"
+              onClick={() => {
+                setShowCodConfirm(false)
+                setPayment('prepaid')
+                placePrepaidOrder()
+              }}
+            >
+              <Wallet className="h-4 w-4 mr-2" />
+              Pay online (save extra 10%)
+            </Button>
+
+            {/* Secondary: Confirm COD (outline) */}
+            <Button
+              variant="outline"
+              className="w-full h-12 border-pink-100 text-foreground hover:bg-muted text-sm font-medium"
+              onClick={() => {
+                setShowCodConfirm(false)
+                placeCodOrder()
+              }}
+            >
+              <Banknote className="h-4 w-4 mr-2" />
+              Confirm &amp; place order
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )
