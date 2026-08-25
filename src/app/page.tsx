@@ -19,6 +19,7 @@ import { AboutPage } from '@/components/store/about-page'
 import { StickyHeader } from '@/components/store/sticky-header'
 import { PublicPage } from '@/components/store/public-page'
 import { PromoSlideshow } from '@/components/store/promo-slideshow'
+import { CategorySection } from '@/components/store/category-section'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
@@ -73,6 +74,11 @@ export default function Home() {
               does NOT show on product/checkout/about/etc. pages. Sits
               directly below the header. */}
           {view === 'home' && <PromoSlideshow />}
+
+          {/* Category section (4 collection tiles + buttons). Home view
+              only. Sits directly below the slideshow. Internal id
+              "4collection" for reference. */}
+          {view === 'home' && <CategorySection />}
 
           {/* Home page: collections + custom sections (interleaved layout) */}
           {view === 'home' && <HomeCollections />}

@@ -130,13 +130,14 @@ export function Header() {
       {/* Mobile menu */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0">
+          {/* SheetTitle with plain text "Eviola" — logo removed from the
+              menu per user request. The center header logo still shows
+              the uploaded logo; this is just the menu drawer's title
+              (kept as text for accessibility — Sheet needs a title for
+              aria-labelledby). */}
           <SheetHeader className="p-4 border-b border-pink-100">
-            <SheetTitle className="flex items-center gap-2">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Eviola" style={{ display: 'block', maxHeight: '32px', maxWidth: '120px', width: 'auto', height: 'auto' }} />
-              ) : (
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand text-white font-bold">A</span>
-              )}
+            <SheetTitle className="text-base font-semibold text-foreground">
+              Eviola
             </SheetTitle>
           </SheetHeader>
           <div className="py-2">
