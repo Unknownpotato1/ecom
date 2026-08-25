@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Eviola — Artificial Jewelry Online",
+  title: "Eviola",
   description:
     "Shop hand-curated artificial jewelry — necklaces, rings, earrings, bracelets and more. Crafted with love from Lucknow, India.",
   keywords: [
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Eviola" }],
   openGraph: {
-    title: "Eviola — Artificial Jewelry Online",
+    title: "Eviola",
     description:
       "Shop hand-curated artificial jewelry — necklaces, rings, earrings, bracelets and more. Crafted with love.",
     siteName: "Eviola",
