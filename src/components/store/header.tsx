@@ -24,17 +24,38 @@ export function Header() {
   const { goHome, goAdmin, goOrders, goCollection, searchOpen, setSearchOpen, mobileMenuOpen, setMobileMenuOpen, goSearch } = useUI()
   const { user, isAdmin, signOut } = useAuth()
   const [searchVal, setSearchVal] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
+  // Read logo URL from sessionStorage on INITIAL render (synchronous).
+  // layout.tsx injects a beforeInteractive script that pre-fetches the
+  // logo URL into sessionStorage before React hydrates, so on most page
+  // loads this is already populated — eliminating the flash of the "A"
+  // badge fallback. If sessionStorage is empty (first-ever visit, or
+  // the pre-fetch hasn't resolved yet), we fall back to '' and the
+  // useEffect below fetches it the old way. The useEffect also refreshes
+  // the value in case the admin changed the logo in another tab.
+  const [logoUrl, setLogoUrl] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return sessionStorage.getItem('eviola:logo-url') || ''
+  })
   const [collections, setCollections] = useState<Array<{ id: string; name: string; slug: string }>>([])
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     Promise.resolve().then(() => setMounted(true))
-    // Fetch logo from settings
+    // Fetch logo from settings. This serves two purposes:
+    //   1. Fallback if sessionStorage was empty (first-ever visit or
+    //      pre-fetch race condition).
+    //   2. Refresh in case the admin changed the logo URL in another
+    //      tab — keeps the cached sessionStorage value fresh.
     fetch('/api/settings', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => {
-        if (d.settings?.logoUrl) setLogoUrl(d.settings.logoUrl)
+        if (d.settings?.logoUrl) {
+          const url = d.settings.logoUrl
+          setLogoUrl(url)
+          try {
+            sessionStorage.setItem('eviola:logo-url', url)
+          } catch {}
+        }
       })
       .catch(() => {})
     // Fetch ALL collections for menu (including ones hidden from homepage)
