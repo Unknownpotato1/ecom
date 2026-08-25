@@ -31,6 +31,7 @@ import { StickyActionBar } from './sticky-action-bar'
 import { ProductCustomSlot } from './product-custom-slot'
 import { trackViewContent } from '@/lib/meta-pixel'
 import { UpiDiscountBanner } from './upi-discount-banner'
+import { ProductInfoSections } from './product-info-sections'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -264,6 +265,11 @@ export function ProductDetail({ productId }: { productId: string }) {
             {/* UPI discount banner — "Get it for ₹XXX (10% off)" with UPI logo.
                 Shown directly below the price. */}
             <UpiDiscountBanner price={product.price} />
+
+            {/* Product info sections — Quick Chat + Qty picker, Offers video,
+                and Delivery Info (pincode checker). Sits directly below the
+                "Get it for ₹XX" UPI banner. Internal name: deliveryinfo. */}
+            <ProductInfoSections />
 
             {/* SLOT: product-after-price */}
             <ProductCustomSlot slot="product-after-price" />
