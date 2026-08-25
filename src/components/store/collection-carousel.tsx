@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { useUI } from '@/lib/ui-store'
 import { ProductCard } from './product-card'
 import type { Product, Collection } from '@/lib/types'
@@ -107,6 +108,42 @@ export function CollectionCarousel({ collection }: Props) {
             <ProductCard product={product} />
           </div>
         ))}
+
+        {/*
+          "View All" card — last item in the carousel, after the 5
+          product cards. Same width + snap behavior as a product card
+          so the carousel stays visually consistent. Matches the
+          ProductCard structure (aspect-square top + bottom text row)
+          so heights align across the row. Tapping it navigates to the
+          collection page (same as the full-width button below).
+        */}
+        <button
+          type="button"
+          onClick={() => goCollection(collection.id, collection.slug)}
+          className="shrink-0 flex flex-col overflow-hidden border border-black/15 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer text-left"
+          style={{
+            width: CARD_WIDTH_MOBILE,
+            maxWidth: CARD_WIDTH_DESKTOP,
+            scrollSnapAlign: 'start',
+          }}
+          aria-label={`View all products in ${collection.name}`}
+        >
+          {/* Visual tile — aspect-square to match product image area */}
+          <div className="relative aspect-square overflow-hidden bg-brand flex flex-col items-center justify-center text-white">
+            <span className="text-sm font-semibold tracking-wide">View All</span>
+            <ArrowRight className="h-6 w-6 mt-2" />
+          </div>
+          {/* Bottom row — mirrors the product card's bottom padding
+              so the card heights match across the carousel. */}
+          <div className="flex flex-1 flex-col p-3 sm:p-4">
+            <p className="text-sm font-medium leading-snug text-foreground">
+              View All
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              See all products in {collection.name}
+            </p>
+          </div>
+        </button>
       </div>
 
       {/* "View All" button — full-width, below the carousel.
