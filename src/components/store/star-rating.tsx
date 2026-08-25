@@ -25,9 +25,6 @@ interface StarRatingProps {
  *   - 4.5 → 4 full amber + 1 half amber/gray star
  *   - 4.3 → 4 full + 1 ~30% filled star
  *   - 0.0 → 5 empty gray stars
- *
- * Previously the code used `Math.round(rating)` which turned 4.5 → 5,
- * showing all stars as full. This component fixes that.
  */
 export function StarRating({
   rating,
@@ -54,15 +51,7 @@ export function StarRating({
           />
         ))}
       </div>
-      {/*
-        Overlay layer: 5 amber stars clipped to fillPercent width.
-        - absolute top-0 left-0 → positioned exactly over the base layer
-        - overflow-hidden → clips the amber stars at the fill boundary
-        - width: fillPercent% → e.g. 90% for a 4.5 rating
-        - Each star has shrink-0 so flexbox doesn't compress them to
-          fit the narrower container — they overflow and get clipped
-          instead (which is what we want).
-      */}
+      {/* Overlay layer: 5 amber stars clipped to fillPercent width. */}
       <div
         className="absolute top-0 left-0 flex overflow-hidden"
         style={{ width: `${fillPercent}%`, height: '100%' }}
@@ -74,6 +63,82 @@ export function StarRating({
           />
         ))}
       </div>
+    </div>
+  )
+}
+
+/**
+ * StockStatus — small pulsing-dot indicator, e.g. "In Stock".
+ */
+export function StockStatus() {
+  return (
+    <div className="stock-status">
+      <span className="stock-dot" />
+      <span>In Stock</span>
+
+      <style jsx>{`
+        .stock-status {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 0 10px;
+          margin: 0;
+          font-size: 13px;
+          font-weight: 400;
+          color: #000000;
+        }
+
+        .stock-dot {
+          width: 9px;
+          height: 9px;
+          min-width: 9px;
+          background: #22c55e;
+          border-radius: 50%;
+          position: relative;
+        }
+
+        .stock-dot::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: #22c55e;
+          animation: stockPulse 1.8s infinite;
+        }
+
+        @keyframes stockPulse {
+          0% {
+            transform: scale(1);
+            opacity: 0.7;
+          }
+          70% {
+            transform: scale(2.8);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(2.8);
+            opacity: 0;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+/**
+ * ProductRatingBlock — StarRating with StockStatus displayed directly below it.
+ */
+export function ProductRatingBlock({
+  rating,
+  sizeClass,
+  starClassName,
+  className,
+}: StarRatingProps) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <StarRating rating={rating} sizeClass={sizeClass} starClassName={starClassName} className={className} />
+      <StockStatus />
     </div>
   )
 }
