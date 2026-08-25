@@ -18,6 +18,7 @@ import { CollectionPage } from '@/components/store/collection-page'
 import { AboutPage } from '@/components/store/about-page'
 import { StickyHeader } from '@/components/store/sticky-header'
 import { PublicPage } from '@/components/store/public-page'
+import { PromoSlideshow } from '@/components/store/promo-slideshow'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
@@ -68,6 +69,11 @@ export default function Home() {
 
       <div className="flex-1">
         <ErrorBoundary>
+          {/* Promo slideshow (marquee + image carousel). Home view only —
+              does NOT show on product/checkout/about/etc. pages. Sits
+              directly below the header. */}
+          {view === 'home' && <PromoSlideshow />}
+
           {/* Home page: collections + custom sections (interleaved layout) */}
           {view === 'home' && <HomeCollections />}
           {view === 'product' && selectedProductId && (
