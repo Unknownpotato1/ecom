@@ -110,17 +110,17 @@ export function CollectionCarousel({ collection }: Props) {
         ))}
 
         {/*
-          "View All" card — last item in the carousel, after the 5
-          product cards. Same width + snap behavior as a product card
-          so the carousel stays visually consistent. Matches the
-          ProductCard structure (aspect-square top + bottom text row)
-          so heights align across the row. Tapping it navigates to the
-          collection page (same as the full-width button below).
+          "View All" — minimal inline element as the last carousel item.
+          Just black text + a black arrow, no card, no border, no fill.
+          Same width + snap behavior as a product card so it lands on
+          the same snap points. Vertically centered so it sits next to
+          the product cards cleanly. Tapping navigates to the collection
+          page (same as the full-width button below).
         */}
         <button
           type="button"
           onClick={() => goCollection(collection.id, collection.slug)}
-          className="shrink-0 flex flex-col overflow-hidden border border-black/15 bg-card transition-all hover:shadow-lg hover:border-brand cursor-pointer text-left"
+          className="shrink-0 flex items-center justify-center gap-1.5 text-foreground hover:text-brand transition-colors cursor-pointer"
           style={{
             width: CARD_WIDTH_MOBILE,
             maxWidth: CARD_WIDTH_DESKTOP,
@@ -128,21 +128,8 @@ export function CollectionCarousel({ collection }: Props) {
           }}
           aria-label={`View all products in ${collection.name}`}
         >
-          {/* Visual tile — aspect-square to match product image area */}
-          <div className="relative aspect-square overflow-hidden bg-brand flex flex-col items-center justify-center text-white">
-            <span className="text-sm font-semibold tracking-wide">View All</span>
-            <ArrowRight className="h-6 w-6 mt-2" />
-          </div>
-          {/* Bottom row — mirrors the product card's bottom padding
-              so the card heights match across the carousel. */}
-          <div className="flex flex-1 flex-col p-3 sm:p-4">
-            <p className="text-sm font-medium leading-snug text-foreground">
-              View All
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              See all products in {collection.name}
-            </p>
-          </div>
+          <span className="text-sm font-medium">View All</span>
+          <ArrowRight className="h-4 w-4" />
         </button>
       </div>
 
