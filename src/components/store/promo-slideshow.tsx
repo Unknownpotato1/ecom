@@ -62,6 +62,18 @@ export function PromoSlideshow() {
 
   const nextSlide = () => {
     trackIndexRef.current += 1
+    // Defensive clamp: if trackIndexRef went past the last clone (can
+    // happen if transitionend was missed — e.g. the tab was backgrounded
+    // mid-transition and the browser paused the CSS animation), snap
+    // back to slide 1 without transition instead of translating the
+    // track off-screen. Without this, the track translates to -100%
+    // and the entire slideshow vanishes.
+    if (trackIndexRef.current >= TRACK_LENGTH) {
+      trackIndexRef.current = 1
+      moveTrack(false)
+      updateProgress()
+      return
+    }
     moveTrack(true)
     updateProgress()
     trackRef.current?.addEventListener('transitionend', snapIfOnClone, { once: true })
@@ -69,6 +81,14 @@ export function PromoSlideshow() {
 
   const previousSlide = () => {
     trackIndexRef.current -= 1
+    // Defensive clamp (mirror of nextSlide): if we went below 0, snap
+    // to the last real slide without transition.
+    if (trackIndexRef.current < 0) {
+      trackIndexRef.current = TOTAL_SLIDES
+      moveTrack(false)
+      updateProgress()
+      return
+    }
     moveTrack(true)
     updateProgress()
     trackRef.current?.addEventListener('transitionend', snapIfOnClone, { once: true })
@@ -133,11 +153,49 @@ export function PromoSlideshow() {
     viewport.addEventListener('touchmove', handleTouchMove, { passive: true })
     viewport.addEventListener('touchend', handleTouchEnd)
 
+    // Handle tab visibility changes. When the user switches tabs or
+    // minimizes the browser, the browser (1) pauses CSS transitions and
+    // (2) throttles setInterval. If a transition was mid-flight when the
+    // tab was hidden, transitionend never fires → snapIfOnClone never
+    // runs → trackIndexRef stays stuck on a clone position. When the
+    // tab becomes visible again, the next setInterval tick would push
+    // the track off-screen (the "slideshow vanishes" bug). This handler
+    // snaps the track back to a valid real-slide position and restarts
+    // autoplay when the tab becomes visible.
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab is being hidden — clear the timer so no stale ticks fire
+        // while backgrounded (browsers throttle but don't kill setInterval,
+        // so without this we'd get one catch-up tick on resume that could
+        // land on a clone position and trigger the bug).
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+          timerRef.current = null
+        }
+      } else {
+        // Tab became visible again. If we're sitting on a clone position
+        // (transitionend was missed), snap back to the corresponding real
+        // slide immediately with no transition, then restart autoplay.
+        if (trackIndexRef.current === TRACK_LENGTH - 1) {
+          trackIndexRef.current = 1
+          moveTrack(false)
+          updateProgress()
+        } else if (trackIndexRef.current === 0) {
+          trackIndexRef.current = TOTAL_SLIDES
+          moveTrack(false)
+          updateProgress()
+        }
+        startAutoPlay()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       viewport.removeEventListener('touchstart', handleTouchStart)
       viewport.removeEventListener('touchmove', handleTouchMove)
       viewport.removeEventListener('touchend', handleTouchEnd)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
