@@ -37,9 +37,14 @@ export const revalidate = 3600
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
 
+  // NOTE: All URLs must include a trailing slash on the domain root
+  // (https://eviola.in/) — Google's sitemap parser rejects sitemaps
+  // where the homepage URL lacks the trailing slash, especially for
+  // new/untrusted domains. Product/collection/page URLs already have
+  // a path segment so they're fine.
   const entries: MetadataRoute.Sitemap = [
     {
-      url: SITE_URL,
+      url: `${SITE_URL}/`,
       lastModified: now,
       changeFrequency: 'daily',
       priority: 1.0,
