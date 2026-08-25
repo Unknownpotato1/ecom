@@ -126,7 +126,16 @@ export function Footer() {
       {/* COPYRIGHT */}
       <div className="footer-bottom">© 2026 Eviola. All rights reserved.</div>
 
-      <style jsx>{`
+      {/*
+        Plain <style> tag (NOT <style jsx>).
+        Next.js 16 dropped built-in styled-jsx support — <style jsx>
+        silently emits the JSX class names but NOT the CSS rules, so the
+        footer rendered unstyled on production. Using a regular <style>
+        tag works everywhere and the rules are scoped by the unique
+        class names (footer, footer-logo, footer-tagline, ...) which
+        only exist in this component, so there is no leak risk.
+      */}
+      <style>{`
         .footer {
           background: #f9758d;
           color: #fff;
