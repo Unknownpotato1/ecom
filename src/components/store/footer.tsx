@@ -15,7 +15,7 @@ export function Footer() {
       <p className="footer-tagline">
         Hand-curated jewelry for every occasion.
         <br />
-        Designed, packed and shipped with love from Lucknow, India.
+        Designed, packed and shipped with love from Lucw, India.
       </p>
 
       {/* CONTACT */}
