@@ -32,6 +32,7 @@ import { ProductCustomSlot } from './product-custom-slot'
 import { trackViewContent } from '@/lib/meta-pixel'
 import { UpiDiscountBanner } from './upi-discount-banner'
 import { ProductInfoSections } from './product-info-sections'
+import { StockStatus } from './star-rating'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -240,6 +241,11 @@ export function ProductDetail({ productId }: { productId: string }) {
               </span>
             </button>
 
+            {/* In-stock indicator — pulsing green dot + "In Stock" text.
+                Rendered directly below the star rating. The StockStatus
+                component lives in star-rating.tsx alongside ProductRatingBlock. */}
+            <StockStatus />
+
             {/* SLOT: product-after-stars */}
             <ProductCustomSlot slot="product-after-stars" />
 
@@ -268,8 +274,11 @@ export function ProductDetail({ productId }: { productId: string }) {
 
             {/* Product info sections — Quick Chat + Qty picker, Offers video,
                 and Delivery Info (pincode checker). Sits directly below the
-                "Get it for ₹XX" UPI banner. Internal name: deliveryinfo. */}
-            <ProductInfoSections />
+                "Get it for ₹XX" UPI banner. mt-6 adds suitable breathing room
+                between the UPI banner and this section. Internal name: deliveryinfo. */}
+            <div className="mt-6">
+              <ProductInfoSections />
+            </div>
 
             {/* SLOT: product-after-price */}
             <ProductCustomSlot slot="product-after-price" />

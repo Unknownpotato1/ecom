@@ -69,6 +69,11 @@ export function StarRating({
 
 /**
  * StockStatus — small pulsing-dot indicator, e.g. "In Stock".
+ *
+ * Uses a plain <style> tag (NOT <style jsx>) because Next.js 16 dropped
+ * built-in styled-jsx support — <style jsx> silently emits the JSX class
+ * names but NOT the CSS rules, so the indicator would render with no
+ * styling (no pulsing dot, no layout) and appear invisible/broken.
  */
 export function StockStatus() {
   return (
@@ -76,7 +81,7 @@ export function StockStatus() {
       <span className="stock-dot" />
       <span>In Stock</span>
 
-      <style jsx>{`
+      <style>{`
         .stock-status {
           display: flex;
           align-items: center;
