@@ -244,7 +244,7 @@ export function Header() {
           <div className="p-4 sm:p-6">
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold">Search hampers</h2>
+                <h2 className="text-lg font-semibold">Search jewelry</h2>
                 <Button variant="ghost" size="icon" onClick={() => setSearchOpen(false)}>
                   <X className="h-5 w-5" />
                 </Button>

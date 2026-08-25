@@ -41,7 +41,7 @@ export function CartDrawer() {
             <div>
               <p className="font-medium">Your bag is empty</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Discover our hand-picked hampers and treat someone you love.
+                Discover our hand-picked jewelry and treat someone you love.
               </p>
             </div>
             <Button

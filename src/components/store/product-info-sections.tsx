@@ -28,7 +28,7 @@ const RESPONSES: Record<string, string> = {
     'You can track your order anytime via My Orders in the menu. You should also have received a confirmation email with a tracking link.',
   '↩ Returns & Refunds': 'Returns are accepted within 7 days of delivery. Please reach out with your order details.',
   '🚚 Delivery Information': 'Delivery usually takes 3–7 business days across India.',
-  '🎁 Product Questions': "Ask us anything about our jewelry or gift hampers — we're happy to help!",
+  '🎁 Product Questions': "Ask us anything about our artificial jewelry — we're happy to help!",
   '💳 Payment Help': 'We accept UPI, Credit/Debit Cards, and Cash on Delivery (COD).',
   '👩 Talk to our team': 'https://wa.me/917780022167',
 }

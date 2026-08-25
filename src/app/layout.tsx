@@ -10,23 +10,24 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Eviola — Curated Gift Hampers",
+  title: "Eviola — Artificial Jewelry Online",
   description:
-    "Hand-curated gift hampers for every celebration. Chocolate, festive, spa, coffee and more — packed with love from Bengaluru.",
+    "Shop hand-curated artificial jewelry — necklaces, rings, earrings, bracelets and more. Crafted with love from Lucknow, India.",
   keywords: [
     "Eviola",
-    "gift hampers",
-    "gift box",
-    "festive gifts",
-    "birthday hampers",
-    "anniversary gifts",
+    "artificial jewelry",
+    "jewelry online",
+    "necklaces",
+    "rings",
+    "earrings",
+    "bracelets",
     "India",
   ],
   authors: [{ name: "Eviola" }],
   openGraph: {
-    title: "Eviola — Curated Gift Hampers",
+    title: "Eviola — Artificial Jewelry Online",
     description:
-      "Hand-curated gift hampers for every celebration — packed with love.",
+      "Shop hand-curated artificial jewelry — necklaces, rings, earrings, bracelets and more. Crafted with love.",
     siteName: "Eviola",
     type: "website",
   },

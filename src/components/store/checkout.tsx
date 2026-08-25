@@ -491,7 +491,7 @@ export function Checkout() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-semibold">Your bag is empty</h1>
-        <p className="mt-2 text-muted-foreground">Add some hampers before checking out.</p>
+        <p className="mt-2 text-muted-foreground">Add some jewelry before checking out.</p>
         <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to shop
         </Button>

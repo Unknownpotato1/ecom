@@ -34,7 +34,7 @@ export function OrderSuccess() {
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold mt-4">Thank you for your order!</h1>
         <p className="text-muted-foreground mt-2">
-          We've received your order and our team is hand-packing your hamper with love.
+          We've received your order and our team is preparing your jewelry with love.
         </p>
       </div>
 

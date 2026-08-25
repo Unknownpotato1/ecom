@@ -120,7 +120,7 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, ins
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id={anchorId} ref={ref}>
         <h2 className="text-xl sm:text-2xl font-semibold mb-5">{title}</h2>
         <div className="text-center py-12 border border-dashed border-pink-200 rounded-xl">
-          <p className="text-muted-foreground">No hampers here yet. Check back soon.</p>
+          <p className="text-muted-foreground">No jewelry here yet. Check back soon.</p>
         </div>
       </section>
     )
@@ -179,7 +179,7 @@ export function ProductGrid({ title, filter, anchorId, listenToFilterEvents, ins
         <div>
           <h2 className="text-xl sm:text-2xl font-semibold tracking-tight">{overrideFilter ? overrideFilter.charAt(0).toUpperCase() + overrideFilter.slice(1) : title}</h2>
           <p className="text-xs text-muted-foreground mt-1">
-            Gift hampers • hand-packed with love
+            Artificial jewelry • crafted with love
           </p>
         </div>
         <Button variant="link" className="text-brand hover:text-brand" onClick={() => useUI.getState().goSearch(overrideFilter || title)}>

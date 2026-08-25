@@ -84,7 +84,7 @@ export function Orders() {
           <p className="text-sm text-muted-foreground mt-1">
             {queriedEmail ? `We couldn't find any orders for ${queriedEmail}.` : 'Start shopping to place your first order.'}
           </p>
-          <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>Browse hampers</Button>
+          <Button className="mt-4 bg-brand text-white hover:shadow-lg" onClick={goHome}>Browse jewelry</Button>
         </div>
       ) : (
         <div className="space-y-3">

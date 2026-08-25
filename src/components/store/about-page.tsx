@@ -28,7 +28,7 @@ export function AboutPage() {
           What started as a way to create a better future gradually became something much more meaningful. With every order, every new design, and every customer who chose to trust us, our work became our passion.
         </p>
         <p>
-          Today, Eviola brings together artificial jewelry and thoughtfully curated gift hampers for women, created for those special little moments when you want to look beautiful, make someone smile, or simply treat yourself.
+          Today, Eviola brings you hand-curated artificial jewelry for women, created for those special little moments when you want to look beautiful, make someone smile, or simply treat yourself.
         </p>
 
         <h2 className="text-xl font-semibold tracking-tight mt-8 mb-3">Our Promise</h2>

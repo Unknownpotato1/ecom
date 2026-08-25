@@ -255,7 +255,7 @@ export function AdminProducts() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 border border-dashed border-pink-200 rounded-lg">
             <p className="text-sm font-medium">No products yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Add your first hamper to start selling.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add your first product to start selling.</p>
             <Button size="sm" className="mt-3 bg-brand text-white hover:shadow-lg" onClick={openNew}>
               <Plus className="h-3.5 w-3.5 mr-1" /> Add product
             </Button>
@@ -379,7 +379,7 @@ export function AdminProducts() {
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <Label htmlFor="p-title" className="text-xs">Title *</Label>
-                <Input id="p-title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} className="mt-1" placeholder="e.g. Midnight Bliss Chocolate Hamper" />
+                <Input id="p-title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} className="mt-1" placeholder="e.g. Gold-Plated Necklace Set" />
               </div>
               <div className="sm:col-span-2">
                 <Label htmlFor="p-long" className="text-xs">Description</Label>

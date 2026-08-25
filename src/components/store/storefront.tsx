@@ -15,7 +15,7 @@ interface Props {
  * Detect whether a custom section's code contains a `<video` tag.
  *
  * Used to identify video custom sections that should be relocated from
- * their normal flow position INTO the Explore Hampers product grid —
+ * their normal flow position INTO the Explore Jewelry product grid —
  * rendered after the 10th product (see insertAfterN prop on ProductGrid).
  *
  * The user said: "I have added a custom section on homepage that plays a
@@ -96,7 +96,7 @@ export function Storefront({ heroFallback }: Props) {
   }
 
   // Split custom sections into two groups:
-  //  - video sections → injected INTO the Explore Hampers grid after
+  //  - video sections → injected INTO the Explore Jewelry grid after
   //    the 10th product (handled by ProductGrid's insertAfterN prop)
   //  - everything else → rendered in normal document flow
   //
@@ -117,11 +117,11 @@ export function Storefront({ heroFallback }: Props) {
   if (sections.length === 0 && otherCustomSections.length === 0) {
     return (
       <>
-        <HeroSection config={heroFallback || { imageUrl: '', title: 'Eviola', subtitle: 'Curated hampers, hand-packed with love.' }} />
+        <HeroSection config={heroFallback || { imageUrl: '', title: 'Eviola', subtitle: 'Curated jewelry, crafted with love.' }} />
         <ProductGrid
-          title="Explore Hampers"
+          title="Explore Jewelry"
           filter="all"
-          anchorId="all-hampers"
+          anchorId="all-jewelry"
           listenToFilterEvents
           insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
           insertContent={videoInsertContent}
@@ -139,7 +139,7 @@ export function Storefront({ heroFallback }: Props) {
     .filter((item) => {
       // Hide any admin-configured "Trending Now" and "Best Sellers" product
       // sections — per the new home design, the home page only shows the
-      // single "Explore Hampers" grid. Custom (HTML) sections are kept.
+      // single "Explore Jewelry" grid. Custom (HTML) sections are kept.
       if (item.kind !== 'section') return true
       const s = item.data
       if (s.type !== 'products') return true
@@ -185,15 +185,15 @@ export function Storefront({ heroFallback }: Props) {
         }
         if (s.type === 'products') {
           // The only product section that survives the filter above is
-          // the "all" grid. Force its title to "Explore Hampers" and give
+          // the "all" grid. Force its title to "Explore Jewelry" and give
           // it the canonical anchor + filter-event listener.
           // Video sections are injected after the 10th product.
           return (
             <ProductGrid
               key={s.id}
-              title="Explore Hampers"
+              title="Explore Jewelry"
               filter="all"
-              anchorId="all-hampers"
+              anchorId="all-jewelry"
               listenToFilterEvents
               insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
               insertContent={videoInsertContent}
@@ -212,16 +212,16 @@ export function Storefront({ heroFallback }: Props) {
         return null
       })}
 
-      {/* Always ensure an "Explore Hampers" grid is rendered on the home
+      {/* Always ensure an "Explore Jewelry" grid is rendered on the home
           page, even if the admin hasn't configured one. This guarantees
           visitors can always browse all hampers. Skipped if the admin
           already placed an "all" products section above.
           Video sections are injected after the 10th product. */}
       {!hasAllGrid && (
         <ProductGrid
-          title="Explore Hampers"
+          title="Explore Jewelry"
           filter="all"
-          anchorId="all-hampers"
+          anchorId="all-jewelry"
           listenToFilterEvents
           insertAfterN={videoInsertContent ? VIDEO_INSERT_AFTER_N : null}
           insertContent={videoInsertContent}
