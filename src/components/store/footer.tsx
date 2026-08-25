@@ -6,7 +6,7 @@ export function Footer() {
       {/* LOGO */}
       <div className="footer-logo">
         <img
-          src="https://res.cloudinary.com/drlmgjt6p/image/upload/v1787311543/aurora/gvnzjgtjgghudud8jwc7.jpg"
+          src="https://res.cloudinary.com/drlmgjt6p/image/upload/v1787595273/aurora/jxijf7182stgkbcsnibe.png"
           alt="Eviola Logo"
         />
       </div>
