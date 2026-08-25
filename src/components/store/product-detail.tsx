@@ -242,14 +242,19 @@ export function ProductDetail({ productId }: { productId: string }) {
             </button>
 
             {/* In-stock indicator — pulsing green dot + "In Stock" text.
-                Rendered directly below the star rating. The StockStatus
-                component lives in star-rating.tsx alongside ProductRatingBlock. */}
-            <StockStatus />
+                Rendered directly below the star rating, with equal spacing
+                above (below stars) and below (above price). my-3 = 12px top
+                and 12px bottom. The price row's own top margin was removed
+                so this mb-3 controls the gap to the price, keeping both
+                sides equal. The StockStatus component lives in star-rating.tsx. */}
+            <div className="my-3">
+              <StockStatus />
+            </div>
 
             {/* SLOT: product-after-stars */}
             <ProductCustomSlot slot="product-after-stars" />
 
-            <div className="flex items-end gap-3 mt-4">
+            <div className="flex items-end gap-3">
               <span className="text-3xl font-bold text-price">{formatPrice(product.price)}</span>
               {product.comparedPrice && product.comparedPrice > product.price && (
                 <>
