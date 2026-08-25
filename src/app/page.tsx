@@ -100,7 +100,14 @@ export default function Home() {
         </ErrorBoundary>
       </div>
 
-      <Footer />
+      {/* Footer — hidden on checkout and order-success views.
+          Checkout is a focused conversion flow; showing the footer
+          there adds visual clutter and gives the customer a way to
+          wander off mid-purchase. Order-success is a thank-you page
+          where the footer is similarly unnecessary. All other views
+          (home, product, collection, about, orders, profile, search,
+          page) show the footer normally. */}
+      {view !== 'checkout' && view !== 'order-success' && <Footer />}
       <CartDrawer />
     </main>
   )

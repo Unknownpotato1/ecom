@@ -49,15 +49,28 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
   // ref is attached immediately but the content inside it appears
   // later after the API fetch completes. ResizeObserver catches most
   // changes, but the interval ensures we catch the initial load too.
+  //
+  // IMPORTANT: This effect re-runs whenever `countdownSlot` changes
+  // (e.g. navigating from home → checkout where the slot goes from
+  // <HomeCustomSlot> to null). Without re-running, the old
+  // countdownHeight value would persist after navigation, leaving
+  // empty space above the header on the new view until a page refresh.
+  // When countdownSlot becomes null, the ref div unmounts and we
+  // reset countdownHeight to 0 so the header sits at top:0.
   useEffect(() => {
-    if (!countdownRef.current) {
+    // If there's no countdown slot at all, there's nothing to measure
+    // — the ref div isn't rendered. The header's top offset is derived
+    // from countdownSlot in the render below (top: countdownSlot ?
+    // `${countdownHeight}px` : '0px'), so stale countdownHeight state
+    // can't cause empty space on views without a countdown.
+    if (!countdownSlot || !countdownRef.current) {
       return
     }
 
     const measure = () => {
       if (countdownRef.current) {
         const h = countdownRef.current.offsetHeight
-        setCountdownHeight(h)
+        setCountdownHeight((prev) => (prev === h ? prev : h))
       }
     }
 
@@ -77,7 +90,7 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
       clearTimeout(pollTimeout)
       ro.disconnect()
     }
-  }, [])
+  }, [countdownSlot])
 
   // Scroll detection: show header on scroll up, hide on scroll down.
   // Triggers on ANY scroll up — even 1px — so the header immediately
@@ -132,7 +145,11 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
 
       {/* Header — dynamic sticky.
           - position: sticky so it participates in normal flow
-          - top: countdownHeight so it sticks right below the countdown
+          - top: countdownHeight so it sticks right below the countdown.
+            When there's no countdownSlot (e.g. checkout, about, orders),
+            top is '0px' regardless of stale countdownHeight state —
+            this prevents empty space above the header after navigating
+            from a view with a countdown to one without.
           - When headerVisible: translateY(0) — normal position
           - When !headerVisible: translateY(-100%) — slides up out of view
           - transition for smooth slide animation
@@ -145,7 +162,7 @@ export function StickyHeader({ countdownSlot, children }: StickyHeaderProps) {
       <div
         className="sticky z-40 transition-transform duration-300 ease-out"
         style={{
-          top: `${countdownHeight}px`,
+          top: countdownSlot ? `${countdownHeight}px` : '0px',
           transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)',
         }}
       >
