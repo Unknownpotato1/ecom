@@ -15,6 +15,14 @@ interface Props {
  * Extracts <style>...</style> blocks → CSS,
  * <script>...</script> blocks → JS,
  * remaining content → HTML.
+ *
+ * Also strips HTML document wrapper tags (<!DOCTYPE>, <html>, <head>,
+ * <meta>, <link>, <title>, and <body> wrappers) because custom sections
+ * render inside a Shadow DOM fragment, not a full HTML document. Leaving
+ * these tags in causes the browser to create <html>/<head>/<body> ELEMENTS
+ * inside the shadow root, which pick up UA-stylesheet scrollbars and
+ * other document-level styles — resulting in stray scrollbars (a
+ * "blinking bar on the right side") and other visual glitches.
  */
 function parseCode(section: CustomSectionType): { html: string; css: string; js: string } {
   if (section.code) {
@@ -31,6 +39,26 @@ function parseCode(section: CustomSectionType): { html: string; css: string; js:
       js += content + '\n'
       return ''
     })
+
+    // Strip HTML document wrapper tags. These don't belong inside a
+    // Shadow DOM fragment and cause stray scrollbars / layout glitches.
+    // If a <body> tag exists, keep only its INNER content (the actual
+    // visible markup) and discard the wrapper itself.
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+    if (bodyMatch) {
+      html = bodyMatch[1]
+    }
+    // Remove <!DOCTYPE>, <html>, <head>, <meta>, <link>, <title> tags
+    // entirely. <head> content (meta, link, title) is not meaningful
+    // inside a shadow root — only <style> matters, and we already
+    // extracted that above.
+    html = html.replace(/<!DOCTYPE[^>]*>/gi, '')
+    html = html.replace(/<\/?html[^>]*>/gi, '')
+    html = html.replace(/<\/?head[^>]*>/gi, '')
+    html = html.replace(/<\/?body[^>]*>/gi, '')
+    html = html.replace(/<meta[^>]*>/gi, '')
+    html = html.replace(/<link[^>]*>/gi, '')
+    html = html.replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '')
 
     return { html: html.trim(), css: css.trim(), js: js.trim() }
   }
