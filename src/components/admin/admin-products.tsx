@@ -11,6 +11,7 @@ import {
   ImageIcon,
   Star,
   Search,
+  PackageX,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -228,6 +229,41 @@ export function AdminProducts() {
     toast.success('Product deleted')
   }
 
+  /**
+   * Toggle a product's sold-out status by setting stock to 0 (sold out)
+   * or restoring it to a default of 25 (back in stock). Calls the same
+   * PUT /api/products/[id] endpoint the edit form uses — partial update
+   * with just { stock }.
+   *
+   * On the storefront, products with stock === 0 show a "Sold Out"
+   * badge on the card, the Add to bag / Buy now buttons are hidden on
+   * the product detail page, and the in-stock indicator switches from
+   * green "In Stock" to red "Sold Out".
+   */
+  const toggleSoldOut = async (p: Product) => {
+    const isSoldOut = !p.stock || p.stock === 0
+    const newStock = isSoldOut ? 25 : 0
+    // Optimistically update the UI
+    setProducts((list) =>
+      list.map((x) => (x.id === p.id ? { ...x, stock: newStock } : x))
+    )
+    try {
+      const res = await fetch(`/api/products/${p.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: newStock }),
+      })
+      if (!res.ok) throw new Error('Update failed')
+      toast.success(isSoldOut ? 'Marked as back in stock' : 'Marked as sold out')
+    } catch {
+      // Revert on failure
+      setProducts((list) =>
+        list.map((x) => (x.id === p.id ? { ...x, stock: p.stock } : x))
+      )
+      toast.error('Failed to update stock status')
+    }
+  }
+
   return (
     <Card className="border-pink-100">
       <CardHeader className="flex-row items-center justify-between space-y-0 flex-wrap gap-2">
@@ -285,9 +321,27 @@ export function AdminProducts() {
                     {p.category && <span className="px-1.5 py-0.5 rounded bg-muted text-[10px]">{p.category}</span>}
                     {p.isTrending && <span className="px-1.5 py-0.5 rounded bg-brand text-white text-[10px] font-medium">Trending</span>}
                     {p.isBestSeller && <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-[10px] font-medium">Best</span>}
+                    {/* Sold Out badge — shown when stock is 0. Red background
+                        so it stands out from the other badges. */}
+                    {(!p.stock || p.stock === 0) && (
+                      <span className="px-1.5 py-0.5 rounded bg-red-500 text-white text-[10px] font-medium">Sold Out</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
+                  {/* Toggle Sold Out — sets stock to 0 (sold out) or 25 (back
+                      in stock). Icon button with PackageX. Title attribute
+                      shows what it does on hover. */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => toggleSoldOut(p)}
+                    title={(!p.stock || p.stock === 0) ? 'Mark as back in stock' : 'Mark as sold out'}
+                    aria-label={(!p.stock || p.stock === 0) ? 'Mark as back in stock' : 'Mark as sold out'}
+                  >
+                    <PackageX className={`h-4 w-4 ${(!p.stock || p.stock === 0) ? 'text-red-500' : 'text-muted-foreground'}`} />
+                  </Button>
                   <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(p)}>
                     <Pencil className="h-4 w-4" />
                   </Button>

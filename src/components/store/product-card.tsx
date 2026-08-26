@@ -17,12 +17,18 @@ export function ProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false)
   const [liked, setLiked] = useState(false)
 
+  // Sold out = stock is 0 (or missing). When sold out, the card shows a
+  // "Sold Out" overlay on the image and the Add button is replaced with a
+  // disabled "Sold Out" pill.
+  const soldOut = !product.stock || product.stock === 0
+
   const tags = productTags(product)
   const images = product.images.length > 0
     ? product.images
     : [{ url: '', alt: product.title, id: 'placeholder', position: 0 }]
 
   const handleAdd = (e: React.MouseEvent) => {
+    if (soldOut) return
     e.stopPropagation()
     addItem({
       id: product.id,
@@ -65,6 +71,18 @@ export function ProductCard({ product }: { product: Product }) {
           ))}
         </div>
 
+        {/* Sold Out overlay — shown when stock === 0. Semi-transparent
+            dark layer over the image with a "Sold Out" pill in the center.
+            pointer-events-none so clicks still pass through to the card
+            (customer can still tap the card to view the product detail). */}
+        {soldOut && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 pointer-events-none">
+            <span className="px-3 py-1 bg-white text-red-600 text-xs font-bold tracking-wide shadow-md">
+              SOLD OUT
+            </span>
+          </div>
+        )}
+
         {/* Like */}
         <button
           onClick={(e) => {
@@ -95,20 +113,27 @@ export function ProductCard({ product }: { product: Product }) {
               <span className="text-xs text-compared-price line-through">{formatPrice(product.comparedPrice)}</span>
             )}
           </div>
-          <Button
-            size="sm"
-            onClick={handleAdd}
-            className={cn(
-              'h-9 px-3 text-xs shadow-sm transition-all rounded-none',
-              added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
-            )}
-          >
-            {added ? 'Added!' : (
-              <>
-                <BagIcon className="h-3.5 w-3.5 mr-1" /> Add
-              </>
-            )}
-          </Button>
+          {soldOut ? (
+            // Sold Out pill — disabled, gray background, no pointer
+            <span className="h-9 px-3 inline-flex items-center justify-center text-xs font-semibold bg-gray-300 text-gray-600 rounded-none cursor-not-allowed">
+              Sold Out
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              onClick={handleAdd}
+              className={cn(
+                'h-9 px-3 text-xs shadow-sm transition-all rounded-none',
+                added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
+              )}
+            >
+              {added ? 'Added!' : (
+                <>
+                  <BagIcon className="h-3.5 w-3.5 mr-1" /> Add
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </article>

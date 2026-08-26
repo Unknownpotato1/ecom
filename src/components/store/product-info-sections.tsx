@@ -37,7 +37,7 @@ const RESPONSES: Record<string, string> = {
    QUICK CHAT + QUANTITY PICKER
 ============================================================ */
 
-function QuickChatSection({ qty, onQtyChange }: { qty: number; onQtyChange: (q: number) => void }) {
+function QuickChatSection({ qty, onQtyChange, soldOut }: { qty: number; onQtyChange: (q: number) => void; soldOut?: boolean }) {
   const [liked, setLiked] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -88,10 +88,10 @@ function QuickChatSection({ qty, onQtyChange }: { qty: number; onQtyChange: (q: 
   return (
     <div className="quick-chat-root">
       <div className="action-row">
-        <div className="qty-picker">
-          <button onClick={() => onQtyChange(qty > 1 ? qty - 1 : qty)}>−</button>
+        <div className={`qty-picker ${soldOut ? 'qty-disabled' : ''}`}>
+          <button onClick={() => onQtyChange(qty > 1 ? qty - 1 : qty)} disabled={soldOut}>−</button>
           <span>{qty}</span>
-          <button onClick={() => onQtyChange(qty + 1)}>+</button>
+          <button onClick={() => onQtyChange(qty + 1)} disabled={soldOut}>+</button>
         </div>
 
         <button className="wishlist-btn" onClick={() => setLiked((l) => !l)}>
@@ -225,6 +225,19 @@ function QuickChatSection({ qty, onQtyChange }: { qty: number; onQtyChange: (q: 
           background: #fff;
           font-size: 22px;
           cursor: pointer;
+        }
+        /* Disabled state for sold-out products — grayed out, no pointer */
+        .quick-chat-root .qty-picker.qty-disabled {
+          background: #f3f4f6;
+          border-color: #e5e7eb;
+        }
+        .quick-chat-root .qty-picker.qty-disabled button {
+          background: #f3f4f6;
+          color: #9ca3af;
+          cursor: not-allowed;
+        }
+        .quick-chat-root .qty-picker.qty-disabled span {
+          color: #9ca3af;
         }
         .quick-chat-root .wishlist-btn {
           flex: 1;
@@ -780,10 +793,10 @@ function DeliveryInfo() {
    COMBINED EXPORT — order: Quick Chat/Qty → Offers Video → Delivery Info
 ============================================================ */
 
-export function ProductInfoSections({ qty, onQtyChange }: { qty: number; onQtyChange: (q: number) => void }) {
+export function ProductInfoSections({ qty, onQtyChange, soldOut }: { qty: number; onQtyChange: (q: number) => void; soldOut?: boolean }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <QuickChatSection qty={qty} onQtyChange={onQtyChange} />
+      <QuickChatSection qty={qty} onQtyChange={onQtyChange} soldOut={soldOut} />
       <OffersVideo />
       <DeliveryInfo />
     </div>

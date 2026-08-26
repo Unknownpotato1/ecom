@@ -241,14 +241,15 @@ export function ProductDetail({ productId }: { productId: string }) {
               </span>
             </button>
 
-            {/* In-stock indicator — pulsing green dot + "In Stock" text.
+            {/* In-stock / Sold-out indicator — pulsing dot + text.
+                Green "In Stock" when stock > 0, red "Sold Out" when stock === 0.
                 Rendered directly below the star rating, with equal spacing
                 above (below stars) and below (above price). my-3 = 12px top
                 and 12px bottom. The price row's own top margin was removed
                 so this mb-3 controls the gap to the price, keeping both
                 sides equal. The StockStatus component lives in star-rating.tsx. */}
             <div className="my-3">
-              <StockStatus />
+              <StockStatus soldOut={!product.stock || product.stock === 0} />
             </div>
 
             {/* SLOT: product-after-stars */}
@@ -282,9 +283,11 @@ export function ProductDetail({ productId }: { productId: string }) {
                 "Get it for ₹XX" UPI banner. mt-6 adds suitable breathing room
                 between the UPI banner and this section. Internal name: deliveryinfo.
                 The qty state is lifted up to ProductDetail so the StickyActionBar's
-                "Add to bag" button uses the same quantity the customer picked here. */}
+                "Add to bag" button uses the same quantity the customer picked here.
+                When the product is sold out (stock === 0), the qty picker is
+                disabled. */}
             <div className="mt-6">
-              <ProductInfoSections qty={qty} onQtyChange={setQty} />
+              <ProductInfoSections qty={qty} onQtyChange={setQty} soldOut={!product.stock || product.stock === 0} />
             </div>
 
             {/* SLOT: product-after-price */}
@@ -511,7 +514,9 @@ export function ProductDetail({ productId }: { productId: string }) {
       {/* You may also like — other products */}
       <YouMayAlsoLike currentProductId={productId} />
 
-      {/* Sticky Add to bag / Buy now bar (mobile only) */}
+      {/* Sticky Add to bag / Buy now bar (mobile only).
+          When the product is sold out (stock === 0), the soldOut prop
+          replaces the buttons with a disabled "Sold Out" bar. */}
       <StickyActionBar
         qty={qty}
         added={added}
@@ -520,6 +525,7 @@ export function ProductDetail({ productId }: { productId: string }) {
           handleAdd()
           setTimeout(() => openCart(), 200)
         }}
+        soldOut={!product.stock || product.stock === 0}
       />
 
       {/* Full-screen all reviews overlay */}

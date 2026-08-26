@@ -68,18 +68,20 @@ export function StarRating({
 }
 
 /**
- * StockStatus — small pulsing-dot indicator, e.g. "In Stock".
+ * StockStatus — small pulsing-dot indicator showing "In Stock" (green)
+ * or "Sold Out" (red). Pass soldOut={true} for sold-out products
+ * (stock === 0).
  *
  * Uses a plain <style> tag (NOT <style jsx>) because Next.js 16 dropped
  * built-in styled-jsx support — <style jsx> silently emits the JSX class
  * names but NOT the CSS rules, so the indicator would render with no
  * styling (no pulsing dot, no layout) and appear invisible/broken.
  */
-export function StockStatus() {
+export function StockStatus({ soldOut = false }: { soldOut?: boolean }) {
   return (
     <div className="stock-status">
-      <span className="stock-dot" />
-      <span>In Stock</span>
+      <span className={`stock-dot ${soldOut ? 'stock-dot-sold-out' : ''}`} />
+      <span>{soldOut ? 'Sold Out' : 'In Stock'}</span>
 
       <style>{`
         .stock-status {
@@ -91,7 +93,7 @@ export function StockStatus() {
           margin: 0;
           font-size: 13px;
           font-weight: 400;
-          color: #000000;
+          color: ${soldOut ? '#dc2626' : '#000000'};
         }
 
         .stock-dot {
@@ -103,6 +105,10 @@ export function StockStatus() {
           position: relative;
         }
 
+        .stock-dot.stock-dot-sold-out {
+          background: #dc2626;
+        }
+
         .stock-dot::after {
           content: '';
           position: absolute;
@@ -110,6 +116,10 @@ export function StockStatus() {
           border-radius: 50%;
           background: #22c55e;
           animation: stockPulse 1.8s infinite;
+        }
+
+        .stock-dot.stock-dot-sold-out::after {
+          background: #dc2626;
         }
 
         @keyframes stockPulse {

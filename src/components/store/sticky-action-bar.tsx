@@ -10,6 +10,10 @@ interface Props {
   added: boolean
   onAdd: () => void
   onBuyNow: () => void
+  /** When true, the product is sold out (stock === 0). The Add to bag
+   *  and Buy now buttons are replaced with a single disabled "Sold Out"
+   *  bar so customers can't attempt to purchase. */
+  soldOut?: boolean
 }
 
 /**
@@ -46,7 +50,7 @@ interface Props {
  * Bag icon is removed from the Add to bag button (the Check icon for
  * the "Added" state is kept for clarity).
  */
-export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
+export function StickyActionBar({ added, onAdd, onBuyNow, soldOut }: Props) {
   const [mounted, setMounted] = useState(false)
 
   // Only render the portal after mount on the client — document.body is
@@ -88,38 +92,54 @@ export function StickyActionBar({ added, onAdd, onBuyNow }: Props) {
         This produces ONE continuous wave sweeping across both buttons,
         instead of two independent per-button shimmers.
       */}
-      {/* Add to bag — left half (no bag icon, text only) */}
-      <button
-        onClick={onAdd}
-        className={cn(
-          'sticky-shimmer-content',
-          'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold uppercase tracking-wide',
-          'active:bg-black/10 transition-colors'
-        )}
-      >
-        {added ? (
-          <>
-            <Check className="h-4 w-4" /> Added
-          </>
-        ) : (
-          <>Add to bag</>
-        )}
-      </button>
+      {soldOut ? (
+        // Sold Out state — single full-width disabled bar, no buttons.
+        // Gray background instead of brand pink so it reads as "unavailable".
+        <div
+          className={cn(
+            'sticky-shimmer-content',
+            'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide'
+          )}
+          style={{ backgroundColor: '#9ca3af' }}
+        >
+          Sold Out
+        </div>
+      ) : (
+        <>
+          {/* Add to bag — left half (no bag icon, text only) */}
+          <button
+            onClick={onAdd}
+            className={cn(
+              'sticky-shimmer-content',
+              'flex-1 h-14 flex items-center justify-center gap-1.5 text-white text-sm font-semibold uppercase tracking-wide',
+              'active:bg-black/10 transition-colors'
+            )}
+          >
+            {added ? (
+              <>
+                <Check className="h-4 w-4" /> Added
+              </>
+            ) : (
+              <>Add to bag</>
+            )}
+          </button>
 
-      {/* Thin divider line between the two buttons */}
-      <div className="sticky-shimmer-content w-px bg-white/30 my-3" />
+          {/* Thin divider line between the two buttons */}
+          <div className="sticky-shimmer-content w-px bg-white/30 my-3" />
 
-      {/* Buy now — right half */}
-      <button
-        onClick={onBuyNow}
-        className={cn(
-          'sticky-shimmer-content',
-          'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide',
-          'active:bg-black/10 transition-colors'
-        )}
-      >
-        Buy now
-      </button>
+          {/* Buy now — right half */}
+          <button
+            onClick={onBuyNow}
+            className={cn(
+              'sticky-shimmer-content',
+              'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide',
+              'active:bg-black/10 transition-colors'
+            )}
+          >
+            Buy now
+          </button>
+        </>
+      )}
     </div>,
     document.body
   )
