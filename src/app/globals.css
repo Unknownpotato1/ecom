@@ -224,6 +224,15 @@
   animation: aurora-fade-up 0.5s ease-out backwards;
 }
 
+/* Crossfade for SwipeableImage adaptive mode (product page image carousel).
+   The active <img> is keyed by activeIndex so React remounts it on every
+   swipe; this animation fades the new image in from opacity 0 → 1 for a
+   smooth transition instead of an instant src swap. */
+@keyframes aurora-crossfade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* ============================================================
  * Body scroll lock — for custom-section overlays (chat widgets,
  * popovers, etc.) that need to freeze the page behind them while open.

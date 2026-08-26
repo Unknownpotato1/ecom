@@ -37,8 +37,7 @@ const RESPONSES: Record<string, string> = {
    QUICK CHAT + QUANTITY PICKER
 ============================================================ */
 
-function QuickChatSection() {
-  const [qty, setQty] = useState(1)
+function QuickChatSection({ qty, onQtyChange }: { qty: number; onQtyChange: (q: number) => void }) {
   const [liked, setLiked] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -90,9 +89,9 @@ function QuickChatSection() {
     <div className="quick-chat-root">
       <div className="action-row">
         <div className="qty-picker">
-          <button onClick={() => setQty((q) => (q > 1 ? q - 1 : q))}>−</button>
+          <button onClick={() => onQtyChange(qty > 1 ? qty - 1 : qty)}>−</button>
           <span>{qty}</span>
-          <button onClick={() => setQty((q) => q + 1)}>+</button>
+          <button onClick={() => onQtyChange(qty + 1)}>+</button>
         </div>
 
         <button className="wishlist-btn" onClick={() => setLiked((l) => !l)}>
@@ -781,10 +780,10 @@ function DeliveryInfo() {
    COMBINED EXPORT — order: Quick Chat/Qty → Offers Video → Delivery Info
 ============================================================ */
 
-export function ProductInfoSections() {
+export function ProductInfoSections({ qty, onQtyChange }: { qty: number; onQtyChange: (q: number) => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <QuickChatSection />
+      <QuickChatSection qty={qty} onQtyChange={onQtyChange} />
       <OffersVideo />
       <DeliveryInfo />
     </div>

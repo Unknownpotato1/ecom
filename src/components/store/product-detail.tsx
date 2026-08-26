@@ -280,9 +280,11 @@ export function ProductDetail({ productId }: { productId: string }) {
             {/* Product info sections — Quick Chat + Qty picker, Offers video,
                 and Delivery Info (pincode checker). Sits directly below the
                 "Get it for ₹XX" UPI banner. mt-6 adds suitable breathing room
-                between the UPI banner and this section. Internal name: deliveryinfo. */}
+                between the UPI banner and this section. Internal name: deliveryinfo.
+                The qty state is lifted up to ProductDetail so the StickyActionBar's
+                "Add to bag" button uses the same quantity the customer picked here. */}
             <div className="mt-6">
-              <ProductInfoSections />
+              <ProductInfoSections qty={qty} onQtyChange={setQty} />
             </div>
 
             {/* SLOT: product-after-price */}

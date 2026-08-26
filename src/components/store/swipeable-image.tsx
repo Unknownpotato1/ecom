@@ -103,7 +103,8 @@ export function SwipeableImage({
 
   // Adaptive mode: render only the active image at natural dimensions.
   // No fixed height, no sliding track — the image shows at its full natural
-  // aspect ratio with zero padding/cropping. Swiping swaps the image.
+  // aspect ratio with zero padding/cropping. Swiping swaps the image with
+  // a smooth crossfade transition (opacity fade) so it doesn't feel jarring.
   if (adaptive) {
     const img = images[activeIndex]
     return (
@@ -118,11 +119,26 @@ export function SwipeableImage({
         onMouseLeave={handleEnd}
         onClickCapture={handleClickCapture}
       >
+        {/*
+          Crossfade layer — the active image is rendered with a `key` set
+          to the activeIndex so React remounts the <img> on every swipe.
+          The CSS animation `aurora-crossfade` (defined in globals.css)
+          fades the new image in from opacity 0 → 1, producing a smooth
+          transition instead of an instant swap. Without the key, React
+          would just update the src attribute and the browser would show
+          the new image instantly with no animation.
+        */}
         <img
+          key={activeIndex}
           src={img.url}
           alt={img.alt || ''}
           className={cn('block w-full h-auto', imageClassName)}
-          style={{ display: 'block', width: '100%', height: 'auto' }}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: 'auto',
+            animation: 'aurora-crossfade 0.35s ease-out',
+          }}
           draggable={false}
         />
 
