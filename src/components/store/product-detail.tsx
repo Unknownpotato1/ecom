@@ -33,6 +33,7 @@ import { trackViewContent } from '@/lib/meta-pixel'
 import { UpiDiscountBanner } from './upi-discount-banner'
 import { ProductInfoSections } from './product-info-sections'
 import { StockStatus } from './star-rating'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 export function ProductDetail({ productId }: { productId: string }) {
   const [product, setProduct] = useState<Product | null>(null)
@@ -98,7 +99,8 @@ export function ProductDetail({ productId }: { productId: string }) {
         title: product.title,
         price: product.price,
         comparedPrice: product.comparedPrice ?? undefined,
-        image: product.images[0]?.url ?? '',
+        // Cart thumbnail is small (64x64) — w_200 covers 2x retina.
+        image: optimizeCloudinaryUrl(product.images[0]?.url, 200) ?? '',
         maxStock: product.stock || 99,
       },
       qty
@@ -183,7 +185,9 @@ export function ProductDetail({ productId }: { productId: string }) {
           {/* === Image section === */}
           <div className="relative group">
             <SwipeableImage
-              images={product.images}
+              // Main product image displays full-width on mobile (~400px)
+              // and up to ~600px on desktop. w_800 covers 2x retina.
+              images={product.images.map((img) => ({ ...img, url: optimizeCloudinaryUrl(img.url, 800) }))}
               className="w-full lg:rounded-xl"
               imageClassName="w-full"
               adaptive

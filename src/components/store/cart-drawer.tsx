@@ -4,6 +4,7 @@ import { X, Minus, Plus, Trash2, ArrowRight } from 'lucide-react'
 import { BagIcon } from './bag-icon'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 import {
   Sheet,
   SheetContent,
@@ -61,8 +62,8 @@ export function CartDrawer() {
                 <div key={item.id} className="flex gap-3 p-3 rounded-lg border border-pink-100 bg-card">
                   <div className="h-20 w-20 rounded-md overflow-hidden bg-pink-50 shrink-0">
                     {item.image && (
-                       
-                      <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                      // Cart thumbnail is 80x80 (h-20 w-20). w_200 covers 2x retina.
+                      <img src={optimizeCloudinaryUrl(item.image, 200)} alt={item.title} className="h-full w-full object-cover" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

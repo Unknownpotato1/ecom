@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-store'
 import { formatPrice, type Order } from '@/lib/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 const STATUS_COLORS: Record<string, string> = {
   placed: 'bg-amber-100 text-amber-700',
@@ -111,7 +112,7 @@ export function Orders() {
                     <div className="h-12 w-12 rounded-md bg-pink-50 overflow-hidden shrink-0">
                       {it.image && (
                          
-                        <img src={it.image} alt={it.title} className="h-full w-full object-cover" />
+                        <img src={optimizeCloudinaryUrl(it.image, 200)} alt={it.title} className="h-full w-full object-cover" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

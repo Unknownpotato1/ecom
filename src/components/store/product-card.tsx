@@ -10,6 +10,7 @@ import { formatPrice, productTags, type Product } from '@/lib/types'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { SwipeableImage } from './swipeable-image'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 export function ProductCard({ product }: { product: Product }) {
   const addItem = useCart((s) => s.addItem)
@@ -23,8 +24,11 @@ export function ProductCard({ product }: { product: Product }) {
   const soldOut = !product.stock || product.stock === 0
 
   const tags = productTags(product)
+  // Product card images display at ~200px on mobile (2 per row), ~220px on
+  // desktop. w_400 covers 2x retina displays without over-serving.
+  const CARD_IMAGE_WIDTH = 400
   const images = product.images.length > 0
-    ? product.images
+    ? product.images.map((img) => ({ ...img, url: optimizeCloudinaryUrl(img.url, CARD_IMAGE_WIDTH) }))
     : [{ url: '', alt: product.title, id: 'placeholder', position: 0 }]
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -36,7 +40,9 @@ export function ProductCard({ product }: { product: Product }) {
       title: product.title,
       price: product.price,
       comparedPrice: product.comparedPrice ?? undefined,
-      image: product.images[0]?.url ?? '',
+      // Cart thumbnail is small (64x64) — use a smaller width for the cart
+      // image to save bandwidth. w_200 covers 2x retina for a 64-100px thumb.
+      image: optimizeCloudinaryUrl(product.images[0]?.url, 200) ?? '',
       maxStock: product.stock || 99,
     })
     setAdded(true)

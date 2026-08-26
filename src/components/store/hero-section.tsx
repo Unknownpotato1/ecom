@@ -1,6 +1,7 @@
 'use client'
 
 import type { HeroConfig } from '@/lib/types'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 /**
  * Hero section — displays ONLY the uploaded image at its natural aspect ratio.
@@ -25,9 +26,11 @@ export function HeroSection({ config }: { config: HeroConfig }) {
         - height: auto (preserves aspect ratio)
         - display: block (removes inline gap)
         Vertical photos → tall hero. Horizontal photos → wide hero. No crop.
+        Full-width banner → w_1600 covers 2x retina on most mobile/desktop.
+        Non-Cloudinary URLs returned unchanged by the helper.
       */}
       <img
-        src={config.imageUrl}
+        src={optimizeCloudinaryUrl(config.imageUrl, 1600)}
         alt="Eviola hero"
         className="block w-full h-auto"
         style={{ display: 'block', width: '100%', height: 'auto' }}

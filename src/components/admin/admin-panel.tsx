@@ -66,6 +66,7 @@ import { AdminCollections } from './admin-collections'
 import { AdminPages } from './admin-pages'
 import { CustomSectionPreview } from '@/components/store/custom-section-renderer'
 import { cn } from '@/lib/utils'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 import { toast } from 'sonner'
 import type { Section, CustomSection, HeroConfig } from '@/lib/types'
 import { HOME_SLOTS, PRODUCT_SLOTS } from '@/lib/types'
@@ -519,7 +520,7 @@ function AdminHero() {
           <div className="rounded-lg overflow-hidden bg-pink-50 border border-pink-100">
             {config.imageUrl ? (
                
-              <img src={config.imageUrl} alt="Hero" className="block w-full h-auto" style={{ display: 'block', width: '100%', height: 'auto' }} />
+              <img src={optimizeCloudinaryUrl(config.imageUrl, 1200)} alt="Hero" className="block w-full h-auto" style={{ display: 'block', width: '100%', height: 'auto' }} />
             ) : (
               <div className="flex items-center justify-center text-muted-foreground text-sm py-12">
                 No hero image yet — upload below
@@ -952,7 +953,7 @@ function AdminSettings() {
           <div className="rounded-lg overflow-hidden bg-pink-50 border border-pink-100 flex items-center justify-center p-4 min-h-[80px]">
             {logoUrl ? (
                
-              <img src={logoUrl} alt="Store logo" className="block max-h-24 w-auto" style={{ display: 'block', maxHeight: '96px', width: 'auto' }} />
+              <img src={optimizeCloudinaryUrl(logoUrl, 400)} alt="Store logo" className="block max-h-24 w-auto" style={{ display: 'block', maxHeight: '96px', width: 'auto' }} />
             ) : (
               <div className="flex items-center justify-center text-muted-foreground text-sm py-6">
                 No logo uploaded — header shows default "A" badge
@@ -1249,7 +1250,7 @@ function AdminOrders() {
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-3 rounded-lg border border-pink-100 p-2">
                       <div className="h-12 w-12 rounded-md overflow-hidden bg-pink-50 shrink-0">
-                        {item.image && <img src={item.image} alt={item.title} className="h-full w-full object-cover" />}
+                        {item.image && <img src={optimizeCloudinaryUrl(item.image, 200)} alt={item.title} className="h-full w-full object-cover" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium line-clamp-1">{item.title}</p>
@@ -1475,7 +1476,7 @@ function AdminAbandonedCheckouts() {
                   {checkout.items.map((item, i) => (
                     <div key={i} className="flex items-center gap-3 rounded-lg border border-pink-100 p-2">
                       <div className="h-12 w-12 rounded-md overflow-hidden bg-pink-50 shrink-0">
-                        {item.image && <img src={item.image} alt={item.title} className="h-full w-full object-cover" />}
+                        {item.image && <img src={optimizeCloudinaryUrl(item.image, 200)} alt={item.title} className="h-full w-full object-cover" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium line-clamp-1">{item.title}</p>

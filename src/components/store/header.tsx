@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 const MENU_LINKS = [] as const
 
@@ -104,7 +105,9 @@ export function Header() {
             >
               {logoUrl ? (
                 <img
-                  src={logoUrl}
+                  // Header logo displays at max 160px wide (per inline style).
+                  // w_400 covers 2x retina. Non-Cloudinary URLs returned unchanged.
+                  src={optimizeCloudinaryUrl(logoUrl, 400)}
                   alt="Eviola"
                   className="block"
                   style={{ display: 'block', maxHeight: '40px', maxWidth: '160px', width: 'auto', height: 'auto' }}

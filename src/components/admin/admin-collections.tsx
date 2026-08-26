@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Product, Collection } from '@/lib/types'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 interface CollectionDraft {
   id?: string
@@ -283,7 +284,7 @@ export function AdminCollections() {
                       )}
                     >
                       <div className="h-10 w-10 rounded-md overflow-hidden bg-pink-50 shrink-0">
-                        {p.images[0] && <img src={p.images[0].url} alt={p.title} className="h-full w-full object-cover" />}
+                        {p.images[0] && <img src={optimizeCloudinaryUrl(p.images[0].url, 200)} alt={p.title} className="h-full w-full object-cover" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium line-clamp-1">{p.title}</p>

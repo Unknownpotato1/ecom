@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useUI } from '@/lib/ui-store'
 import type { Order } from '@/lib/types'
 import { formatPrice } from '@/lib/types'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 export function OrderSuccess() {
   const { goHome, goOrders } = useUI()
@@ -61,7 +62,7 @@ export function OrderSuccess() {
                 <div className="h-12 w-12 rounded-md bg-pink-50 overflow-hidden shrink-0">
                   {it.image && (
                      
-                    <img src={it.image} alt={it.title} className="h-full w-full object-cover" />
+                    <img src={optimizeCloudinaryUrl(it.image, 200)} alt={it.title} className="h-full w-full object-cover" />
                   )}
                 </div>
                 <div className="flex-1">

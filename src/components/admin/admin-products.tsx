@@ -28,6 +28,7 @@ import {
 import { formatPrice, parseJson, type Product } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 interface DraftImage {
   url: string
@@ -303,7 +304,7 @@ export function AdminProducts() {
                 <div className="h-14 w-14 rounded-md overflow-hidden bg-pink-50 shrink-0">
                   {p.images[0] ? (
                      
-                    <img src={p.images[0].url} alt={p.title} className="h-full w-full object-cover" />
+                    <img src={optimizeCloudinaryUrl(p.images[0].url, 200)} alt={p.title} className="h-full w-full object-cover" />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center text-muted-foreground">
                       <ImageIcon className="h-5 w-5" />
@@ -368,7 +369,7 @@ export function AdminProducts() {
                 {draft.images.map((img, i) => (
                   <div key={i} className="relative aspect-square rounded-md overflow-hidden border border-pink-100 group">
                     { }
-                    <img src={img.url} alt={img.alt || `image ${i + 1}`} className="h-full w-full object-cover" />
+                    <img src={optimizeCloudinaryUrl(img.url, 400)} alt={img.alt || `image ${i + 1}`} className="h-full w-full object-cover" />
                     {i === 0 && (
                       <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-brand text-white text-[9px] font-bold">
                         COVER

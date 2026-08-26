@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 const MARQUEE_ITEMS = [
   'Free shipping on orders above ₹249',
@@ -10,7 +11,10 @@ const MARQUEE_ITEMS = [
   'Easy & secure checkout',
 ]
 
-const SLIDES = [
+// Slideshow images are full-width banners on mobile (~400px wide) and up to
+// ~900px on desktop. w_1600 covers 2x retina on the largest display. Each URL
+// gets f_auto,q_auto,w_1600 transformations prepended.
+const SLIDES_RAW = [
   'https://res.cloudinary.com/dfjst3the/image/upload/v1787629553/Picsart_26-08-25_00-44-35-859_yeeyat.jpg',
   'https://res.cloudinary.com/dfjst3the/image/upload/v1787629553/Picsart_26-08-25_03-41-38-146_kmqdjq.jpg',
   'https://res.cloudinary.com/dfjst3the/image/upload/v1787629553/Picsart_26-08-25_03-12-50-832_da42z7.jpg',
@@ -18,6 +22,7 @@ const SLIDES = [
   'https://res.cloudinary.com/dfjst3the/image/upload/v1787629553/Picsart_26-08-25_03-17-11-688_spitze.jpg',
   'https://res.cloudinary.com/dfjst3the/image/upload/v1787629553/Picsart_26-08-25_03-23-03-329_ixuhlx.jpg',
 ]
+const SLIDES = SLIDES_RAW.map((url) => optimizeCloudinaryUrl(url, 1600))
 
 const TOTAL_SLIDES = SLIDES.length
 const TRACK_LENGTH = TOTAL_SLIDES + 2 // + 2 clones

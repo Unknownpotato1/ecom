@@ -23,6 +23,7 @@ import { formatPrice } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { trackInitiateCheckout, trackPurchase } from '@/lib/meta-pixel'
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
 export function Checkout() {
   const { items, subtotal, clearCart } = useCart()
@@ -701,7 +702,8 @@ export function Checkout() {
                 <div key={item.id} className="flex gap-3">
                   <div className="relative h-16 w-16 rounded-md overflow-hidden bg-pink-50 shrink-0">
                     {item.image && (
-                      <img src={item.image} alt={item.title} className="h-full w-full object-cover" />
+                      // Checkout summary thumbnail is 64x64 (h-16 w-16). w_200 covers 2x retina.
+                      <img src={optimizeCloudinaryUrl(item.image, 200)} alt={item.title} className="h-full w-full object-cover" />
                     )}
                     <span className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 rounded-full bg-brand text-white text-[10px] font-bold inline-flex items-center justify-center">
                       {item.quantity}

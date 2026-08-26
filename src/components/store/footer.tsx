@@ -1,12 +1,18 @@
 'use client'
 
+import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
+
 export function Footer() {
+  // Footer logo displays at 210px wide (per CSS .footer-logo img width: 210px).
+  // w_400 covers 2x retina. Non-Cloudinary URLs are returned unchanged by the helper.
+  const logoSrc = optimizeCloudinaryUrl('https://res.cloudinary.com/drlmgjt6p/image/upload/v1787595273/aurora/jxijf7182stgkbcsnibe.png', 400)
+
   return (
     <footer className="footer">
       {/* LOGO */}
       <div className="footer-logo">
         <img
-          src="https://res.cloudinary.com/drlmgjt6p/image/upload/v1787595273/aurora/jxijf7182stgkbcsnibe.png"
+          src={logoSrc}
           alt="Eviola Logo"
         />
       </div>
