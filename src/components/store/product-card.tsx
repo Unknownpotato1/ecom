@@ -1,7 +1,7 @@
 'use client'
 
-import { ShoppingBag } from 'lucide-react'
 import { StarRating } from './star-rating'
+import { BagIcon } from './bag-icon'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
 import { formatPrice, productTags, type Product } from '@/lib/types'
@@ -109,7 +109,7 @@ export function ProductCard({ product }: { product: Product }) {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             ) : (
-              <ShoppingBag className="h-4 w-4" />
+              <BagIcon className="h-4 w-4" />
             )}
           </button>
         )}
