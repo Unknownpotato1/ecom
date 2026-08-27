@@ -135,11 +135,19 @@ export function ProductCard({ product }: { product: Product }) {
               <span className="text-xs text-compared-price line-through">{formatPrice(product.comparedPrice)}</span>
             )}
           </div>
-          {/* "Get it for ₹XX" — 20% off the selling price. Small green text
-              below the price row to entice prepaid / promo-code purchases. */}
+          {/* "Get it for ₹XX" — 20% off the selling price. Eye-catching
+              treatment to draw attention: "Get it for" in black, "₹XX" in
+              white text on brand-pink (#f9758d) background with 0 radius.
+              Font bumped from text-[11px] to text-sm (14px) so it stands out. */}
           {product.price > 0 && (
-            <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
-              Get it for {formatPrice(getItForPrice)}
+            <p className="flex items-center gap-1.5 mt-1 text-sm font-semibold">
+              <span className="text-foreground">Get it for</span>
+              <span
+                className="inline-block px-1.5 py-0.5 text-white font-bold"
+                style={{ backgroundColor: '#f9758d', borderRadius: 0 }}
+              >
+                {formatPrice(getItForPrice)}
+              </span>
             </p>
           )}
         </div>
