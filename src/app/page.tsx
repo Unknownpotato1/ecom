@@ -20,6 +20,7 @@ import { StickyHeader } from '@/components/store/sticky-header'
 import { PublicPage } from '@/components/store/public-page'
 import { PromoSlideshow } from '@/components/store/promo-slideshow'
 import { CategorySection } from '@/components/store/category-section'
+import WhatsAppButton from '@/components/store/whatsapp-button'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { trackPageView } from '@/lib/meta-pixel'
 import { useUI } from '@/lib/ui-store'
@@ -109,6 +110,10 @@ export default function Home() {
           page) show the footer normally. */}
       {view !== 'checkout' && view !== 'order-success' && <Footer />}
       <CartDrawer />
+      {/* Floating WhatsApp button — bottom-right corner.
+          Hidden on checkout and when cart is open (handled inside the
+          component). Raised above the sticky action bar on product pages. */}
+      <WhatsAppButton />
     </main>
   )
 }
