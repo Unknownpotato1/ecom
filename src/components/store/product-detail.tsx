@@ -30,7 +30,7 @@ import { YouMayAlsoLike } from './you-may-also-like'
 import { StickyActionBar } from './sticky-action-bar'
 import { ProductCustomSlot } from './product-custom-slot'
 import { trackViewContent } from '@/lib/meta-pixel'
-import { UpiDiscountBanner } from './upi-discount-banner'
+import { OffersDropdown } from './offers-dropdown'
 import { ProductInfoSections } from './product-info-sections'
 import { StockStatus } from './star-rating'
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
@@ -278,9 +278,12 @@ export function ProductDetail({ productId }: { productId: string }) {
               )}
             </div>
 
-            {/* UPI discount banner — "Get it for ₹XXX (10% off)" with UPI logo.
-                Shown directly below the price. */}
-            <UpiDiscountBanner price={product.price} />
+            {/* Offers dropdown — "Get it for ₹XXX (20% off)" with a dropdown
+                arrow. Clicking expands to show two offers:
+                  1. USE PROMO CODE (WELCOME10) AT CHECKOUT - 10% OFF
+                  2. PAY ONLINE VIA ANY UPI AND GET 10% OFF
+                Replaces the old UpiDiscountBanner. Shown directly below the price. */}
+            <OffersDropdown price={product.price} />
 
             {/* Product info sections — Quick Chat + Qty picker, Offers video,
                 and Delivery Info (pincode checker). Sits directly below the

@@ -1,9 +1,7 @@
 'use client'
 
-import { Heart } from 'lucide-react'
-import { BagIcon } from './bag-icon'
+import { ShoppingBag } from 'lucide-react'
 import { StarRating } from './star-rating'
-import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
 import { useUI } from '@/lib/ui-store'
 import { formatPrice, productTags, type Product } from '@/lib/types'
@@ -16,11 +14,9 @@ export function ProductCard({ product }: { product: Product }) {
   const addItem = useCart((s) => s.addItem)
   const { goProduct } = useUI()
   const [added, setAdded] = useState(false)
-  const [liked, setLiked] = useState(false)
 
   // Sold out = stock is 0 (or missing). When sold out, the card shows a
-  // "Sold Out" overlay on the image and the Add button is replaced with a
-  // disabled "Sold Out" pill.
+  // "Sold Out" overlay on the image and the cart button is hidden.
   const soldOut = !product.stock || product.stock === 0
 
   const tags = productTags(product)
@@ -48,6 +44,10 @@ export function ProductCard({ product }: { product: Product }) {
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }
+
+  // "Get it for" price = 20% off the selling price (floor to nearest rupee).
+  // Shown below the price/comparedPrice row on the product card.
+  const getItForPrice = Math.floor(product.price * 0.8)
 
   return (
     <article
@@ -89,17 +89,30 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        {/* Like */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            setLiked((v) => !v)
-          }}
-          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/85 backdrop-blur flex items-center justify-center shadow-sm hover:bg-white z-10"
-          aria-label="Save to wishlist"
-        >
-          <Heart className={cn('h-4 w-4', liked ? 'fill-brand text-brand' : 'text-muted-foreground')} />
-        </button>
+        {/* Cart button — replaces the old heart/wishlist button.
+            Top-right corner of the image. Tapping it adds the product to
+            the cart (same as the old "Add" button next to the price did).
+            Shows a checkmark + "Added" state for 1.5s after adding.
+            Hidden when sold out (the SOLD OUT overlay covers the image
+            anyway, so no purchase action makes sense). */}
+        {!soldOut && (
+          <button
+            onClick={handleAdd}
+            className={cn(
+              'absolute top-2 right-2 h-8 w-8 rounded-full backdrop-blur flex items-center justify-center shadow-sm z-10 transition-colors',
+              added ? 'bg-emerald-600 text-white' : 'bg-white/85 text-foreground hover:bg-white'
+            )}
+            aria-label={added ? 'Added to bag' : 'Add to bag'}
+          >
+            {added ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <ShoppingBag className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col p-3 sm:p-4">
@@ -112,33 +125,22 @@ export function ProductCard({ product }: { product: Product }) {
           {product.title}
         </h3>
 
-        <div className="mt-auto pt-3 flex items-end justify-between gap-2">
-          <div className="flex flex-col">
+        {/* Price row — price and compared price side by side (horizontal).
+            Removed the old "Add" button that used to sit to the right of
+            the price. The cart action is now the icon button on the image. */}
+        <div className="mt-auto pt-3">
+          <div className="flex items-baseline gap-2">
             <span className="text-base font-semibold text-price">{formatPrice(product.price)}</span>
             {product.comparedPrice && product.comparedPrice > product.price && (
               <span className="text-xs text-compared-price line-through">{formatPrice(product.comparedPrice)}</span>
             )}
           </div>
-          {soldOut ? (
-            // Sold Out pill — disabled, gray background, no pointer
-            <span className="h-9 px-3 inline-flex items-center justify-center text-xs font-semibold bg-gray-300 text-gray-600 rounded-none cursor-not-allowed">
-              Sold Out
-            </span>
-          ) : (
-            <Button
-              size="sm"
-              onClick={handleAdd}
-              className={cn(
-                'h-9 px-3 text-xs shadow-sm transition-all rounded-none',
-                added ? 'bg-emerald-600 hover:bg-emerald-600 text-white' : 'bg-brand hover:shadow-lg text-white'
-              )}
-            >
-              {added ? 'Added!' : (
-                <>
-                  <BagIcon className="h-3.5 w-3.5 mr-1" /> Add
-                </>
-              )}
-            </Button>
+          {/* "Get it for ₹XX" — 20% off the selling price. Small green text
+              below the price row to entice prepaid / promo-code purchases. */}
+          {product.price > 0 && (
+            <p className="text-[11px] text-emerald-600 font-medium mt-0.5">
+              Get it for {formatPrice(getItForPrice)}
+            </p>
           )}
         </div>
       </div>
