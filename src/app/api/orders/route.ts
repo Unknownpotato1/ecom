@@ -56,6 +56,10 @@ export async function POST(req: NextRequest) {
       paymentMethod,
       notes,
       userId,
+      // Forward promo code info so it's stored on the order document
+      // (used by the Telegram notification system to show the promo code).
+      discountCode: body.discountCode ?? null,
+      discountAmount: Number(body.discountAmount) || 0,
     })
     return NextResponse.json({ order })
   } catch (e) {

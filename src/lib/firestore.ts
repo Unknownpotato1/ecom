@@ -175,6 +175,9 @@ export interface OrderDoc {
     quantity: number
     image?: string | null
   }>
+  // Promo code info (optional — old orders may not have these)
+  discountCode?: string | null
+  discountAmount?: number
 }
 
 export interface SectionDoc {
@@ -473,6 +476,8 @@ export async function createOrder(input: {
   paymentMethod: string
   notes?: string | null
   userId?: string | null
+  discountCode?: string | null
+  discountAmount?: number
 }): Promise<OrderDoc> {
   const database = db()
   if (!database) throw new Error('Database not available')
@@ -502,6 +507,10 @@ export async function createOrder(input: {
       quantity: Number(it.quantity),
       image: it.image ?? null,
     })),
+    // Store promo code info so the Telegram notification can display it.
+    // These fields are optional (null/0 if no promo was used).
+    discountCode: input.discountCode ?? null,
+    discountAmount: Number(input.discountAmount) || 0,
   }
   const ref = await database.collection('orders').add(docData)
   return {
@@ -539,6 +548,9 @@ export async function listOrders(email?: string): Promise<OrderDoc[]> {
       createdAt: data.createdAt?.toISOString?.() || data.createdAt || new Date().toISOString(),
       updatedAt: data.updatedAt?.toISOString?.() || data.updatedAt || new Date().toISOString(),
       items: data.items || [],
+      // Promo code info (optional — old orders may not have these)
+      discountCode: data.discountCode || null,
+      discountAmount: data.discountAmount || 0,
     } as OrderDoc
   })
   // Sort in memory by createdAt descending
@@ -548,6 +560,37 @@ export async function listOrders(email?: string): Promise<OrderDoc[]> {
     return tb - ta
   })
   return orders
+}
+
+/**
+ * Telegram notification tracking.
+ * These functions manage the `telegramNotifications` collection, which
+ * records which orders have already been sent to the admin's Telegram.
+ * The cron job calls getNotifiedOrderIds() to skip already-notified
+ * orders, and markOrderNotified() after a successful send.
+ */
+
+export async function getNotifiedOrderIds(): Promise<Set<string>> {
+  const database = db()
+  if (!database) return new Set()
+  const snap = await database.collection('telegramNotifications').get()
+  return new Set(snap.docs.map((d) => d.id))
+}
+
+export async function markOrderNotified(order: {
+  id: string
+  orderNumber: string
+  customerName: string
+  total: number
+}): Promise<void> {
+  const database = db()
+  if (!database) return
+  await database.collection('telegramNotifications').doc(order.id).set({
+    orderNumber: order.orderNumber,
+    notifiedAt: new Date(),
+    customerName: order.customerName,
+    total: order.total,
+  })
 }
 
 // --- Sections ---

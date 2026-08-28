@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/notifications/check-new-orders?secret=$TELEGRAM_CRON_SECRET",
+      "schedule": "* * * * *"
+    }
+  ]
+}
