@@ -105,7 +105,7 @@ export function CollectionCarousel({ collection }: Props) {
               scrollSnapAlign: 'start',
             }}
           >
-            <ProductCard product={product} />
+            <ProductCard product={product} compact />
           </div>
         ))}
 
