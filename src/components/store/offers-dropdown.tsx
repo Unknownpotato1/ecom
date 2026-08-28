@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Tag, Wallet } from 'lucide-react'
+import { ChevronDown, Tag, Wallet } from 'lucide-react'
 import { formatPrice } from '@/lib/types'
 
 interface Props {
@@ -10,29 +10,37 @@ interface Props {
 }
 
 /**
- * Offers Dropdown — replaces the old UpiDiscountBanner on the product page.
+ * Offers Dropdown — product page only (not on product cards).
  *
  * Collapsed state:
  *   ┌────────────────────────────────────────────┐
- *   │  Get it for ₹449                      ▾    │
+ *   │  ✨ Get it for ₹449                    ▾    │
  *   └────────────────────────────────────────────┘
- *   - Light mint green background (#E8F5E9)
- *   - Left: "Get it for ₹XXX" where XXX = 20% off the selling price
- *   - Right: minimal dropdown arrow (chevron) — no UPI icon
+ *   - Full-width brand-pink (#f9758d) bar, 0 radius
+ *   - White sparkles icon + "Get it for ₹XXX" (20% off) on the left
+ *   - White dropdown chevron on the right
  *
- * Expanded state (clicking the bar toggles it):
+ * Expanded state (smooth grid-rows animation):
  *   ┌────────────────────────────────────────────┐
- *   │  Get it for ₹449                      ▴    │
- *   ├────────────────────────────────────────────┤
- *   │  🏷️ USE PROMO CODE (WELCOME10) AT CHECKOUT │
- *   │     10% OFF                                 │
- *   ├────────────────────────────────────────────┤
- *   │  💳 PAY ONLINE VIA ANY UPI AND GET 10% OFF  │
+ *   │  ✨ Get it for ₹449                    ▾    │
+ *   ├────────────────────────────────────────────┤  ← white divider
+ *   │  🏷️ Apply code WELCOME10 at checkout       │  ← white text + icon
+ *   │     Save 10% on your order                  │
+ *   ├────────────────────────────────────────────┤  ← white divider
+ *   │  💳 Pay online via UPI — extra 10% off     │  ← white text + icon
  *   └────────────────────────────────────────────┘
+ *
+ * All text, icons, and dividers in the expanded section are white
+ * (sitting on the pink background) for a clean, premium look.
+ *
+ * The dropdown uses the CSS grid-template-rows 0fr → 1fr animation
+ * trick for a very smooth height transition — the content is always
+ * rendered, just clipped to 0 height when collapsed. This animates
+ * the actual content height smoothly regardless of how much text is
+ * inside, with no JS measurement needed.
  *
  * The 20% "Get it for" price = floor(price * 0.8). This is a combined
- * discount figure (promo code 10% + UPI prepaid 10% = 20% total) shown
- * as the headline. The dropdown explains the two ways to get discounts.
+ * discount figure (promo code 10% + UPI prepaid 10% = 20% total).
  *
  * Rendered only when price > 0.
  */
@@ -44,15 +52,11 @@ export function OffersDropdown({ price }: Props) {
   // 20% off, rounded down to the nearest rupee.
   const getItForPrice = Math.floor(price * 0.8)
 
-  // Original price color — matches the .text-price class (#5bb450)
-  const PRICE_COLOR = '#5bb450'
-
   return (
     <div className="w-full mt-1" style={{ backgroundColor: '#f9758d', borderRadius: 0 }}>
       {/* Header bar — clickable to toggle the dropdown.
           Full-width brand-pink bar with sparkles icon + white "Get it for ₹XX"
-          text on the left, dropdown chevron on the right. Matches the
-          "Get it for" treatment on product cards for consistency. */}
+          text on the left, dropdown chevron on the right. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -86,46 +90,64 @@ export function OffersDropdown({ price }: Props) {
           </span>
         </span>
 
-        {/* Right side: minimal dropdown arrow */}
-        <span className="flex items-center">
-          {open ? (
-            <ChevronUp className="h-5 w-5" />
-          ) : (
-            <ChevronDown className="h-5 w-5" />
-          )}
+        {/* Right side: dropdown chevron — rotates smoothly on toggle.
+            Using a single ChevronDown that rotates 180deg when open,
+            instead of swapping between two icons, for a smoother
+            animation. */}
+        <span className="flex items-center transition-transform duration-300 ease-out" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <ChevronDown className="h-5 w-5" />
         </span>
       </button>
 
-      {/* Dropdown content — two offers. Rendered when open. */}
-      {open && (
-        <div id="offers-dropdown-content" className="border-t" style={{ borderColor: 'rgba(91, 180, 80, 0.2)' }}>
+      {/*
+        Dropdown content — two offers.
+        Smooth height animation via CSS grid-template-rows 0fr → 1fr.
+        The outer div is always rendered (not conditionally mounted)
+        so the transition can animate. When closed, gridTemplateRows is
+        '0fr' which collapses the inner overflow-hidden div to 0 height.
+        When open, '1fr' expands it to natural content height. The
+        transition on grid-template-rows produces a very smooth slide.
+        300ms ease-out matches the chevron rotation for a cohesive feel.
+      */}
+      <div
+        id="offers-dropdown-content"
+        className="grid transition-all duration-300 ease-out"
+        style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          {/* Top divider — white, semi-transparent so it's visible on pink */}
+          <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.35)' }} />
+
           {/* Offer 1: Promo code WELCOME10 */}
-          <div className="flex items-start gap-2.5" style={{ padding: '10px 12px' }}>
-            <Tag className="h-4 w-4 shrink-0 mt-0.5" style={{ color: PRICE_COLOR }} />
+          <div className="flex items-start gap-2.5 text-white" style={{ padding: '10px 12px' }}>
+            <Tag className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs sm:text-sm font-semibold text-foreground">
-                USE PROMO CODE (WELCOME10) AT CHECKOUT
+              <p className="text-xs sm:text-sm font-semibold">
+                Apply code WELCOME10 at checkout
               </p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                10% OFF
+              <p className="text-[11px] sm:text-xs mt-0.5" style={{ opacity: 0.85 }}>
+                Save 10% on your order
               </p>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t" style={{ borderColor: 'rgba(91, 180, 80, 0.2)' }} />
+          {/* Middle divider — white, semi-transparent */}
+          <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.35)' }} />
 
           {/* Offer 2: Pay online via UPI */}
-          <div className="flex items-start gap-2.5" style={{ padding: '10px 12px' }}>
-            <Wallet className="h-4 w-4 shrink-0 mt-0.5" style={{ color: PRICE_COLOR }} />
+          <div className="flex items-start gap-2.5 text-white" style={{ padding: '10px 12px' }}>
+            <Wallet className="h-4 w-4 shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="text-xs sm:text-sm font-semibold text-foreground">
-                PAY ONLINE VIA ANY UPI AND GET 10% OFF
+              <p className="text-xs sm:text-sm font-semibold">
+                Pay online via UPI
+              </p>
+              <p className="text-[11px] sm:text-xs mt-0.5" style={{ opacity: 0.85 }}>
+                Enjoy an extra 10% off your purchase
               </p>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
