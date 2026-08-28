@@ -42,6 +42,10 @@ export function SwipeableImage({
   adaptive = false,
 }: SwipeableImageProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex)
+  // Active image's natural aspect ratio (e.g. "800 / 600"), measured via
+  // onLoad in adaptive mode. Used to set the container's aspect-ratio so
+  // the carousel height matches the active image's natural dimensions.
+  const [activeAspectRatio, setActiveAspectRatio] = useState<string | null>(null)
   // Ref mirror of activeIndex so next()/prev()/handleEnd() always read the
   // LATEST value, avoiding stale-closure bugs where a swipe uses an outdated
   // index. This is critical because the parent re-renders on onIndexChange,
@@ -75,6 +79,10 @@ export function SwipeableImage({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveIndex(initialIndex)
     activeIndexRef.current = initialIndex
+    // Reset the measured aspect ratio so the new product's first image
+    // gets re-measured fresh (different products have different image
+    // dimensions).
+    setActiveAspectRatio(null)
   }, [initialIndex, firstImageUrl])
 
   const goTo = (index: number) => {
@@ -135,15 +143,15 @@ export function SwipeableImage({
   }
 
   // Adaptive mode: Amazon-style sliding track.
-  // All images render side-by-side in a flex track. The track is translated
-  // horizontally by -activeIndex * 100% to show the active image. A CSS
-  // transition on the transform produces the smooth slide — both the old
-  // and new images are visible during the transition (no white gap), and
-  // because nothing remounts, there's no layout shift / page blink.
+  // All images render side-by-side in a flex row (min-w-full each). The
+  // track is translated by -activeIndex * 100% to show the active image.
+  // A CSS transition on the transform produces the smooth slide.
   //
-  // The container height adapts to the ACTIVE image's natural aspect ratio
-  // (each slide is positioned absolutely so it doesn't stretch the track
-  // to the tallest image — only the active one defines the height).
+  // Height handling: we measure the active image's natural dimensions
+  // via onLoad and store its aspect ratio in state. The container uses
+  // that aspect-ratio so it matches the active image. The track is
+  // absolutely positioned to fill the container. This avoids the
+  // absolute-stacking bug AND preserves natural aspect ratios.
   if (adaptive) {
     const img = images[activeIndex]
     return (
@@ -159,41 +167,47 @@ export function SwipeableImage({
         onClickCapture={handleClickCapture}
       >
         {/*
-          Sliding track — flex row of all images, each 100% wide.
-          translateX(-activeIndex * 100%) slides the track to show the
-          active image. transition on transform = smooth slide.
-          This is the same technique used by Amazon's product image
-          carousel: both images are visible during the slide, so there's
-          no white gap between them.
-
-          The track uses an invisible "sizer" image (the active one) to
-          establish the container height at the active image's natural
-          aspect ratio. Each slide is absolutely positioned so they don't
-          all contribute to the track height (which would make the track
-          as tall as the tallest image, leaving gaps).
+          Sizer div — establishes the container height. Uses the active
+          image's measured aspect ratio (set by handleImgLoad below).
+          Falls back to auto height (no aspect-ratio) until the first
+          image loads, so there's no forced square that would squish
+          portrait/landscape images.
         */}
         <div
-          className="relative w-full transition-transform duration-300 ease-out"
+          className="w-full"
+          style={activeAspectRatio ? { aspectRatio: activeAspectRatio } : { height: 'auto' }}
+        />
+
+        {/*
+          Sliding track — absolute, fills the sizer above. Flex row of
+          all images, each min-w-full. translateX slides the track.
+          Both old and new images visible during the transition.
+        */}
+        <div
+          className="absolute inset-0 flex transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${activeIndex * 100}%)` }}
         >
           {images.map((image, i) => (
             <div
               key={i}
-              className={cn(
-                'w-full shrink-0',
-                i === activeIndex ? 'relative' : 'absolute top-0 left-0'
-              )}
-              style={{ width: '100%' }}
+              className="relative min-w-full h-full shrink-0"
             >
               <img
                 src={image.url}
                 alt={image.alt || ''}
-                className={cn('block w-full h-auto', imageClassName)}
-                style={{ display: 'block', width: '100%', height: 'auto' }}
+                className={cn('block w-full h-full', imageClassName)}
+                style={{ objectFit: 'contain', width: '100%', height: '100%' }}
                 draggable={false}
-                // loading="eager" for the first 2 images so the initial
-                // slide and the next one load immediately; the rest lazy-load.
                 loading={i < 2 ? 'eager' : 'lazy'}
+                onLoad={(e) => {
+                  // Measure the image's natural dimensions and store its
+                  // aspect ratio. Only update if this is the active image
+                  // (so the container matches the currently-shown image).
+                  const t = e.currentTarget
+                  if (i === activeIndex && t.naturalWidth && t.naturalHeight) {
+                    setActiveAspectRatio(`${t.naturalWidth} / ${t.naturalHeight}`)
+                  }
+                }}
               />
             </div>
           ))}
