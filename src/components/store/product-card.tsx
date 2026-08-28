@@ -135,14 +135,13 @@ export function ProductCard({ product }: { product: Product }) {
               <span className="text-xs text-compared-price line-through">{formatPrice(product.comparedPrice)}</span>
             )}
           </div>
-          {/* "Get it for ₹XX" — 20% off the selling price. Full-width pink
-              bar (breaks out of the card's p-3/p-4 padding via -mx-3/-mx-4
-              so it spans edge-to-edge with the same side margins as the
-              product title). White text + white sparkles icon on brand-pink
-              (#f9758d) background, 0 radius. Font: text-sm (14px) bold. */}
+          {/* "Get it for ₹XX" — 20% off the selling price. Pink bar that
+              sits INSIDE the card's p-3/p-4 padding (same left/right margins
+              as the product title). White text + white sparkles icon on
+              brand-pink (#f9758d) background, 0 radius. Font: text-sm (14px). */}
           {product.price > 0 && (
             <div
-              className="flex items-center gap-1.5 mt-2 -mx-3 sm:-mx-4 text-sm font-bold text-white"
+              className="flex items-center gap-1.5 mt-2 text-sm font-bold text-white"
               style={{ backgroundColor: '#f9758d', borderRadius: 0, padding: '6px 12px' }}
             >
               {/* Sparkles/badge icon — draws attention to the offer */}
