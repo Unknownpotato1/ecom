@@ -48,31 +48,46 @@ export function OffersDropdown({ price }: Props) {
   const PRICE_COLOR = '#5bb450'
 
   return (
-    <div className="w-full mt-1" style={{ backgroundColor: '#E8F5E9' }}>
-      {/* Header bar — clickable to toggle the dropdown */}
+    <div className="w-full mt-1" style={{ backgroundColor: '#f9758d', borderRadius: 0 }}>
+      {/* Header bar — clickable to toggle the dropdown.
+          Full-width brand-pink bar with sparkles icon + white "Get it for ₹XX"
+          text on the left, dropdown chevron on the right. Matches the
+          "Get it for" treatment on product cards for consistency. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center justify-between w-full"
+        className="flex items-center justify-between w-full text-white"
         style={{ padding: '8px 12px' }}
         aria-expanded={open}
         aria-controls="offers-dropdown-content"
       >
-        {/* Left side: "Get it for ₹XXX" */}
-        <span
-          className="flex items-baseline gap-1.5"
-          style={{ color: PRICE_COLOR }}
-        >
+        {/* Left side: sparkles icon + "Get it for ₹XXX" — all white on pink */}
+        <span className="flex items-center gap-1.5">
+          <svg
+            className="h-5 w-5 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8.891 15.107 15.11 8.89m-5.183-.52h.01m3.089 7.254h.01M14.08 3.902a2.849 2.849 0 0 0 2.176.902 2.845 2.845 0 0 1 2.94 2.94 2.849 2.849 0 0 0 .901 2.176 2.847 2.847 0 0 1 0 4.16 2.848 2.848 0 0 0-.901 2.175 2.843 2.843 0 0 1-2.94 2.94 2.848 2.848 0 0 0-2.176.902 2.847 2.847 0 0 1-4.16 0 2.85 2.85 0 0 0-2.176-.902 2.845 2.845 0 0 1-2.94-2.94 2.848 2.848 0 0 0-.901-2.176 2.848 2.848 0 0 1 0-4.16 2.849 2.849 0 0 0 .901-2.176 2.845 2.845 0 0 1 2.941-2.94 2.849 2.849 0 0 0 2.176-.901 2.847 2.847 0 0 1 4.159 0Z"
+            />
+          </svg>
           <span className="text-base sm:text-lg" style={{ fontWeight: 400 }}>
             Get it for
           </span>
-          <span className="text-lg sm:text-xl" style={{ fontWeight: 500 }}>
+          <span className="text-lg sm:text-xl font-extrabold">
             {formatPrice(getItForPrice)}
           </span>
         </span>
 
-        {/* Right side: minimal dropdown arrow (no UPI icon) */}
-        <span style={{ color: PRICE_COLOR }} className="flex items-center">
+        {/* Right side: minimal dropdown arrow */}
+        <span className="flex items-center">
           {open ? (
             <ChevronUp className="h-5 w-5" />
           ) : (
