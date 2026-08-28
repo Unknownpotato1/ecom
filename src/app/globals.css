@@ -224,21 +224,6 @@
   animation: aurora-fade-up 0.5s ease-out backwards;
 }
 
-/* Slide-in animations for SwipeableImage adaptive mode (product page
-   image carousel). The active <img> is keyed by activeIndex so React
-   remounts it on every swipe; the appropriate directional slide-in
-   animation plays, giving a smooth slide effect instead of a flash.
-   - aurora-slide-in-right: new image enters from the right (swipe left / next)
-   - aurora-slide-in-left:  new image enters from the left  (swipe right / prev) */
-@keyframes aurora-slide-in-right {
-  from { transform: translateX(100%); opacity: 0.6; }
-  to { transform: translateX(0); opacity: 1; }
-}
-@keyframes aurora-slide-in-left {
-  from { transform: translateX(-100%); opacity: 0.6; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
 /* ============================================================
  * Body scroll lock — for custom-section overlays (chat widgets,
  * popovers, etc.) that need to freeze the page behind them while open.

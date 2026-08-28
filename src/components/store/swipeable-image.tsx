@@ -47,10 +47,6 @@ export function SwipeableImage({
   // index. This is critical because the parent re-renders on onIndexChange,
   // and the event handlers need to see the current index at all times.
   const activeIndexRef = useRef(initialIndex)
-  // Direction of the last navigation — used to pick the correct slide-in
-  // animation (from-right for next, from-left for prev). Stored as STATE
-  // (not a ref) because it's read during render to choose the animation.
-  const [direction, setDirection] = useState<'next' | 'prev'>('next')
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
   const isDragging = useRef(false)
@@ -58,13 +54,10 @@ export function SwipeableImage({
 
   // Centralized index updater — keeps the ref and state in sync and fires
   // the onIndexChange callback. All navigation goes through this function.
-  // dir is set alongside the index so React batches both updates into the
-  // same render — the new image appears with the correct slide direction.
-  const updateIndex = (index: number, dir: 'next' | 'prev') => {
+  const updateIndex = (index: number) => {
     if (index < 0 || index >= images.length) return
     if (index === activeIndexRef.current) return
     activeIndexRef.current = index
-    setDirection(dir)
     setActiveIndex(index)
     onIndexChange?.(index)
   }
@@ -86,20 +79,19 @@ export function SwipeableImage({
 
   const goTo = (index: number) => {
     if (index < 0 || index >= images.length) return
-    const dir = index > activeIndexRef.current ? 'next' : 'prev'
-    updateIndex(index, dir)
+    updateIndex(index)
   }
 
   const next = () => {
     const target = Math.min(activeIndexRef.current + 1, images.length - 1)
     if (target !== activeIndexRef.current) {
-      updateIndex(target, 'next')
+      updateIndex(target)
     }
   }
   const prev = () => {
     const target = Math.max(activeIndexRef.current - 1, 0)
     if (target !== activeIndexRef.current) {
-      updateIndex(target, 'prev')
+      updateIndex(target)
     }
   }
 
@@ -142,15 +134,21 @@ export function SwipeableImage({
     )
   }
 
-  // Adaptive mode: render only the active image at natural dimensions.
-  // No fixed height, no sliding track — the image shows at its full natural
-  // aspect ratio with zero padding/cropping. Swiping swaps the image with
-  // a smooth crossfade transition (opacity fade) so it doesn't feel jarring.
+  // Adaptive mode: Amazon-style sliding track.
+  // All images render side-by-side in a flex track. The track is translated
+  // horizontally by -activeIndex * 100% to show the active image. A CSS
+  // transition on the transform produces the smooth slide — both the old
+  // and new images are visible during the transition (no white gap), and
+  // because nothing remounts, there's no layout shift / page blink.
+  //
+  // The container height adapts to the ACTIVE image's natural aspect ratio
+  // (each slide is positioned absolutely so it doesn't stretch the track
+  // to the tallest image — only the active one defines the height).
   if (adaptive) {
     const img = images[activeIndex]
     return (
       <div
-        className={cn('relative select-none cursor-grab active:cursor-grabbing', className)}
+        className={cn('relative select-none cursor-grab active:cursor-grabbing overflow-hidden', className)}
         onTouchStart={(e) => handleStart(e.touches[0].clientX)}
         onTouchMove={(e) => handleMove(e.touches[0].clientX)}
         onTouchEnd={handleEnd}
@@ -161,31 +159,45 @@ export function SwipeableImage({
         onClickCapture={handleClickCapture}
       >
         {/*
-          Slide animation — the active image is rendered with a `key` set
-          to the activeIndex so React remounts the <img> on every swipe.
-          The CSS animation direction depends on which way the user swiped:
-            - next (swipe left)  → aurora-slide-in-right (enters from right)
-            - prev (swipe right) → aurora-slide-in-left  (enters from left)
-          `direction` is a state value set alongside activeIndex in
-          updateIndex(), so React batches both into the same render — the
-          new image appears with the correct slide direction. 0.3s ease-out
-          for a smooth, snappy slide.
+          Sliding track — flex row of all images, each 100% wide.
+          translateX(-activeIndex * 100%) slides the track to show the
+          active image. transition on transform = smooth slide.
+          This is the same technique used by Amazon's product image
+          carousel: both images are visible during the slide, so there's
+          no white gap between them.
+
+          The track uses an invisible "sizer" image (the active one) to
+          establish the container height at the active image's natural
+          aspect ratio. Each slide is absolutely positioned so they don't
+          all contribute to the track height (which would make the track
+          as tall as the tallest image, leaving gaps).
         */}
-        <img
-          key={activeIndex}
-          src={img.url}
-          alt={img.alt || ''}
-          className={cn('block w-full h-auto', imageClassName)}
-          style={{
-            display: 'block',
-            width: '100%',
-            height: 'auto',
-            animation: direction === 'next'
-              ? 'aurora-slide-in-right 0.3s ease-out'
-              : 'aurora-slide-in-left 0.3s ease-out',
-          }}
-          draggable={false}
-        />
+        <div
+          className="relative w-full transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+        >
+          {images.map((image, i) => (
+            <div
+              key={i}
+              className={cn(
+                'w-full shrink-0',
+                i === activeIndex ? 'relative' : 'absolute top-0 left-0'
+              )}
+              style={{ width: '100%' }}
+            >
+              <img
+                src={image.url}
+                alt={image.alt || ''}
+                className={cn('block w-full h-auto', imageClassName)}
+                style={{ display: 'block', width: '100%', height: 'auto' }}
+                draggable={false}
+                // loading="eager" for the first 2 images so the initial
+                // slide and the next one load immediately; the rest lazy-load.
+                loading={i < 2 ? 'eager' : 'lazy'}
+              />
+            </div>
+          ))}
+        </div>
 
         {/* Desktop arrow controls */}
         {images.length > 1 && indicator === 'bar' && (
