@@ -790,7 +790,9 @@ export function Checkout() {
             {appliedPromo && (
               <div className="mb-4 text-xs text-emerald-600 inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" /> {appliedPromo.code} applied
-                {appliedPromo.type === 'percentage'
+                {isFS2
+                  ? ' (flat ₹2 total!)'
+                  : appliedPromo.type === 'percentage'
                   ? ` (${appliedPromo.value}% off)`
                   : ` (₹${appliedPromo.value} off)`}
               </div>
@@ -803,13 +805,21 @@ export function Checkout() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span className="text-price">{formatPrice(sub)}</span>
               </div>
-              {promoDiscount > 0 && (
+              {/* FS2 flat-price override — show the discount as a single line
+                  so the user can see why the total dropped to ₹2. */}
+              {isFS2 && (
+                <div className="flex justify-between text-emerald-600 font-medium">
+                  <span>FS2 flat price</span>
+                  <span>− {formatPrice(Math.max(0, sub - 2))}</span>
+                </div>
+              )}
+              {!isFS2 && promoDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600">
                   <span>Promo discount</span>
                   <span>− {formatPrice(promoDiscount)}</span>
                 </div>
               )}
-              {prepaidExtraDiscount > 0 && (
+              {!isFS2 && prepaidExtraDiscount > 0 && (
                 <div className="flex justify-between text-emerald-600">
                   <span>Prepaid 10% off</span>
                   <span>− {formatPrice(prepaidExtraDiscount)}</span>
