@@ -79,18 +79,28 @@ export function Checkout() {
 
   const sub = subtotal()
   const promoDiscount = appliedPromo?.discountAmount || 0
-  const prepaidExtraDiscount = payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0
-  const discount = promoDiscount + prepaidExtraDiscount
+
+  // FS2 is a special flat-price promo code: when applied, the total
+  // becomes ₹2 regardless of subtotal, shipping, or payment method.
+  // Even COD orders (which normally have a ₹49 partial payment) charge
+  // only ₹2 with no remaining COD amount. This is handled as a special
+  // case because it doesn't fit the existing percentage/fixed discount
+  // model — FS2 overrides the ENTIRE total, not just a discount amount.
+  const isFS2 = appliedPromo?.code === 'FS2'
+
+  const prepaidExtraDiscount = isFS2 ? 0 : (payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0)
+  const discount = isFS2 ? Math.max(0, sub - 2) : promoDiscount + prepaidExtraDiscount
   const FREE_SHIPPING_THRESHOLD = 249
-  const shipping = sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
-  const codPartial = 49
-  const total = Math.max(0, sub - discount) + shipping
-  const codRemaining = Math.max(0, total - codPartial)
+  const shipping = isFS2 ? 0 : (sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99)
+  const codPartial = isFS2 ? 2 : 49
+  const total = isFS2 ? 2 : (Math.max(0, sub - discount) + shipping)
+  const codRemaining = isFS2 ? 0 : Math.max(0, total - codPartial)
 
   // The extra amount the customer would save by switching from COD to
   // prepaid (10% of the post-promo subtotal). Used to display a concrete
-  // ₹ saving amount on the COD→prepaid slide-in card.
-  const onlineSaving = Math.round((sub - promoDiscount) * 0.10)
+  // ₹ saving amount on the COD→prepaid slide-in card. When FS2 is applied,
+  // there's no extra prepaid saving (the price is already ₹2 flat).
+  const onlineSaving = isFS2 ? 0 : Math.round((sub - promoDiscount) * 0.10)
 
   // ── Abandoned checkout tracking ──────────────────────────────────
   // Save the checkout form to the server whenever the customer types
@@ -247,7 +257,46 @@ export function Checkout() {
       return
     }
 
-    // Recompute totals with the prepaid extra 10% discount included.
+    // FS2 flat-price override: total is ₹2 regardless of subtotal.
+    if (isFS2) {
+      setPlacing(true)
+      try {
+        const createRes = await fetch('/api/razorpay/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: 2 }),
+        })
+        const orderData = await createRes.json()
+        if (!createRes.ok || !orderData.orderId) {
+          toast.error(orderData.error || 'Failed to initiate payment')
+          setPlacing(false)
+          return
+        }
+
+        await loadRazorpayScript()
+
+        const paymentSuccess = await openRazorpayCheckout(razorpayKeyId, orderData, 2, 'Full payment')
+
+        if (!paymentSuccess) {
+          setPlacing(false)
+          return
+        }
+
+        await createOrderRecord('prepaid', 'paid', {
+          subtotal: 2,
+          shipping: 0,
+          total: 2,
+        })
+      } catch (e) {
+        console.error(e)
+        toast.error('Payment error — please try again')
+        setPlacing(false)
+      }
+      return
+    }
+
+    // Normal prepaid flow — recompute totals with the prepaid extra 10%
+    // discount included.
     const prepaidExtra = Math.round((sub - promoDiscount) * 0.10)
     const prepaidDiscountTotal = promoDiscount + prepaidExtra
     const prepaidShipping =
@@ -334,7 +383,8 @@ export function Checkout() {
         return
       }
 
-      // ₹49 paid — create order with COD for the remaining amount
+      // Partial paid (normally ₹49, or ₹2 when FS2 promo is applied) —
+      // create order with COD for the remaining amount (₹0 when FS2).
       await createOrderRecord('cod', 'partial_paid')
     } catch (e) {
       console.error(e)
@@ -681,8 +731,8 @@ export function Checkout() {
                     <div className="overflow-hidden">
                       <div className="mt-3 pl-7">
                         <p className="text-xs text-muted-foreground">
-                          Pay <span className="font-semibold text-brand">₹49 now</span> to confirm your COD order and{' '}
-                          <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your hamper is delivered.
+                          Pay <span className="font-semibold text-brand">{formatPrice(codPartial)} now</span> to confirm your COD order and{' '}
+                          <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your jewelry is delivered.
                         </p>
                       </div>
                     </div>
@@ -779,7 +829,7 @@ export function Checkout() {
               <div className="mt-2 rounded-lg bg-brand-soft p-3 text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Pay now (confirm)</span>
-                  <span className="font-semibold text-brand">₹49</span>
+                  <span className="font-semibold text-brand">{formatPrice(codPartial)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Pay on delivery</span>
@@ -806,7 +856,7 @@ export function Checkout() {
                 </>
               ) : (
                 <>
-                  {payment === 'cod' ? 'Place Order - Pay ₹49' : 'Place Order'}
+                  {payment === 'cod' ? `Place Order - Pay ${formatPrice(codPartial)}` : 'Place Order'}
                 </>
               )}
             </Button>
