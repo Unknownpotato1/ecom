@@ -42,25 +42,66 @@ export function SwipeableImage({
   adaptive = false,
 }: SwipeableImageProps) {
   const [activeIndex, setActiveIndex] = useState(initialIndex)
+  // Ref mirror of activeIndex so next()/prev()/handleEnd() always read the
+  // LATEST value, avoiding stale-closure bugs where a swipe uses an outdated
+  // index. This is critical because the parent re-renders on onIndexChange,
+  // and the event handlers need to see the current index at all times.
+  const activeIndexRef = useRef(initialIndex)
+  // Direction of the last navigation — used to pick the correct slide-in
+  // animation (from-right for next, from-left for prev). Stored as STATE
+  // (not a ref) because it's read during render to choose the animation.
+  const [direction, setDirection] = useState<'next' | 'prev'>('next')
   const touchStartX = useRef(0)
   const touchEndX = useRef(0)
   const isDragging = useRef(false)
   const didSwipeRef = useRef(false)
 
-  // Reset index when images change (e.g. navigating to a different product)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveIndex(initialIndex)
-  }, [initialIndex, images])
-
-  const goTo = (index: number) => {
+  // Centralized index updater — keeps the ref and state in sync and fires
+  // the onIndexChange callback. All navigation goes through this function.
+  // dir is set alongside the index so React batches both updates into the
+  // same render — the new image appears with the correct slide direction.
+  const updateIndex = (index: number, dir: 'next' | 'prev') => {
     if (index < 0 || index >= images.length) return
+    if (index === activeIndexRef.current) return
+    activeIndexRef.current = index
+    setDirection(dir)
     setActiveIndex(index)
     onIndexChange?.(index)
   }
 
-  const next = () => goTo(Math.min(activeIndex + 1, images.length - 1))
-  const prev = () => goTo(Math.max(activeIndex - 1, 0))
+  // Reset index when the PRODUCT changes (not on every parent re-render).
+  // The bug was: the parent (ProductDetail) creates a new `images` array
+  // on every render via .map(), so depending on `images` caused this effect
+  // to fire on every re-render — resetting activeIndex to 0 after every
+  // swipe. Fix: depend on a STABLE signature (the first image URL) instead
+  // of the array reference. When the user navigates to a different product,
+  // the first image URL changes and the index resets. When they just swipe
+  // (same product, same images), the URL is unchanged and no reset happens.
+  const firstImageUrl = images[0]?.url
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveIndex(initialIndex)
+    activeIndexRef.current = initialIndex
+  }, [initialIndex, firstImageUrl])
+
+  const goTo = (index: number) => {
+    if (index < 0 || index >= images.length) return
+    const dir = index > activeIndexRef.current ? 'next' : 'prev'
+    updateIndex(index, dir)
+  }
+
+  const next = () => {
+    const target = Math.min(activeIndexRef.current + 1, images.length - 1)
+    if (target !== activeIndexRef.current) {
+      updateIndex(target, 'next')
+    }
+  }
+  const prev = () => {
+    const target = Math.max(activeIndexRef.current - 1, 0)
+    if (target !== activeIndexRef.current) {
+      updateIndex(target, 'prev')
+    }
+  }
 
   const handleStart = (clientX: number) => {
     touchStartX.current = clientX
@@ -120,13 +161,15 @@ export function SwipeableImage({
         onClickCapture={handleClickCapture}
       >
         {/*
-          Crossfade layer — the active image is rendered with a `key` set
+          Slide animation — the active image is rendered with a `key` set
           to the activeIndex so React remounts the <img> on every swipe.
-          The CSS animation `aurora-crossfade` (defined in globals.css)
-          fades the new image in from opacity 0 → 1, producing a smooth
-          transition instead of an instant swap. Without the key, React
-          would just update the src attribute and the browser would show
-          the new image instantly with no animation.
+          The CSS animation direction depends on which way the user swiped:
+            - next (swipe left)  → aurora-slide-in-right (enters from right)
+            - prev (swipe right) → aurora-slide-in-left  (enters from left)
+          `direction` is a state value set alongside activeIndex in
+          updateIndex(), so React batches both into the same render — the
+          new image appears with the correct slide direction. 0.3s ease-out
+          for a smooth, snappy slide.
         */}
         <img
           key={activeIndex}
@@ -137,7 +180,9 @@ export function SwipeableImage({
             display: 'block',
             width: '100%',
             height: 'auto',
-            animation: 'aurora-crossfade 0.35s ease-out',
+            animation: direction === 'next'
+              ? 'aurora-slide-in-right 0.3s ease-out'
+              : 'aurora-slide-in-left 0.3s ease-out',
           }}
           draggable={false}
         />
