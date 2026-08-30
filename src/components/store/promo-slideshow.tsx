@@ -268,8 +268,8 @@ export function PromoSlideshow() {
         .aurora-marquee {
           width: 100%;
           overflow: hidden;
-          background: #000;
-          color: #fff;
+          background: #fde1e6;
+          color: #f9758d;
           white-space: nowrap;
         }
 
@@ -294,7 +294,7 @@ export function PromoSlideshow() {
           display: inline-block;
           width: 120px;
           height: 1px;
-          background: #fff;
+          background: #f9758d;
           margin: 0 28px;
           flex-shrink: 0;
         }
