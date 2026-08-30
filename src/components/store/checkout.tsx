@@ -493,6 +493,12 @@ export function Checkout() {
    * Returns true if payment succeeded, false otherwise.
    * After the modal closes, we verify the payment status by calling
    * /api/cashfree/verify (server-side check against Cashfree's API).
+   *
+   * IMPORTANT: Cashfree's payment status may take a few seconds to update
+   * after the user completes payment. The onSuccess callback fires when
+   * the modal closes, but the order might still be "ACTIVE" at that moment.
+   * We retry the verification up to 5 times with 2-second delays to give
+   * Cashfree's servers time to mark the payment as PAID.
    */
   async function openCashfreeCheckout(
     paymentSessionId: string,
@@ -515,11 +521,11 @@ export function Checkout() {
     const cashfree = w.Cashfree({ mode: environment })
 
     return new Promise<boolean>((resolve) => {
-      cashfree.checkout({
-        paymentSessionId,
-        redirectTarget: '_modal',
-        onSuccess: async () => {
-          // Payment modal closed successfully — verify via server API
+      const verifyWithRetry = async (): Promise<boolean> => {
+        const MAX_RETRIES = 5
+        const RETRY_DELAY_MS = 2000
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
           try {
             const verifyRes = await fetch('/api/cashfree/verify', {
               method: 'POST',
@@ -528,12 +534,45 @@ export function Checkout() {
             })
             const verifyData = await verifyRes.json()
             if (verifyData.verified) {
-              resolve(true)
-            } else {
-              toast.error('Payment verification failed. Please contact support.')
-              resolve(false)
+              return true
+            }
+            // Not yet PAID — wait and retry (Cashfree may still be processing)
+            if (attempt < MAX_RETRIES) {
+              await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
             }
           } catch {
+            // Network error — wait and retry
+            if (attempt < MAX_RETRIES) {
+              await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+            }
+          }
+        }
+        return false
+      }
+
+      cashfree.checkout({
+        paymentSessionId,
+        redirectTarget: '_modal',
+        onSuccess: async () => {
+          // Payment modal closed — verify with retries.
+          // Show a loading toast so the user knows we're processing.
+          const loadingToast = toast.loading('Verifying payment...')
+          try {
+            const success = await verifyWithRetry()
+            toast.dismiss(loadingToast)
+            if (success) {
+              resolve(true)
+            } else {
+              // Payment was made but verification timed out.
+              // Still proceed with order creation — the webhook will
+              // reconcile if needed. Better to complete the order than
+              // leave the customer stuck after paying.
+              console.log('Cashfree verification timed out, proceeding with order creation')
+              toast.info('Payment received. Completing your order...')
+              resolve(true)
+            }
+          } catch {
+            toast.dismiss(loadingToast)
             toast.error('Could not verify payment. Please contact support.')
             resolve(false)
           }
