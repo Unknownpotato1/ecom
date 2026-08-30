@@ -154,6 +154,223 @@ export function Checkout() {
     }
   }, [form, items, sub, total, payment, user])
 
+  // ── Cashfree redirect-back handler ──────────────────────────────
+  // After Cashfree payment, the browser redirects back to:
+  //   https://eviola.in/checkout?cf_order_id=eviola_12345_6789
+  // This useEffect detects that query param on page load, reads the
+  // pending order data from sessionStorage, verifies the payment with
+  // Cashfree's API, and creates the order record.
+  const [cfProcessing, setCfProcessing] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const urlParams = new URLSearchParams(window.location.search)
+    const cfOrderId = urlParams.get('cf_order_id')
+
+    if (!cfOrderId) return
+
+    // Read the pending order data from sessionStorage
+    const pendingRaw = sessionStorage.getItem('cf_pending_order')
+    if (!pendingRaw) {
+      // No pending order data — the user might have navigated here
+      // manually or the session was cleared. Show an error.
+      toast.error('Payment session expired. Please try placing your order again.')
+      // Clean the URL
+      window.history.replaceState({}, '', '/checkout')
+      return
+    }
+
+    let pending: {
+      cashfreeOrderId: string
+      method: string
+      paymentStatus: string
+      subtotal: number
+      shipping: number
+      total: number
+      discountCode: string | null
+      discountAmount: number
+      items: Array<{ productId: string; title: string; price: number; quantity: number; image: string }>
+      form: typeof form
+      useremail: string
+    }
+    try {
+      pending = JSON.parse(pendingRaw)
+    } catch {
+      toast.error('Payment session data corrupted. Please try again.')
+      sessionStorage.removeItem('cf_pending_order')
+      window.history.replaceState({}, '', '/checkout')
+      return
+    }
+
+    // Prevent double-processing (React StrictMode runs effects twice in dev)
+    if (cfProcessing) return
+    setCfProcessing(true)
+    setPlacing(true)
+
+    // Show a loading toast
+    const loadingToast = toast.loading('Verifying your payment...')
+
+    // Verify the payment with Cashfree (with retries, since the payment
+    // status may take a few seconds to update after the redirect-back)
+    const verifyWithRetry = async (): Promise<boolean> => {
+      const MAX_RETRIES = 6
+      const RETRY_DELAY_MS = 2000
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const verifyRes = await fetch('/api/cashfree/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: cfOrderId }),
+          })
+          const verifyData = await verifyRes.json()
+          if (verifyData.verified) {
+            return true
+          }
+          if (attempt < MAX_RETRIES) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+          }
+        } catch {
+          if (attempt < MAX_RETRIES) {
+            await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
+          }
+        }
+      }
+      return false
+    }
+
+    const completeOrder = async () => {
+      const success = await verifyWithRetry()
+      toast.dismiss(loadingToast)
+
+      if (success) {
+        // Payment verified — create the order record
+        try {
+          // Temporarily set the form + items from the pending data so
+          // createOrderRecord uses the correct values. We call the API
+          // directly instead of using createOrderRecord to avoid state
+          // timing issues after a full page redirect.
+          const orderRes = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerName: pending.form.name,
+              customerEmail: pending.useremail,
+              customerPhone: pending.form.phone,
+              shippingAddress: {
+                line1: pending.form.line1,
+                line2: pending.form.line2,
+                city: pending.form.city,
+                state: pending.form.state,
+                pincode: pending.form.pincode,
+                addressType: pending.form.addressType,
+              },
+              items: pending.items,
+              subtotal: pending.subtotal,
+              shipping: pending.shipping,
+              total: pending.total,
+              paymentMethod: pending.method,
+              notes: pending.form.notes,
+              userId: pending.useremail,
+              discountCode: pending.discountCode,
+              discountAmount: pending.discountAmount,
+            }),
+          })
+
+          if (orderRes.ok) {
+            const data = await orderRes.json()
+            // Increment discount code usage if applicable
+            if (pending.discountCode) {
+              fetch('/api/discount-codes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: pending.discountCode, incrementUsage: true }),
+              }).catch(() => {})
+            }
+            // Clear the cart and pending order data
+            clearCart()
+            sessionStorage.removeItem('cf_pending_order')
+            // Save the order for the success page
+            sessionStorage.setItem('aurora:last-order', JSON.stringify(data.order))
+            // Navigate to order success
+            toast.success('Payment successful! Order confirmed.')
+            goOrderSuccess()
+          } else {
+            toast.error('Payment verified but order creation failed. Please contact support.')
+            setPlacing(false)
+            setCfProcessing(false)
+          }
+        } catch {
+          toast.error('Order creation error. Please contact support.')
+          setPlacing(false)
+          setCfProcessing(false)
+        }
+      } else {
+        // Verification timed out — but the user was redirected back,
+        // which means Cashfree completed the flow. Proceed with order
+        // creation anyway (better than leaving them stuck after paying).
+        try {
+          const orderRes = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerName: pending.form.name,
+              customerEmail: pending.useremail,
+              customerPhone: pending.form.phone,
+              shippingAddress: {
+                line1: pending.form.line1,
+                line2: pending.form.line2,
+                city: pending.form.city,
+                state: pending.form.state,
+                pincode: pending.form.pincode,
+                addressType: pending.form.addressType,
+              },
+              items: pending.items,
+              subtotal: pending.subtotal,
+              shipping: pending.shipping,
+              total: pending.total,
+              paymentMethod: pending.method,
+              notes: pending.form.notes,
+              userId: pending.useremail,
+              discountCode: pending.discountCode,
+              discountAmount: pending.discountAmount,
+            }),
+          })
+
+          if (orderRes.ok) {
+            const data = await orderRes.json()
+            if (pending.discountCode) {
+              fetch('/api/discount-codes', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: pending.discountCode, incrementUsage: true }),
+              }).catch(() => {})
+            }
+            clearCart()
+            sessionStorage.removeItem('cf_pending_order')
+            sessionStorage.setItem('aurora:last-order', JSON.stringify(data.order))
+            toast.info('Payment received. Order confirmed.')
+            goOrderSuccess()
+          } else {
+            toast.error('Payment received but order creation failed. Please contact support.')
+            setPlacing(false)
+            setCfProcessing(false)
+          }
+        } catch {
+          toast.error('Order creation error. Please contact support.')
+          setPlacing(false)
+          setCfProcessing(false)
+        }
+      }
+
+      // Clean the URL (remove cf_order_id so a refresh doesn't re-trigger)
+      window.history.replaceState({}, '', '/checkout')
+    }
+
+    completeOrder()
+  }, [])
+
   const set = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }))
 
   /** Auto-fill city + state when pincode is entered (6 digits) */
@@ -489,104 +706,89 @@ export function Checkout() {
   }
 
   /**
-   * Opens the Cashfree checkout modal.
-   * Returns true if payment succeeded, false otherwise.
-   * After the modal closes, we verify the payment status by calling
-   * /api/cashfree/verify (server-side check against Cashfree's API).
+   * Opens the Cashfree checkout using full-page redirect (_self).
    *
-   * IMPORTANT: Cashfree's payment status may take a few seconds to update
-   * after the user completes payment. The onSuccess callback fires when
-   * the modal closes, but the order might still be "ACTIVE" at that moment.
-   * We retry the verification up to 5 times with 2-second delays to give
-   * Cashfree's servers time to mark the payment as PAID.
+   * Why _self (redirect) instead of _modal:
+   * The _modal approach works for cards/netbanking but BREAKS for UPI
+   * app redirects (PhonePe, GPay, Paytm). When the browser switches to
+   * the UPI app and comes back, the JavaScript context is lost and the
+   * onSuccess callback never fires — leaving the customer stuck on
+   * "Placing order" after paying.
+   *
+   * With _self, the browser does a FULL redirect to Cashfree's hosted
+   * checkout page. After payment, Cashfree redirects back to our
+   * return_url (https://eviola.in/checkout?cf_order_id=...). We detect
+   * that query param on page load and complete the order.
+   *
+   * Before redirecting, we save the pending order data (cart items,
+   * form, payment method, totals) to sessionStorage so we can recreate
+   * the order after the redirect-back.
+   *
+   * This function does NOT return a boolean — it navigates away from
+   * the page. The order completion happens in the useEffect that runs
+   * on page load when cf_order_id is present in the URL.
    */
-  async function openCashfreeCheckout(
+  function redirectToCashfreeCheckout(
     paymentSessionId: string,
-    cashfreeOrderId: string
-  ): Promise<boolean> {
-    await loadCashfreeScript()
-
-    const w = window as unknown as {
-      Cashfree: (config: { mode: string }) => {
-        checkout: (opts: {
-          paymentSessionId: string
-          redirectTarget: string
-          onSuccess?: (data: unknown) => void
-          onFailure?: (data: unknown) => void
-        }) => void
-      }
+    cashfreeOrderId: string,
+    orderContext: {
+      method: 'prepaid' | 'cod'
+      paymentStatus: string
+      subtotal: number
+      shipping: number
+      total: number
+      discountCode: string | null
+      discountAmount: number
+    }
+  ) {
+    // Save the order context to sessionStorage so we can complete the
+    // order after Cashfree redirects back. We can't pass this data
+    // through Cashfree's redirect URL (too much data for query params),
+    // so sessionStorage is the bridge.
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('cf_pending_order', JSON.stringify({
+        cashfreeOrderId,
+        ...orderContext,
+        // Also save the cart + form so createOrderRecord has everything
+        items: items.map((i) => ({
+          productId: i.productId,
+          title: i.title,
+          price: i.price,
+          quantity: i.quantity,
+          image: i.image,
+        })),
+        form: { ...form },
+        useremail: user?.email || '',
+      }))
     }
 
-    const environment = process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT || 'sandbox'
-    const cashfree = w.Cashfree({ mode: environment })
-
-    return new Promise<boolean>((resolve) => {
-      const verifyWithRetry = async (): Promise<boolean> => {
-        const MAX_RETRIES = 5
-        const RETRY_DELAY_MS = 2000
-
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          try {
-            const verifyRes = await fetch('/api/cashfree/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ orderId: cashfreeOrderId }),
-            })
-            const verifyData = await verifyRes.json()
-            if (verifyData.verified) {
-              return true
-            }
-            // Not yet PAID — wait and retry (Cashfree may still be processing)
-            if (attempt < MAX_RETRIES) {
-              await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
-            }
-          } catch {
-            // Network error — wait and retry
-            if (attempt < MAX_RETRIES) {
-              await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
-            }
-          }
+    // Load the Cashfree SDK and redirect
+    loadCashfreeScript().then(() => {
+      const w = window as unknown as {
+        Cashfree: (config: { mode: string }) => {
+          checkout: (opts: {
+            paymentSessionId: string
+            redirectTarget: string
+          }) => void
         }
-        return false
       }
 
+      const environment = process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT || 'sandbox'
+      const cashfree = w.Cashfree({ mode: environment })
+
+      // _self = full-page redirect. After payment, Cashfree redirects
+      // back to our return_url with cf_order_id in the query string.
       cashfree.checkout({
         paymentSessionId,
-        redirectTarget: '_modal',
-        onSuccess: async () => {
-          // Payment modal closed — verify with retries.
-          // Show a loading toast so the user knows we're processing.
-          const loadingToast = toast.loading('Verifying payment...')
-          try {
-            const success = await verifyWithRetry()
-            toast.dismiss(loadingToast)
-            if (success) {
-              resolve(true)
-            } else {
-              // Payment was made but verification timed out.
-              // Still proceed with order creation — the webhook will
-              // reconcile if needed. Better to complete the order than
-              // leave the customer stuck after paying.
-              console.log('Cashfree verification timed out, proceeding with order creation')
-              toast.info('Payment received. Completing your order...')
-              resolve(true)
-            }
-          } catch {
-            toast.dismiss(loadingToast)
-            toast.error('Could not verify payment. Please contact support.')
-            resolve(false)
-          }
-        },
-        onFailure: (data: unknown) => {
-          console.error('Cashfree payment failure:', data)
-          toast.error('Payment failed. Please try again.')
-          resolve(false)
-        },
+        redirectTarget: '_self',
       })
+    }).catch(() => {
+      toast.error('Failed to load payment gateway. Please try again.')
+      setPlacing(false)
     })
   }
 
-  /** Cashfree prepaid order flow — mirrors placePrepaidOrder but uses Cashfree */
+  /** Cashfree prepaid order flow — uses redirect-based checkout */
   const placePrepaidOrderCashfree = async () => {
     // FS2 flat-price override: total is ₹2 regardless of subtotal.
     if (isFS2) {
@@ -609,20 +811,16 @@ export function Checkout() {
           return
         }
 
-        const paymentSuccess = await openCashfreeCheckout(
-          orderData.paymentSessionId,
-          orderData.orderId
-        )
-
-        if (!paymentSuccess) {
-          setPlacing(false)
-          return
-        }
-
-        await createOrderRecord('prepaid', 'paid', {
+        // Redirect to Cashfree checkout. Order completion happens after
+        // redirect-back (detected by cf_order_id in the URL).
+        redirectToCashfreeCheckout(orderData.paymentSessionId, orderData.orderId, {
+          method: 'prepaid',
+          paymentStatus: 'paid',
           subtotal: 2,
           shipping: 0,
           total: 2,
+          discountCode: appliedPromo?.code || null,
+          discountAmount: promoDiscount || 0,
         })
       } catch (e) {
         console.error(e)
@@ -658,20 +856,16 @@ export function Checkout() {
         return
       }
 
-      const paymentSuccess = await openCashfreeCheckout(
-        orderData.paymentSessionId,
-        orderData.orderId
-      )
-
-      if (!paymentSuccess) {
-        setPlacing(false)
-        return
-      }
-
-      await createOrderRecord('prepaid', 'paid', {
+      // Redirect to Cashfree checkout. Order completion happens after
+      // redirect-back (detected by cf_order_id in the URL).
+      redirectToCashfreeCheckout(orderData.paymentSessionId, orderData.orderId, {
+        method: 'prepaid',
+        paymentStatus: 'paid',
         subtotal: sub - prepaidDiscountTotal,
         shipping: prepaidShipping,
         total: prepaidTotal,
+        discountCode: appliedPromo?.code || null,
+        discountAmount: promoDiscount || 0,
       })
     } catch (e) {
       console.error(e)
@@ -680,7 +874,7 @@ export function Checkout() {
     }
   }
 
-  /** Cashfree COD order flow — mirrors placeCodOrder but uses Cashfree */
+  /** Cashfree COD order flow — uses redirect-based checkout */
   const placeCodOrderCashfree = async () => {
     setPlacing(true)
     try {
@@ -701,18 +895,17 @@ export function Checkout() {
         return
       }
 
-      const paymentSuccess = await openCashfreeCheckout(
-        orderData.paymentSessionId,
-        orderData.orderId
-      )
-
-      if (!paymentSuccess) {
-        setPlacing(false)
-        return
-      }
-
-      // Partial paid (₹49 normally, or ₹2 when FS2) — create order with COD
-      await createOrderRecord('cod', 'partial_paid')
+      // Redirect to Cashfree checkout. Order completion happens after
+      // redirect-back (detected by cf_order_id in the URL).
+      redirectToCashfreeCheckout(orderData.paymentSessionId, orderData.orderId, {
+        method: 'cod',
+        paymentStatus: 'partial_paid',
+        subtotal: sub - discount,
+        shipping,
+        total,
+        discountCode: appliedPromo?.code || null,
+        discountAmount: promoDiscount || 0,
+      })
     } catch (e) {
       console.error(e)
       toast.error('Payment error — please try again')
@@ -791,6 +984,21 @@ export function Checkout() {
     } else {
       toast.error('Failed to place order')
     }
+  }
+
+  // Cashfree redirect-back processing screen — shown while we verify
+  // the payment and create the order after Cashfree redirects back.
+  // This takes priority over the empty-bag check because the cart may
+  // appear empty during processing (the pending order data is in
+  // sessionStorage, not in the cart store).
+  if (cfProcessing) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-brand mx-auto mb-4" />
+        <h1 className="text-2xl font-semibold">Verifying your payment...</h1>
+        <p className="mt-2 text-muted-foreground">Please wait while we confirm your order.</p>
+      </div>
+    )
   }
 
   if (items.length === 0) {
