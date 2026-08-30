@@ -224,9 +224,13 @@ export function Checkout() {
       return
     }
 
+    // PAYMENT_PROVIDER env var controls which payment gateway is used.
+    // Default is 'razorpay' (backward compatible). Set to 'cashfree' to switch.
+    const useCashfree = process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'cashfree'
+
     // Prepaid — proceed directly.
     if (payment === 'prepaid') {
-      return placePrepaidOrder()
+      return useCashfree ? placePrepaidOrderCashfree() : placePrepaidOrder()
     }
 
     // COD — intercept with a slide-in card that nudges the customer
@@ -463,6 +467,218 @@ export function Checkout() {
       })
       rzp.open()
     })
+  }
+
+  // ── Cashfree payment flow ──────────────────────────────────────
+  // The Cashfree flow mirrors the Razorpay flow but uses Cashfree's API
+  // and JS SDK. Both flows coexist — the PAYMENT_PROVIDER env var controls
+  // which one is active. Default is 'razorpay' (backward compatible).
+  // Set PAYMENT_PROVIDER=cashfree to switch.
+
+  async function loadCashfreeScript(): Promise<void> {
+    if (typeof window === 'undefined') return
+    const w = window as unknown as { Cashfree?: unknown }
+    if (w.Cashfree) return
+    return new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script')
+      script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js'
+      script.onload = () => resolve()
+      script.onerror = () => reject(new Error('Failed to load Cashfree script'))
+      document.head.appendChild(script)
+    })
+  }
+
+  /**
+   * Opens the Cashfree checkout modal.
+   * Returns true if payment succeeded, false otherwise.
+   * After the modal closes, we verify the payment status by calling
+   * /api/cashfree/verify (server-side check against Cashfree's API).
+   */
+  async function openCashfreeCheckout(
+    paymentSessionId: string,
+    cashfreeOrderId: string
+  ): Promise<boolean> {
+    await loadCashfreeScript()
+
+    const w = window as unknown as {
+      Cashfree: (config: { mode: string }) => {
+        checkout: (opts: {
+          paymentSessionId: string
+          redirectTarget: string
+          onSuccess?: (data: unknown) => void
+          onFailure?: (data: unknown) => void
+        }) => void
+      }
+    }
+
+    const environment = process.env.NEXT_PUBLIC_CASHFREE_ENVIRONMENT || 'sandbox'
+    const cashfree = w.Cashfree({ mode: environment })
+
+    return new Promise<boolean>((resolve) => {
+      cashfree.checkout({
+        paymentSessionId,
+        redirectTarget: '_modal',
+        onSuccess: async () => {
+          // Payment modal closed successfully — verify via server API
+          try {
+            const verifyRes = await fetch('/api/cashfree/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: cashfreeOrderId }),
+            })
+            const verifyData = await verifyRes.json()
+            if (verifyData.verified) {
+              resolve(true)
+            } else {
+              toast.error('Payment verification failed. Please contact support.')
+              resolve(false)
+            }
+          } catch {
+            toast.error('Could not verify payment. Please contact support.')
+            resolve(false)
+          }
+        },
+        onFailure: (data: unknown) => {
+          console.error('Cashfree payment failure:', data)
+          toast.error('Payment failed. Please try again.')
+          resolve(false)
+        },
+      })
+    })
+  }
+
+  /** Cashfree prepaid order flow — mirrors placePrepaidOrder but uses Cashfree */
+  const placePrepaidOrderCashfree = async () => {
+    // FS2 flat-price override: total is ₹2 regardless of subtotal.
+    if (isFS2) {
+      setPlacing(true)
+      try {
+        const createRes = await fetch('/api/cashfree/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: 2,
+            customerName: form.name,
+            customerPhone: form.phone,
+            customerEmail: user?.email || '',
+          }),
+        })
+        const orderData = await createRes.json()
+        if (!createRes.ok || !orderData.paymentSessionId) {
+          toast.error(orderData.error || 'Failed to initiate payment')
+          setPlacing(false)
+          return
+        }
+
+        const paymentSuccess = await openCashfreeCheckout(
+          orderData.paymentSessionId,
+          orderData.orderId
+        )
+
+        if (!paymentSuccess) {
+          setPlacing(false)
+          return
+        }
+
+        await createOrderRecord('prepaid', 'paid', {
+          subtotal: 2,
+          shipping: 0,
+          total: 2,
+        })
+      } catch (e) {
+        console.error(e)
+        toast.error('Payment error — please try again')
+        setPlacing(false)
+      }
+      return
+    }
+
+    // Normal prepaid flow — recompute totals with the prepaid extra 10% discount.
+    const prepaidExtra = Math.round((sub - promoDiscount) * 0.10)
+    const prepaidDiscountTotal = promoDiscount + prepaidExtra
+    const prepaidShipping =
+      sub - prepaidDiscountTotal >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
+    const prepaidTotal = Math.max(0, sub - prepaidDiscountTotal) + prepaidShipping
+
+    setPlacing(true)
+    try {
+      const createRes = await fetch('/api/cashfree/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: prepaidTotal,
+          customerName: form.name,
+          customerPhone: form.phone,
+          customerEmail: user?.email || '',
+        }),
+      })
+      const orderData = await createRes.json()
+      if (!createRes.ok || !orderData.paymentSessionId) {
+        toast.error(orderData.error || 'Failed to initiate payment')
+        setPlacing(false)
+        return
+      }
+
+      const paymentSuccess = await openCashfreeCheckout(
+        orderData.paymentSessionId,
+        orderData.orderId
+      )
+
+      if (!paymentSuccess) {
+        setPlacing(false)
+        return
+      }
+
+      await createOrderRecord('prepaid', 'paid', {
+        subtotal: sub - prepaidDiscountTotal,
+        shipping: prepaidShipping,
+        total: prepaidTotal,
+      })
+    } catch (e) {
+      console.error(e)
+      toast.error('Payment error — please try again')
+      setPlacing(false)
+    }
+  }
+
+  /** Cashfree COD order flow — mirrors placeCodOrder but uses Cashfree */
+  const placeCodOrderCashfree = async () => {
+    setPlacing(true)
+    try {
+      const createRes = await fetch('/api/cashfree/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: codPartial,
+          customerName: form.name,
+          customerPhone: form.phone,
+          customerEmail: user?.email || '',
+        }),
+      })
+      const orderData = await createRes.json()
+      if (!createRes.ok || !orderData.paymentSessionId) {
+        toast.error(orderData.error || 'Failed to initiate payment')
+        setPlacing(false)
+        return
+      }
+
+      const paymentSuccess = await openCashfreeCheckout(
+        orderData.paymentSessionId,
+        orderData.orderId
+      )
+
+      if (!paymentSuccess) {
+        setPlacing(false)
+        return
+      }
+
+      // Partial paid (₹49 normally, or ₹2 when FS2) — create order with COD
+      await createOrderRecord('cod', 'partial_paid')
+    } catch (e) {
+      console.error(e)
+      toast.error('Payment error — please try again')
+      setPlacing(false)
+    }
   }
 
   async function createOrderRecord(
@@ -940,7 +1156,12 @@ export function Checkout() {
               onClick={() => {
                 setShowCodConfirm(false)
                 setPayment('prepaid')
-                placePrepaidOrder()
+                // Use the active payment provider (Cashfree or Razorpay)
+                if (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'cashfree') {
+                  placePrepaidOrderCashfree()
+                } else {
+                  placePrepaidOrder()
+                }
               }}
             >
               <Wallet className="h-4 w-4 mr-2" />
@@ -953,7 +1174,12 @@ export function Checkout() {
               className="w-full h-12 border-pink-100 text-foreground hover:bg-muted text-sm font-medium"
               onClick={() => {
                 setShowCodConfirm(false)
-                placeCodOrder()
+                // Use the active payment provider (Cashfree or Razorpay)
+                if (process.env.NEXT_PUBLIC_PAYMENT_PROVIDER === 'cashfree') {
+                  placeCodOrderCashfree()
+                } else {
+                  placeCodOrder()
+                }
               }}
             >
               <Banknote className="h-4 w-4 mr-2" />
