@@ -1,32 +1,85 @@
 'use client'
 
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { ChevronRight, ArrowLeft, Loader2 } from 'lucide-react'
+import { ChevronRight, ArrowLeft, Loader2, SlidersHorizontal, X } from 'lucide-react'
 import { useUI } from '@/lib/ui-store'
 import { ProductCard } from './product-card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import type { Product, Collection } from '@/lib/types'
 
 const BATCH_SIZE = 8
+
+type SortOption = 'newest' | 'price-low' | 'price-high'
+
+const SORT_LABELS: Record<SortOption, string> = {
+  'newest': 'Newest First',
+  'price-low': 'Price: Low to High',
+  'price-high': 'Price: High to Low',
+}
+
+/**
+ * SortPanel — the sort/filter panel content. Rendered inside both the
+ * desktop sidebar and the mobile bottom sheet. Defined OUTSIDE the
+ * CollectionPage component to avoid the "cannot create components
+ * during render" lint error.
+ */
+function SortPanel({
+  sort,
+  onSortChange,
+}: {
+  sort: SortOption
+  onSortChange: (s: SortOption) => void
+}) {
+  return (
+    <div className="space-y-1">
+      <h3 className="text-sm font-semibold mb-3">Sort by</h3>
+      {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
+        <button
+          key={key}
+          onClick={() => onSortChange(key)}
+          className={cn(
+            'block w-full text-left px-3 py-2 text-sm rounded-lg transition-colors',
+            sort === key
+              ? 'bg-brand-soft text-brand font-medium'
+              : 'text-muted-foreground hover:bg-muted'
+          )}
+        >
+          {SORT_LABELS[key]}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 /**
  * Shows all products in a collection with infinite scroll.
  * Loads the collection metadata first (fast), then fetches products
  * in batches of 8 as the user scrolls down.
+ *
+ * Features:
+ *   - Sort/filter panel on the right (newest, price low-high, price high-low)
+ *   - Newest products shown first by default (createdAt DESC)
+ *   - No product count shown
  */
 export function CollectionPage({ collectionId }: { collectionId: string }) {
   const { goHome } = useUI()
   const [collection, setCollection] = useState<Collection | null>(null)
   const [products, setProducts] = useState<Product[]>([])
-  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const allProductsRef = useRef<Product[]>([])
+  const [sort, setSort] = useState<SortOption>('newest')
+  // Mobile filter sheet open state
+  const [filterOpen, setFilterOpen] = useState(false)
+
+  // Refs for the sorted product list + pagination
+  const sortedProductsRef = useRef<Product[]>([])
   const loadedCountRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  // Fetch collection + products on mount
   useEffect(() => {
     let active = true
     Promise.resolve().then(() => {
@@ -36,10 +89,6 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
       loadedCountRef.current = 0
     })
 
-    // Step 1: Fetch ALL collections (including those hidden from homepage).
-    // A collection may be set to visible=false (don't show on homepage carousel)
-    // but still accessible via the menu — so we fetch with ?all=1 to include
-    // hidden collections. Then find by ID OR slug.
     fetch('/api/collections?all=1')
       .then((r) => r.json())
       .then((collData) => {
@@ -49,9 +98,6 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
           || all.find((c: Collection) => c.slug === collectionId)
         if (coll) {
           setCollection(coll)
-          // Store productIds in a ref so it's available in the next .then()
-          allProductsRef.current = [] // will be filled with products, not IDs
-          // Pass the collection to the next step via closure
           return fetch('/api/products').then((r) => r.json()).then((prodData) => ({ prodData, coll }))
         }
         setLoading(false)
@@ -61,14 +107,20 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
         if (!active || !result) return
         const { prodData, coll } = result
         const all = prodData.products || []
-        // Order products by the collection's productIds order
+        // Get products that belong to this collection
         const ordered: Product[] = []
         for (const id of coll.productIds || []) {
           const found = all.find((p: Product) => p.id === id)
           if (found) ordered.push(found)
         }
-        allProductsRef.current = ordered
-        setTotalCount(ordered.length)
+        // Sort by createdAt DESC (newest first) as the default.
+        // This also becomes the base for the sortedProductsRef.
+        ordered.sort((a, b) => {
+          const ta = new Date(a.createdAt).getTime()
+          const tb = new Date(b.createdAt).getTime()
+          return tb - ta
+        })
+        sortedProductsRef.current = ordered
         // Show first batch
         const firstBatch = ordered.slice(0, BATCH_SIZE)
         setProducts(firstBatch)
@@ -84,24 +136,46 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
     }
   }, [collectionId])
 
+  // Re-sort and re-paginate when the sort option changes
+  useEffect(() => {
+    if (loading || sortedProductsRef.current.length === 0) return
+
+    const sorted = [...sortedProductsRef.current]
+    if (sort === 'newest') {
+      sorted.sort((a, b) => {
+        const ta = new Date(a.createdAt).getTime()
+        const tb = new Date(b.createdAt).getTime()
+        return tb - ta
+      })
+    } else if (sort === 'price-low') {
+      sorted.sort((a, b) => a.price - b.price)
+    } else if (sort === 'price-high') {
+      sorted.sort((a, b) => b.price - a.price)
+    }
+
+    sortedProductsRef.current = sorted
+    const firstBatch = sorted.slice(0, BATCH_SIZE)
+    setProducts(firstBatch)
+    loadedCountRef.current = firstBatch.length
+    setHasMore(sorted.length > BATCH_SIZE)
+  }, [sort])
+
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return
     setLoadingMore(true)
-    // Simulate a slight delay so the spinner is visible
     setTimeout(() => {
-      const next = allProductsRef.current.slice(
+      const next = sortedProductsRef.current.slice(
         loadedCountRef.current,
         loadedCountRef.current + BATCH_SIZE
       )
       setProducts((prev) => [...prev, ...next])
       loadedCountRef.current += next.length
-      setHasMore(loadedCountRef.current < allProductsRef.current.length)
+      setHasMore(loadedCountRef.current < sortedProductsRef.current.length)
       setLoadingMore(false)
     }, 200)
   }, [loadingMore, hasMore])
 
-  // Infinite scroll via IntersectionObserver — re-creates observer
-  // whenever loadMore changes (i.e. when products are added)
+  // Infinite scroll via IntersectionObserver
   useEffect(() => {
     if (!sentinelRef.current || !hasMore) return
     const observer = new IntersectionObserver(
@@ -140,6 +214,9 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
     )
   }
 
+  // The sort/filter panel is defined OUTSIDE this component (above) as
+  // the SortPanel function, and rendered via <SortPanel /> below.
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 fade-up">
       <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
@@ -148,10 +225,19 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
         <span className="text-foreground">{collection.name}</span>
       </nav>
 
-      <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{collection.name}</h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        {totalCount} product{totalCount === 1 ? '' : 's'}
-      </p>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{collection.name}</h1>
+        {/* Mobile filter button — opens the bottom sheet */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="lg:hidden border-pink-100 text-foreground"
+          onClick={() => setFilterOpen(true)}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+          Sort
+        </Button>
+      </div>
 
       {products.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-pink-200 rounded-xl">
@@ -159,20 +245,61 @@ export function CollectionPage({ collectionId }: { collectionId: string }) {
           <p className="text-sm text-muted-foreground mt-1">Stay tuned!</p>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {products.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-
-          {/* Infinite scroll sentinel */}
-          {hasMore && (
-            <div ref={sentinelRef} className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-brand" />
+        <div className="flex gap-6">
+          {/* Desktop filter sidebar — right side, sticky */}
+          <aside className="hidden lg:block w-56 shrink-0">
+            <div className="sticky top-20 border border-pink-100 rounded-xl p-4">
+              <SortPanel sort={sort} onSortChange={setSort} />
             </div>
-          )}
-        </>
+          </aside>
+
+          {/* Product grid */}
+          <div className="flex-1 min-w-0">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {products.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+
+            {/* Infinite scroll sentinel */}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-brand" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile filter bottom sheet */}
+      {filterOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setFilterOpen(false)}
+          />
+          {/* Sheet */}
+          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-5 pb-8 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-semibold">Sort & Filter</h2>
+              <button
+                onClick={() => setFilterOpen(false)}
+                className="h-8 w-8 rounded-full hover:bg-muted flex items-center justify-center"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <SortPanel
+              sort={sort}
+              onSortChange={(s) => {
+                setSort(s)
+                setFilterOpen(false)
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
