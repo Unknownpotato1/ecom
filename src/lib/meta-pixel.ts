@@ -60,10 +60,20 @@ export function initMetaPixel() {
 /**
  * Fire a standard Meta Pixel event.
  * No-op if fbq isn't loaded (ad-block, SSR, etc.)
+ *
+ * event_id (optional): Meta uses this for deduplication — if the same
+ * event_id is received twice, Meta keeps only the first. We pass the
+ * order number as event_id for Purchase events so a page refresh or
+ * double-fire doesn't create duplicate Purchase records in Meta.
  */
-function track(event: string, params?: Record<string, unknown>) {
+function track(event: string, params?: Record<string, unknown>, eventId?: string) {
   if (typeof window === 'undefined' || !window.fbq) return
-  window.fbq('track', event, params)
+  if (eventId) {
+    // With event_id for deduplication (used by Purchase)
+    window.fbq('track', event, params, { eventID: eventId })
+  } else {
+    window.fbq('track', event, params)
+  }
 }
 
 /** PageView — fired automatically on init and on SPA view changes */
@@ -119,18 +129,38 @@ export function trackInitiateCheckout(cart: {
   })
 }
 
-/** Purchase — only after order is successfully completed and verified */
+/**
+ * Purchase — only after order is successfully completed and verified.
+ * Fires fbq('track', 'Purchase') with standard Meta parameters.
+ *
+ * DEDUPLICATION: Meta Pixel has built-in deduplication via event_id.
+ * We use the order number as the event_id so that if the same order
+ * somehow fires twice (e.g. a page refresh re-triggers), Meta's
+ * deduplication automatically drops the duplicate. This ensures
+ * Purchase fires exactly once per order.
+ *
+ * Parameters sent:
+ *   value        — total order amount
+ *   currency     — 'INR'
+ *   content_type — 'product'
+ *   content_ids  — array of product IDs in the order
+ *   num_items    — total quantity of items
+ *   order_id     — the order number (for reconciliation in Meta dashboard)
+ *   event_id     — the order number (for deduplication)
+ */
 export function trackPurchase(order: {
   total: number
   orderId: string
   numItems: number
+  contentIds?: string[]
   currency?: string
 }) {
   track('Purchase', {
     value: order.total,
     currency: order.currency || 'INR',
     content_type: 'product',
+    content_ids: order.contentIds || [],
     num_items: order.numItems,
     order_id: order.orderId,
-  })
+  }, order.orderId) // event_id = orderId, for Meta's deduplication
 }

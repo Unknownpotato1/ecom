@@ -288,6 +288,15 @@ export function Checkout() {
                 body: JSON.stringify({ id: pending.discountCode, incrementUsage: true }),
               }).catch(() => {})
             }
+            // Fire Purchase event for Meta Pixel (Cashfree verified path).
+            // Only fires after BOTH payment verification AND order creation
+            // succeeded. The event_id (order number) prevents duplicates.
+            trackPurchase({
+              total: data.order.total,
+              orderId: data.order.orderNumber,
+              numItems: data.order.items.reduce((a: number, i: { quantity: number }) => a + i.quantity, 0),
+              contentIds: data.order.items.map((i: { productId?: string | null }) => i.productId).filter(Boolean) as string[],
+            })
             // Clear the cart and pending order data
             clearCart()
             sessionStorage.removeItem('cf_pending_order')
@@ -347,6 +356,19 @@ export function Checkout() {
                 body: JSON.stringify({ id: pending.discountCode, incrementUsage: true }),
               }).catch(() => {})
             }
+            // Fire Purchase event for Meta Pixel (Cashfree timeout fallback
+            // path). The payment verification timed out, but the user was
+            // redirected back by Cashfree (meaning the flow completed) and
+            // the order was successfully created. We fire Purchase here
+            // with the order number as event_id for deduplication — if the
+            // verified path somehow also fired (it shouldn't in this branch,
+            // but defensively), Meta deduplicates by event_id.
+            trackPurchase({
+              total: data.order.total,
+              orderId: data.order.orderNumber,
+              numItems: data.order.items.reduce((a: number, i: { quantity: number }) => a + i.quantity, 0),
+              contentIds: data.order.items.map((i: { productId?: string | null }) => i.productId).filter(Boolean) as string[],
+            })
             clearCart()
             sessionStorage.removeItem('cf_pending_order')
             sessionStorage.setItem('aurora:last-order', JSON.stringify(data.order))
@@ -975,6 +997,7 @@ export function Checkout() {
         total: data.order.total,
         orderId: data.order.orderNumber,
         numItems: data.order.items.reduce((a: number, i: { quantity: number }) => a + i.quantity, 0),
+        contentIds: data.order.items.map((i: { productId?: string | null }) => i.productId).filter(Boolean) as string[],
       })
       clearCart()
       if (typeof window !== 'undefined') {
