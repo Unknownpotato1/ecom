@@ -1,6 +1,6 @@
 /**
  * Meta Pixel integration utilities.
- * Pixel ID: 843987037746164
+ * Pixel ID: 2535004566926502
  *
  * All functions are no-ops if the Pixel script hasn't loaded yet
  * (e.g. during SSR or ad-block). This makes them safe to call
@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-const PIXEL_ID = '843987037746164'
+const PIXEL_ID = '2535004566926502'
 
 let initialized = false
 
