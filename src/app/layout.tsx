@@ -106,6 +106,18 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* noscript fallback — fires a PageView pixel for visitors with
+            JavaScript disabled. Inert for all normal users (JS enabled).
+            Part of Meta's official Pixel base code. */}
+        <noscript>
+          <img
+            height="1"
+            width="1"
+            style={{ display: 'none' }}
+            src="https://www.facebook.com/tr?id=2535004566926502&ev=PageView&noscript=1"
+            alt=""
+          />
+        </noscript>
         {children}
         <Toaster richColors position="top-center" />
       </body>
