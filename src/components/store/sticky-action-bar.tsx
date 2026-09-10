@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -14,44 +14,43 @@ interface Props {
    *  and Buy now buttons are replaced with a single disabled "Sold Out"
    *  bar so customers can't attempt to purchase. */
   soldOut?: boolean
+  /** Ref to the inline button container in the product page. The
+   *  StickyActionBar uses an IntersectionObserver to watch this element.
+   *  When it scrolls OUT of the viewport, the sticky bar slides up.
+   *  When it scrolls back IN, the sticky bar slides down and hides. */
+  inlineButtonsRef?: RefObject<HTMLDivElement | null>
 }
 
 /**
- * Sticky action bar — always pinned to the bottom of the mobile screen,
- * like many e-commerce apps (Myntra, Amazon, Flipkart) use.
+ * Sticky action bar — fixed to the bottom of the mobile screen.
  *
- * ⚠️ ROOT CAUSE NOTE (why previous attempts failed):
- * The product page wraps everything in `<div className="fade-up">` whose
- * CSS animation `aurora-fade-up` uses `animation-fill-mode: both`. That
- * leaves `transform: translateY(0)` permanently applied to the ancestor.
- * Per the CSS spec, ANY ancestor with a non-`none` `transform` becomes
- * the containing block for `position: fixed` descendants — so a plain
- * `fixed bottom-0` bar was being trapped inside the `.fade-up` div and
- * behaved like `absolute`, sticking to the bottom of the product content
- * (right above the footer) instead of the viewport.
+ * BEHAVIOR:
+ *   - Hidden by default (translateY(100%)).
+ *   - When the inline Add to Bag / Buy Now buttons (inlineButtonsRef)
+ *     scroll OUT of the viewport, the sticky bar slides up
+ *     (translateY(0)).
+ *   - When the inline buttons scroll back INTO view, the sticky bar
+ *     slides back down and hides.
+ *   - Uses IntersectionObserver (not scroll events) for performance.
  *
- * ✅ FIX: Render the bar through `createPortal(…, document.body)` so it
- * is a direct child of <body>. No ancestor can capture it, regardless of
- * where ProductDetail is mounted in the React tree. Same trick the
- * CartDrawer / Sheet components use, and the same reason the Header
- * (which sits directly under <main>) already sticks correctly.
+ * PORTAL: Rendered via createPortal to document.body so no ancestor
+ * transform (e.g. .fade-up) can trap it.
  *
- * Design: single solid #f9758d background, two equal-width buttons with
- * only a thin white vertical divider line between them. No rounded
- * corners, no gaps — full edge-to-edge.
+ * Z-INDEX: z-40 — above content (z-10/20) but below the WhatsApp
+ * button (z-99999) and cart drawer (z-50). The WhatsApp button sits
+ * at bottom-right; the sticky bar spans full width at the bottom, so
+ * the WhatsApp button is raised above it (74px from bottom on
+ * product pages).
+ *
+ * SAFE AREA: padding-bottom respects safe-area-inset-bottom for iOS
+ * devices with home indicators.
  *
  * Mobile only (hidden on desktop via lg:hidden).
- *
- * Always visible — adds persistent padding-bottom to the body so the
- * footer content is never hidden behind the bar. 56px = bar height
- * (h-14 = 3.5rem = 56px).
- *
- * Text on both buttons is rendered in ALL CAPS per spec.
- * Bag icon is removed from the Add to bag button (the Check icon for
- * the "Added" state is kept for clarity).
  */
-export function StickyActionBar({ added, onAdd, onBuyNow, soldOut }: Props) {
+export function StickyActionBar({ added, onAdd, onBuyNow, soldOut, inlineButtonsRef }: Props) {
   const [mounted, setMounted] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const barRef = useRef<HTMLDivElement>(null)
 
   // Only render the portal after mount on the client — document.body is
   // not available during SSR.
@@ -59,54 +58,77 @@ export function StickyActionBar({ added, onAdd, onBuyNow, soldOut }: Props) {
     Promise.resolve().then(() => setMounted(true))
   }, [])
 
-  // Always reserve space at the bottom of the page so the footer (and
-  // any other trailing content) is never hidden behind the sticky bar.
-  // 56px = bar height (h-14 = 3.5rem = 56px).
+  // IntersectionObserver: watch the inline buttons container. When it
+  // exits the viewport, show the sticky bar. When it enters, hide it.
   useEffect(() => {
-    document.body.style.paddingBottom = '56px'
+    if (!mounted || !inlineButtonsRef?.current) return
+
+    const target = inlineButtonsRef.current
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // entries[0].isIntersecting = true means the inline buttons
+        // are visible in the viewport. When they're visible, HIDE the
+        // sticky bar. When they're NOT visible (scrolled past), SHOW it.
+        if (entries[0].isIntersecting) {
+          setVisible(false)
+        } else {
+          setVisible(true)
+        }
+      },
+      { threshold: 0 }
+    )
+
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [mounted, inlineButtonsRef])
+
+  // Reserve space at the bottom of the page so the footer content is
+  // never hidden behind the bar — but only when the bar is visible.
+  // When the bar is hidden (inline buttons in view), remove the padding
+  // so there's no unnecessary gap at the bottom.
+  useEffect(() => {
+    if (visible) {
+      document.body.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)'
+    } else {
+      document.body.style.paddingBottom = ''
+    }
     return () => {
       document.body.style.paddingBottom = ''
     }
-  }, [])
+  }, [visible])
 
   if (!mounted) return null
 
   return createPortal(
     <div
+      ref={barRef}
       className={cn(
         'sticky-shimmer-bar',
-        'fixed bottom-0 left-0 right-0 z-30 lg:hidden',
-        'flex items-stretch'
+        'fixed bottom-0 left-0 right-0 z-40 lg:hidden',
+        'flex items-stretch transition-transform duration-300 ease-out'
       )}
-      style={{ backgroundColor: '#f9758d' }}
+      style={{
+        backgroundColor: soldOut ? '#9ca3af' : '#f9758d',
+        transform: visible ? 'translateY(0)' : 'translateY(100%)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.08)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.15)',
+      }}
     >
-      {/*
-        Single shimmer streak lives on this container's ::before
-        (see .sticky-shimmer-bar in globals.css). The buttons and
-        divider are DIRECT children of this flex container — same
-        structure as before the shimmer feature was added — so the
-        layout is identical to the known-working version.
-
-        Each button has .sticky-shimmer-content (position: relative;
-        z-index: 2) so it layers ABOVE the ::before streak (z-index: 1).
-        This produces ONE continuous wave sweeping across both buttons,
-        instead of two independent per-button shimmers.
-      */}
       {soldOut ? (
-        // Sold Out state — single full-width disabled bar, no buttons.
-        // Gray background instead of brand pink so it reads as "unavailable".
+        // Sold Out state — single full-width disabled bar.
         <div
           className={cn(
             'sticky-shimmer-content',
             'flex-1 h-14 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide'
           )}
-          style={{ backgroundColor: '#9ca3af' }}
         >
           Sold Out
         </div>
       ) : (
         <>
-          {/* Add to bag — left half (no bag icon, text only) */}
+          {/* Add to bag — left half */}
           <button
             onClick={onAdd}
             className={cn(

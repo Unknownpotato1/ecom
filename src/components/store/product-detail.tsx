@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Star,
   Check,
@@ -29,6 +29,7 @@ import { ProductCustomSections } from './product-custom-sections'
 import { YouMayAlsoLike } from './you-may-also-like'
 import { StickyActionBar } from './sticky-action-bar'
 import { ProductCustomSlot } from './product-custom-slot'
+import { BagIcon } from './bag-icon'
 import { trackViewContent } from '@/lib/meta-pixel'
 import { OffersDropdown } from './offers-dropdown'
 import { ProductInfoSections } from './product-info-sections'
@@ -108,6 +109,21 @@ export function ProductDetail({ productId }: { productId: string }) {
     setAdded(true)
     setTimeout(() => setAdded(false), 1500)
   }
+
+  // Buy Now = add to bag + immediately open the cart drawer
+  const buyNow = () => {
+    handleAdd()
+    setTimeout(() => openCart(), 200)
+  }
+
+  // Sold out = stock is 0. Controls both inline buttons and sticky bar.
+  const soldOut = !product?.stock || product?.stock === 0
+
+  // Ref to the inline button container — the StickyActionBar uses an
+  // IntersectionObserver to watch this element. When it scrolls out of
+  // view, the sticky bar slides up; when it comes back, the sticky bar
+  // slides down and hides.
+  const inlineButtonsRef = useRef<HTMLDivElement>(null)
 
   const submitReview = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -306,8 +322,45 @@ export function ProductDetail({ productId }: { productId: string }) {
             {/* SLOT: product-after-buttons (inline buttons removed — sticky bar handles add/buy) */}
             <ProductCustomSlot slot="product-after-buttons" />
 
-            {/* Hidden anchor for sticky bar observer — placed where Buy now used to be */}
-            <div id="inline-buy-now" className="h-px w-full" aria-hidden="true" />
+            {/* Inline Add to Bag + Buy Now buttons — these sit naturally
+                in the page flow. The sticky bar at the bottom only appears
+                when these buttons are scrolled out of view (via
+                IntersectionObserver). Both the inline buttons and the
+                sticky bar use the same handlers (handleAdd + buyNow) so
+                they're functionally identical. */}
+            <div id="inline-buy-now" ref={inlineButtonsRef} className="mt-6">
+              {soldOut ? (
+                <div className="w-full h-13 flex items-center justify-center bg-gray-300 text-gray-600 text-sm font-semibold uppercase tracking-wide">
+                  Sold Out
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAdd}
+                    className={cn(
+                      'flex-1 h-13 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-wide transition-colors',
+                      added ? 'bg-emerald-600 text-white' : 'bg-brand text-white hover:shadow-lg'
+                    )}
+                  >
+                    {added ? (
+                      <>
+                        <Check className="h-4 w-4" /> Added to bag
+                      </>
+                    ) : (
+                      <>
+                        <BagIcon className="h-4 w-4" /> Add to bag
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={buyNow}
+                    className="flex-1 h-13 flex items-center justify-center bg-foreground text-white text-sm font-semibold uppercase tracking-wide hover:shadow-lg transition-colors"
+                  >
+                    Buy now
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Custom sections targeted to product page (legacy product-below-actions) */}
             <ProductCustomSections />
@@ -522,17 +575,18 @@ export function ProductDetail({ productId }: { productId: string }) {
       <YouMayAlsoLike currentProductId={productId} />
 
       {/* Sticky Add to bag / Buy now bar (mobile only).
-          When the product is sold out (stock === 0), the soldOut prop
-          replaces the buttons with a disabled "Sold Out" bar. */}
+          Hidden by default, slides up only when the inline buttons
+          (inlineButtonsRef) are scrolled out of view. Uses
+          IntersectionObserver for performance. When the product is
+          sold out (stock === 0), the soldOut prop replaces the buttons
+          with a disabled "Sold Out" bar. */}
       <StickyActionBar
         qty={qty}
         added={added}
         onAdd={handleAdd}
-        onBuyNow={() => {
-          handleAdd()
-          setTimeout(() => openCart(), 200)
-        }}
-        soldOut={!product.stock || product.stock === 0}
+        onBuyNow={buyNow}
+        soldOut={soldOut}
+        inlineButtonsRef={inlineButtonsRef}
       />
 
       {/* Full-screen all reviews overlay */}
