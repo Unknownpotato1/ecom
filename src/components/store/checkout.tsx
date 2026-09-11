@@ -291,10 +291,6 @@ export function Checkout() {
             // Fire Purchase event for Meta Pixel (Cashfree verified path).
             // Only fires after BOTH payment verification AND order creation
             // succeeded. The event_id (order number) prevents duplicates.
-            console.log('[meta-pixel-diag] checkout.tsx:294 — calling trackPurchase (Cashfree verified path)', {
-              orderNumber: data.order.orderNumber,
-              total: data.order.total,
-            })
             trackPurchase({
               total: data.order.total,
               orderId: data.order.orderNumber,
@@ -997,10 +993,6 @@ export function Checkout() {
         }).catch(() => {})
       }
       // Fire Purchase event for Meta Pixel (only after order is confirmed)
-      console.log('[meta-pixel-diag] checkout.tsx:996 — calling trackPurchase (createOrderRecord / Razorpay path)', {
-        orderNumber: data.order.orderNumber,
-        total: data.order.total,
-      })
       trackPurchase({
         total: data.order.total,
         orderId: data.order.orderNumber,
