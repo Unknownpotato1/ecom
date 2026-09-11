@@ -25,15 +25,6 @@ import { toast } from 'sonner'
 import { trackInitiateCheckout, trackPurchase } from '@/lib/meta-pixel'
 import { optimizeCloudinaryUrl } from '@/lib/cloudinary-utils'
 
-// TEST MODE (Task 21): Special promo code that bypasses the payment
-// gateway entirely. When the user enters TESTORDER in the promo code
-// field, the order is created directly via POST /api/orders with the
-// FULL real total (no discount applied) — no Cashfree/Razorpay modal,
-// no payment redirect. Meta Pixel value/currency is still realistic.
-// Remove this constant + the test mode blocks in applyPromo/placeOrder
-// when done testing.
-const TEST_MODE_CODE = 'TESTORDER'
-
 export function Checkout() {
   const { items, subtotal, clearCart } = useCart()
   const { goOrderSuccess, goHome } = useUI()
@@ -300,10 +291,6 @@ export function Checkout() {
             // Fire Purchase event for Meta Pixel (Cashfree verified path).
             // Only fires after BOTH payment verification AND order creation
             // succeeded. The event_id (order number) prevents duplicates.
-            console.log('[meta-pixel-diag] checkout.tsx:294 — calling trackPurchase (Cashfree verified path)', {
-              orderNumber: data.order.orderNumber,
-              total: data.order.total,
-            })
             trackPurchase({
               total: data.order.total,
               orderId: data.order.orderNumber,
@@ -435,25 +422,6 @@ export function Checkout() {
   const applyPromo = async () => {
     const code = promo.trim()
     if (!code) return
-
-    // TEST MODE (Task 21): If the user enters TESTORDER, activate test
-    // mode locally — no API call needed. This bypasses the payment
-    // gateway entirely so test orders can be placed without paying.
-    // The order is still created with the FULL real total, so Meta
-    // Pixel value/currency is realistic. Remove this block when done
-    // testing.
-    if (code.toUpperCase() === TEST_MODE_CODE) {
-      setAppliedPromo({
-        code: TEST_MODE_CODE,
-        discountAmount: 0,
-        type: 'fixed',
-        value: 0,
-      })
-      toast.success('TEST MODE activated — no payment will be charged. Place the order to test.')
-      setPromoLoading(false)
-      return
-    }
-
     setPromoLoading(true)
     try {
       const res = await fetch('/api/discount-codes/validate', {
@@ -489,19 +457,6 @@ export function Checkout() {
       toast.error('Your bag is empty')
       return
     }
-
-    // TEST MODE (Task 21): If TESTORDER promo code is applied, skip
-    // the payment gateway entirely. Create the order directly with the
-    // real total — no Cashfree/Razorpay modal, no payment redirect.
-    // The order is marked as 'prepaid' + 'paid' (simulating a
-    // successful payment) so the full Purchase flow fires: browser
-    // pixel + server CAPI with the same event_id. No payment method
-    // selection is required in test mode. Remove this block when done
-    // testing.
-    if (appliedPromo?.code === TEST_MODE_CODE) {
-      return createTestOrder()
-    }
-
     // No payment method preselected — require the user to pick one.
     if (payment !== 'prepaid' && payment !== 'cod') {
       toast.error('Please select a payment method')
@@ -524,30 +479,6 @@ export function Checkout() {
     if (payment === 'cod') {
       setShowCodConfirm(true)
       return
-    }
-  }
-
-  // TEST MODE (Task 21): Create a test order without going through the
-  // payment gateway. The order is created via createOrderRecord with
-  // paymentMethod='prepaid' + paymentStatus='paid' (simulating a
-  // successful payment). The FULL real order total is stored — so Meta
-  // Pixel value/currency is realistic. No money is actually charged.
-  // The browser pixel fires from createOrderRecord (line ~996 with diag
-  // logs), and the server CAPI fires from POST /api/orders. Both use
-  // the same event_id (orderNumber) for deduplication.
-  //
-  // To use: apply promo code TESTORDER in the promo code field, fill in
-  // shipping details, click "Place Test Order". Remove this function +
-  // the TEST_MODE_CODE constant + the test mode blocks in applyPromo
-  // and placeOrder when done testing.
-  const createTestOrder = async () => {
-    setPlacing(true)
-    try {
-      await createOrderRecord('prepaid', 'paid')
-    } catch (e) {
-      console.error(e)
-      toast.error('Order error — please try again')
-      setPlacing(false)
     }
   }
 
@@ -1062,10 +993,6 @@ export function Checkout() {
         }).catch(() => {})
       }
       // Fire Purchase event for Meta Pixel (only after order is confirmed)
-      console.log('[meta-pixel-diag] checkout.tsx:996 — calling trackPurchase (createOrderRecord / Razorpay path)', {
-        orderNumber: data.order.orderNumber,
-        total: data.order.total,
-      })
       trackPurchase({
         total: data.order.total,
         orderId: data.order.orderNumber,
@@ -1349,9 +1276,7 @@ export function Checkout() {
             {appliedPromo && (
               <div className="mb-4 text-xs text-emerald-600 inline-flex items-center gap-1">
                 <CheckCircle2 className="h-3.5 w-3.5" /> {appliedPromo.code} applied
-                {appliedPromo.code === TEST_MODE_CODE
-                  ? ' (TEST MODE — no payment)'
-                  : isFS2
+                {isFS2
                   ? ' (flat ₹2 total!)'
                   : appliedPromo.type === 'percentage'
                   ? ` (${appliedPromo.value}% off)`
@@ -1427,11 +1352,7 @@ export function Checkout() {
                 </>
               ) : (
                 <>
-                  {appliedPromo?.code === TEST_MODE_CODE
-                    ? 'Place Test Order'
-                    : payment === 'cod'
-                    ? `Place Order - Pay ${formatPrice(codPartial)}`
-                    : 'Place Order'}
+                  {payment === 'cod' ? `Place Order - Pay ${formatPrice(codPartial)}` : 'Place Order'}
                 </>
               )}
             </Button>
