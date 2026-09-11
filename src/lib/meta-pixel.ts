@@ -292,12 +292,20 @@ export function trackPurchase(order: {
     order_id: order.orderId,
   }
 
-  // Test Events code — only attached when the env var is set, so
-  // production events are NOT polluted with test data.
+  // Test Events code — attached when the env var is set, so production
+  // events are NOT polluted with test data.
   const testEventCode = process.env.NEXT_PUBLIC_META_TEST_EVENT_CODE
   if (testEventCode) {
     params.test_event_code = testEventCode
   }
+
+  // TEMPORARY HARDCODED TEST CODE (Task 22): The NEXT_PUBLIC_META_TEST_EVENT_CODE
+  // env var is not reliably inlining into the client bundle at build time.
+  // To definitively confirm the browser pixel can route to Test Events,
+  // hardcode the test code here. This guarantees it's in the build.
+  // REMOVE THIS BLOCK when done testing — it pollutes production events
+  // with test_event_code if deployed to production.
+  params.test_event_code = 'TEST44824'
 
   console.log('[meta-pixel-diag] trackPurchase() calling track() with', {
     eventId: order.orderId,
