@@ -212,7 +212,7 @@ function QuickChatSection({ qty, onQtyChange, soldOut }: { qty: number; onQtyCha
         .quick-chat-root .qty-picker {
           flex: 4;
           height: 48px;
-          border: 2px solid #000;
+          border: 1px solid #000;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -242,7 +242,7 @@ function QuickChatSection({ qty, onQtyChange, soldOut }: { qty: number; onQtyCha
         .quick-chat-root .wishlist-btn {
           flex: 1;
           min-width: 48px;
-          border: 2px solid #000;
+          border: 1px solid #000;
           background: #fff;
         }
         .quick-chat-root .chat-btn {
