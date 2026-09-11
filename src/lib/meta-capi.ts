@@ -141,19 +141,24 @@ export async function trackPurchaseServer(order: {
     },
   }
 
-  // Test event code — only attached when META_TEST_EVENT_CODE env var
-  // is set. Routes the event to Meta Events Manager → Test Events tab
-  // instead of production data. Leave unset in production.
-  const testEventCode = process.env.META_TEST_EVENT_CODE
-  if (testEventCode) {
-    eventData.test_event_code = testEventCode
-  }
-
-  const payload = {
+  const payload: { data: unknown[]; test_event_code?: string } = {
     data: [eventData],
     // access_token passed as query param, not in body (Meta's
     // recommended approach for security — keeps the token out of
     // request logs that capture the body).
+  }
+
+  // Test event code — ONLY attaches at the TOP LEVEL of the payload
+  // (NOT inside eventData). Per Meta's Conversions API spec, the
+  // test_event_code field is a sibling of `data`, not a property of
+  // each event. If placed inside eventData, Meta still receives and
+  // processes the event (returns events_received: 1) but does NOT
+  // route it to the Test Events tab — which is exactly the bug we
+  // hit (orders were received by Meta but not visible for testing).
+  // Leave unset in production.
+  const testEventCode = process.env.META_TEST_EVENT_CODE
+  if (testEventCode) {
+    payload.test_event_code = testEventCode
   }
 
   try {
