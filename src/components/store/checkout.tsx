@@ -92,13 +92,7 @@ export function Checkout() {
   const discount = isFS2 ? Math.max(0, sub - 2) : promoDiscount + prepaidExtraDiscount
   const FREE_SHIPPING_THRESHOLD = 249
   const shipping = isFS2 ? 0 : (sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99)
-  // TEMP (Task 14): COD ₹49 partial payment is bypassed for testing.
-  // When true, COD orders skip the payment gateway entirely (no ₹49
-  // charge). The order is still created with the full total — so Meta
-  // Pixel value/currency is correct. Set to false to restore the
-  // ₹49 partial payment via Cashfree/Razorpay.
-  const COD_PARTIAL_BYPASSED = true
-  const codPartial = isFS2 ? 2 : (COD_PARTIAL_BYPASSED ? 0 : 49)
+  const codPartial = isFS2 ? 2 : 49
   const total = isFS2 ? 2 : (Math.max(0, sub - discount) + shipping)
   const codRemaining = isFS2 ? 0 : Math.max(0, total - codPartial)
 
@@ -601,24 +595,47 @@ export function Checkout() {
   // Uses the outer-scope `total` and `codPartial` which are correctly
   // computed when `payment === 'cod'` (the only state in which this
   // function is reachable).
-  //
-  // TEMPORARY (Task 14): ₹49 COD partial payment is BYPASSED for testing.
-  // Instead of creating a Razorpay order and opening the payment modal,
-  // we skip the payment step entirely and call createOrderRecord directly
-  // with paymentStatus='pending' (no partial payment collected).
-  // The order is still created with the full total — so Meta Pixel
-  // value/currency is correct — just no money is charged.
-  //
-  // To restore the ₹49 charge: revert this function to create a Razorpay
-  // order with `amount: codPartial` and open the Razorpay checkout modal.
   const placeCodOrder = async () => {
+    const razorpayKeyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
+    if (!razorpayKeyId) {
+      toast.error('Online payment is not configured. Please try again later.')
+      return
+    }
+
     setPlacing(true)
     try {
-      // TEMP: skip Razorpay payment, create order directly.
-      await createOrderRecord('cod', 'pending')
+      const createRes = await fetch('/api/razorpay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: codPartial }),
+      })
+      const orderData = await createRes.json()
+      if (!createRes.ok || !orderData.orderId) {
+        toast.error(orderData.error || 'Failed to initiate payment')
+        setPlacing(false)
+        return
+      }
+
+      await loadRazorpayScript()
+
+      const paymentSuccess = await openRazorpayCheckout(
+        razorpayKeyId,
+        orderData,
+        codPartial,
+        'COD confirmation'
+      )
+
+      if (!paymentSuccess) {
+        setPlacing(false)
+        return
+      }
+
+      // Partial paid (normally ₹49, or ₹2 when FS2 promo is applied) —
+      // create order with COD for the remaining amount (₹0 when FS2).
+      await createOrderRecord('cod', 'partial_paid')
     } catch (e) {
       console.error(e)
-      toast.error('Order error — please try again')
+      toast.error('Payment error — please try again')
       setPlacing(false)
     }
   }
@@ -883,26 +900,41 @@ export function Checkout() {
     }
   }
 
-  /** Cashfree COD order flow — uses redirect-based checkout
-   *
-   * TEMPORARY (Task 14): ₹49 COD partial payment is BYPASSED for testing.
-   * Instead of creating a Cashfree order and redirecting to the payment
-   * gateway, we skip the payment step entirely and call createOrderRecord
-   * directly with paymentStatus='pending' (no partial payment collected).
-   * The order is still created with the full total — so Meta Pixel
-   * value/currency is correct — just no money is charged.
-   *
-   * To restore the ₹49 charge: revert this function to create a Cashfree
-   * order with `amount: codPartial` and redirect to Cashfree checkout.
-   */
+  /** Cashfree COD order flow — uses redirect-based checkout */
   const placeCodOrderCashfree = async () => {
     setPlacing(true)
     try {
-      // TEMP: skip Cashfree payment, create order directly.
-      await createOrderRecord('cod', 'pending')
+      const createRes = await fetch('/api/cashfree/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: codPartial,
+          customerName: form.name,
+          customerPhone: form.phone,
+          customerEmail: user?.email || '',
+        }),
+      })
+      const orderData = await createRes.json()
+      if (!createRes.ok || !orderData.paymentSessionId) {
+        toast.error(orderData.error || 'Failed to initiate payment')
+        setPlacing(false)
+        return
+      }
+
+      // Redirect to Cashfree checkout. Order completion happens after
+      // redirect-back (detected by cf_order_id in the URL).
+      redirectToCashfreeCheckout(orderData.paymentSessionId, orderData.orderId, {
+        method: 'cod',
+        paymentStatus: 'partial_paid',
+        subtotal: sub - discount,
+        shipping,
+        total,
+        discountCode: appliedPromo?.code || null,
+        discountAmount: promoDiscount || 0,
+      })
     } catch (e) {
       console.error(e)
-      toast.error('Order error — please try again')
+      toast.error('Payment error — please try again')
       setPlacing(false)
     }
   }
@@ -1193,10 +1225,8 @@ export function Checkout() {
                     <div className="overflow-hidden">
                       <div className="mt-3 pl-7">
                         <p className="text-xs text-muted-foreground">
-                          {COD_PARTIAL_BYPASSED
-                            ? /* TEMP (Task 14): ₹49 bypassed */ 'Pay the full amount when your jewelry is delivered.'
-                            : <>Pay <span className="font-semibold text-brand">{formatPrice(codPartial)} now</span> to confirm your COD order and{' '}
-                               <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your jewelry is delivered.</>}
+                          Pay <span className="font-semibold text-brand">{formatPrice(codPartial)} now</span> to confirm your COD order and{' '}
+                          <span className="font-semibold text-foreground">{formatPrice(codRemaining)}</span> when your jewelry is delivered.
                         </p>
                       </div>
                     </div>
@@ -1301,24 +1331,14 @@ export function Checkout() {
             </div>
             {payment === 'cod' && (
               <div className="mt-2 rounded-lg bg-brand-soft p-3 text-xs space-y-1">
-                {COD_PARTIAL_BYPASSED ? (
-                  /* TEMP (Task 14): ₹49 bypassed — show full total only */
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pay on delivery</span>
-                    <span className="font-semibold">{formatPrice(total)}</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Pay now (confirm)</span>
-                      <span className="font-semibold text-brand">{formatPrice(codPartial)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Pay on delivery</span>
-                      <span className="font-semibold">{formatPrice(codRemaining)}</span>
-                    </div>
-                  </>
-                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pay now (confirm)</span>
+                  <span className="font-semibold text-brand">{formatPrice(codPartial)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pay on delivery</span>
+                  <span className="font-semibold">{formatPrice(codRemaining)}</span>
+                </div>
               </div>
             )}
 
@@ -1340,9 +1360,7 @@ export function Checkout() {
                 </>
               ) : (
                 <>
-                  {payment === 'cod'
-                    ? (COD_PARTIAL_BYPASSED ? 'Place Order' : `Place Order - Pay ${formatPrice(codPartial)}`)
-                    : 'Place Order'}
+                  {payment === 'cod' ? `Place Order - Pay ${formatPrice(codPartial)}` : 'Place Order'}
                 </>
               )}
             </Button>
