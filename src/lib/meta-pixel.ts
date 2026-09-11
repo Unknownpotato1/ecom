@@ -139,9 +139,25 @@ export function trackInitiateCheckout(cart: {
  * deduplication automatically drops the duplicate. This ensures
  * Purchase fires exactly once per order.
  *
+ * VALUE COERCION (Fix #1): Meta requires `value` to be a NUMBER.
+ * Firestore may return `total` as a string in some edge cases
+ * (despite createOrder casting via Number()), which causes Meta
+ * Events Manager to flag the event as "missing/invalid value"
+ * (0% match rate). We coerce here as a safety net: Number(total),
+ * and if the result is NaN or negative, we send 0 instead of
+ * letting an invalid value through. This is the last line of
+ * defense — the actual value flows from checkout.tsx → /api/orders
+ * → createOrder → trackPurchase.
+ *
+ * TEST EVENT CODE: When NEXT_PUBLIC_META_TEST_EVENT_CODE is set in
+ * the environment, the event is sent to Meta's Test Events pipeline
+ * (Events Manager → Test Events tab) instead of normal production
+ * data. This lets you validate value/currency/event_id in Meta
+ * before going live. Leave unset in production.
+ *
  * Parameters sent:
- *   value        — total order amount
- *   currency     — 'INR'
+ *   value        — total order amount (coerced to Number, see above)
+ *   currency    — 'INR' (or override via order.currency)
  *   content_type — 'product'
  *   content_ids  — array of product IDs in the order
  *   num_items    — total quantity of items
@@ -155,12 +171,35 @@ export function trackPurchase(order: {
   contentIds?: string[]
   currency?: string
 }) {
-  track('Purchase', {
-    value: order.total,
-    currency: order.currency || 'INR',
+  // Coerce total to a finite non-negative number. If total arrives as
+  // a string (e.g. "1167" from Firestore) Number("1167") = 1167 ✓.
+  // If it's already a number, Number(1167) = 1167 (no-op) ✓.
+  // If it's NaN/negative/Infinity, fall back to 0 so Meta still gets
+  // a valid numeric value (and the event shows up in Events Manager
+  // with value: 0, which is more debuggable than no event at all).
+  const rawTotal = Number(order.total)
+  const safeTotal =
+    typeof rawTotal === 'number' && isFinite(rawTotal) && rawTotal >= 0
+      ? rawTotal
+      : 0
+
+  const currency = (order.currency || 'INR').toUpperCase()
+
+  const params: Record<string, unknown> = {
+    value: safeTotal,
+    currency,
     content_type: 'product',
     content_ids: order.contentIds || [],
     num_items: order.numItems,
     order_id: order.orderId,
-  }, order.orderId) // event_id = orderId, for Meta's deduplication
+  }
+
+  // Test Events code — only attached when the env var is set, so
+  // production events are NOT polluted with test data.
+  const testEventCode = process.env.NEXT_PUBLIC_META_TEST_EVENT_CODE
+  if (testEventCode) {
+    params.test_event_code = testEventCode
+  }
+
+  track('Purchase', params, order.orderId) // event_id = orderId, for Meta's deduplication
 }
