@@ -144,10 +144,10 @@ export function trackInitiateCheckout(cart: {
  * (despite createOrder casting via Number()), which causes Meta
  * Events Manager to flag the event as "missing/invalid value"
  * (0% match rate). We coerce here as a safety net: Number(total),
- * and if the result is NaN or negative, we send 0 instead of
- * letting an invalid value through. This is the last line of
- * defense — the actual value flows from checkout.tsx → /api/orders
- * → createOrder → trackPurchase.
+ * and if the result is NaN/negative/Infinity, we SKIP the browser
+ * event entirely — the server-side CAPI event (same event_id) will
+ * handle the attribution. Sending an invalid value pollutes Events
+ * Manager worse than not sending at all.
  *
  * TEST EVENT CODE: When NEXT_PUBLIC_META_TEST_EVENT_CODE is set in
  * the environment, the event is sent to Meta's Test Events pipeline
@@ -174,19 +174,19 @@ export function trackPurchase(order: {
   // Coerce total to a finite non-negative number. If total arrives as
   // a string (e.g. "1167" from Firestore) Number("1167") = 1167 ✓.
   // If it's already a number, Number(1167) = 1167 (no-op) ✓.
-  // If it's NaN/negative/Infinity, fall back to 0 so Meta still gets
-  // a valid numeric value (and the event shows up in Events Manager
-  // with value: 0, which is more debuggable than no event at all).
+  // If it's NaN/negative/Infinity, SKIP the event entirely — sending
+  // an invalid value to Meta pollutes Events Manager with 0% match
+  // rate events. Better to drop the browser event and let the server-
+  // side CAPI event (which has the same event_id) handle it.
   const rawTotal = Number(order.total)
-  const safeTotal =
-    typeof rawTotal === 'number' && isFinite(rawTotal) && rawTotal >= 0
-      ? rawTotal
-      : 0
+  if (typeof rawTotal !== 'number' || !isFinite(rawTotal) || rawTotal < 0) {
+    return
+  }
 
   const currency = (order.currency || 'INR').toUpperCase()
 
   const params: Record<string, unknown> = {
-    value: safeTotal,
+    value: rawTotal,
     currency,
     content_type: 'product',
     content_ids: order.contentIds || [],

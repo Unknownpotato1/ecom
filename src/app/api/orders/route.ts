@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { listOrders, createOrder, markOrderNotified } from '@/lib/firestore'
 import { sendTelegramNotification } from '@/lib/telegram'
+import { trackPurchaseServer } from '@/lib/meta-capi'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -93,6 +94,52 @@ export async function POST(req: NextRequest) {
       waitUntil(notifPromise)
     } else {
       await notifPromise
+    }
+
+    // ── Send Meta Conversions API (CAPI) Purchase event ──────────
+    // Server-side Purchase event for Meta, with the SAME event_id
+    // (orderNumber) as the browser pixel → Meta deduplicates browser
+    // + server into ONE event (preferring the server event for higher
+    // fidelity). This recovers the 30-60% of events lost to ad-blockers,
+    // Safari ITP, and Chrome tracking protection. Uses waitUntil so it
+    // doesn't block the order response. trackPurchaseServer never
+    // throws — all errors are caught and logged internally.
+    //
+    // ENV: Requires META_CAPI_TOKEN (server-only). When unset, the
+    // function silently skips (no error). META_TEST_EVENT_CODE routes
+    // the event to Meta's Test Events tab when set.
+    const origin = new URL(req.url).origin
+    const clientIp =
+      req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      req.headers.get('x-real-ip') ||
+      null
+    const userAgent = req.headers.get('user-agent') || null
+
+    const capiPromise = trackPurchaseServer(
+      {
+        total: order.total,
+        orderId: order.orderNumber,
+        numItems: order.items.reduce(
+          (a: number, i: { quantity: number }) => a + i.quantity,
+          0
+        ),
+        contentIds: order.items
+          .map((i: { productId?: string | null }) => i.productId)
+          .filter(Boolean) as string[],
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+      },
+      origin,
+      clientIp,
+      userAgent
+    )
+
+    // Fire-and-forget via waitUntil (same pattern as Telegram above).
+    // If waitUntil isn't available, we still fire the promise without
+    // awaiting — CAPI is non-critical (best-effort) and should never
+    // delay the customer's order confirmation response.
+    if (waitUntil) {
+      waitUntil(capiPromise)
     }
 
     return NextResponse.json({ order })
