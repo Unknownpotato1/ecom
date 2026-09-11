@@ -59,21 +59,62 @@ export function initMetaPixel() {
 
 /**
  * Fire a standard Meta Pixel event.
- * No-op if fbq isn't loaded (ad-block, SSR, etc.)
+ *
+ * RETRY QUEUE: If fbq isn't loaded yet (the pixel script is async via
+ * next/script afterInteractive, and may not have finished downloading
+ * when trackPurchase fires — especially after a Cashfree full-page
+ * redirect-back), the event is QUEUED and retried every 200ms for up
+ * to 3 seconds. This catches the common race condition where the
+ * customer completes checkout before fbevents.js finishes loading.
+ *
+ * If fbq is STILL not ready after 3 seconds (ad-block, network
+ * failure, SSR-only render), the event is silently dropped — the
+ * server-side CAPI event (same event_id) will handle attribution in
+ * that case.
  *
  * event_id (optional): Meta uses this for deduplication — if the same
  * event_id is received twice, Meta keeps only the first. We pass the
  * order number as event_id for Purchase events so a page refresh or
  * double-fire doesn't create duplicate Purchase records in Meta.
+ *
+ * The event_id is preserved EXACTLY across retries — Meta will
+ * deduplicate the eventual browser pixel fire with the server CAPI
+ * event (same event_id = orderNumber) into a single Purchase event.
  */
+const RETRY_INTERVAL_MS = 200
+const RETRY_MAX_MS = 3000
+
 function track(event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window === 'undefined' || !window.fbq) return
-  if (eventId) {
-    // With event_id for deduplication (used by Purchase)
-    window.fbq('track', event, params, { eventID: eventId })
-  } else {
-    window.fbq('track', event, params)
+  if (typeof window === 'undefined') return
+
+  const fire = () => {
+    if (typeof window === 'undefined' || !window.fbq) return false
+    if (eventId) {
+      // With event_id for deduplication (used by Purchase)
+      window.fbq('track', event, params, { eventID: eventId })
+    } else {
+      window.fbq('track', event, params)
+    }
+    return true
   }
+
+  // Fast path — fbq already loaded (the common case). Fire immediately.
+  if (fire()) return
+
+  // Slow path — fbq not yet loaded. Retry every 200ms for up to 3s.
+  // The retried call uses the EXACT same event/params/eventId — so
+  // Meta's deduplication still works against the server CAPI event
+  // (which fired earlier with the same event_id = orderNumber).
+  const startTime = Date.now()
+  const retry = () => {
+    if (fire()) return
+    if (Date.now() - startTime < RETRY_MAX_MS) {
+      setTimeout(retry, RETRY_INTERVAL_MS)
+    }
+    // Else: 3s elapsed and fbq still not loaded (ad-block / network
+    // failure). Silently drop — CAPI has already handled attribution.
+  }
+  setTimeout(retry, RETRY_INTERVAL_MS)
 }
 
 /** PageView — fired automatically on init and on SPA view changes */
