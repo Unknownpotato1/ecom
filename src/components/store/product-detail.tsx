@@ -389,6 +389,25 @@ export function ProductDetail({ productId }: { productId: string }) {
                         >
                           Buy now
                         </button>
+                        {/* Image directly below Buy now — promotional banner.
+                           Served from /public/buy-now-banner.jpg (downloaded
+                           from the GitHub raw URL the user provided) so it
+                           stays on-origin: no external URL dependency, no
+                           CORS, no privacy leak to github.com, no layout
+                           shift risk if GitHub is slow. Hidden via onError
+                           if it ever fails to load so the layout stays
+                           intact. Plain <img> (not next/image) to avoid
+                           adding a remotePatterns entry in next.config.ts. */}
+                        <img
+                          src="/buy-now-banner.jpg"
+                          alt="Promotional banner"
+                          className="w-full h-auto block"
+                          loading="lazy"
+                          draggable={false}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
                       </div>
                     )}
                   </div>
