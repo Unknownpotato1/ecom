@@ -85,7 +85,10 @@ const RETRY_INTERVAL_MS = 200
 const RETRY_MAX_MS = 3000
 
 function track(event: string, params?: Record<string, unknown>, eventId?: string) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') {
+    console.warn('[meta-pixel-diag] track() called in SSR context — skipping', { event, eventId })
+    return
+  }
 
   const fire = () => {
     if (typeof window === 'undefined' || !window.fbq) return false
@@ -98,18 +101,49 @@ function track(event: string, params?: Record<string, unknown>, eventId?: string
     return true
   }
 
+  // Diagnostic: snapshot fbq state at the moment track() is invoked.
+  const hasFbqAtCall = !!window.fbq
+  console.log('[meta-pixel-diag] track() invoked', {
+    event,
+    eventId,
+    hasFbqAtCall,
+    fbqType: typeof window.fbq,
+  })
+
   // Fast path — fbq already loaded (the common case). Fire immediately.
-  if (fire()) return
+  if (fire()) {
+    console.log('[meta-pixel-diag] track() FAST PATH — fired immediately', { event, eventId })
+    return
+  }
 
   // Slow path — fbq not yet loaded. Retry every 200ms for up to 3s.
   // The retried call uses the EXACT same event/params/eventId — so
   // Meta's deduplication still works against the server CAPI event
   // (which fired earlier with the same event_id = orderNumber).
+  console.warn('[meta-pixel-diag] track() SLOW PATH — fbq not ready, entering retry loop', { event, eventId })
   const startTime = Date.now()
+  let retryCount = 0
   const retry = () => {
-    if (fire()) return
+    retryCount++
+    if (fire()) {
+      console.log('[meta-pixel-diag] track() fired AFTER RETRY', {
+        event,
+        eventId,
+        retryCount,
+        elapsedMs: Date.now() - startTime,
+      })
+      return
+    }
     if (Date.now() - startTime < RETRY_MAX_MS) {
       setTimeout(retry, RETRY_INTERVAL_MS)
+    } else {
+      console.warn('[meta-pixel-diag] track() DROPPED after 3s — fbq never loaded', {
+        event,
+        eventId,
+        retryCount,
+        elapsedMs: Date.now() - startTime,
+        fbqType: typeof window.fbq,
+      })
     }
     // Else: 3s elapsed and fbq still not loaded (ad-block / network
     // failure). Silently drop — CAPI has already handled attribution.
@@ -212,6 +246,24 @@ export function trackPurchase(order: {
   contentIds?: string[]
   currency?: string
 }) {
+  // === TEMPORARY DIAGNOSTIC LOGGING (Task 20) ===
+  // Logs the call args, the fbq state at call time, and what params
+  // will be sent to fbq('track', 'Purchase', ...). All log lines are
+  // prefixed with [meta-pixel-diag] for easy filtering in DevTools.
+  // Remove this block once browser pixel Purchase is verified.
+  const hasFbqAtCallTime =
+    typeof window !== 'undefined' && typeof window.fbq === 'function'
+  console.log('[meta-pixel-diag] trackPurchase() called', {
+    orderId: order.orderId,
+    total: order.total,
+    typeofTotal: typeof order.total,
+    numItems: order.numItems,
+    currency: order.currency || 'INR',
+    contentIds: order.contentIds || [],
+    hasFbqAtCallTime,
+    testEventCodeEnv: process.env.NEXT_PUBLIC_META_TEST_EVENT_CODE || '(unset)',
+  })
+
   // Coerce total to a finite non-negative number. If total arrives as
   // a string (e.g. "1167" from Firestore) Number("1167") = 1167 ✓.
   // If it's already a number, Number(1167) = 1167 (no-op) ✓.
@@ -221,6 +273,11 @@ export function trackPurchase(order: {
   // side CAPI event (which has the same event_id) handle it.
   const rawTotal = Number(order.total)
   if (typeof rawTotal !== 'number' || !isFinite(rawTotal) || rawTotal < 0) {
+    console.warn('[meta-pixel-diag] trackPurchase() SKIPPING — invalid value', {
+      orderId: order.orderId,
+      total: order.total,
+      coerced: rawTotal,
+    })
     return
   }
 
@@ -241,6 +298,11 @@ export function trackPurchase(order: {
   if (testEventCode) {
     params.test_event_code = testEventCode
   }
+
+  console.log('[meta-pixel-diag] trackPurchase() calling track() with', {
+    eventId: order.orderId,
+    params,
+  })
 
   track('Purchase', params, order.orderId) // event_id = orderId, for Meta's deduplication
 }
