@@ -212,7 +212,7 @@ function QuickChatSection({ qty, onQtyChange, soldOut }: { qty: number; onQtyCha
         .quick-chat-root .qty-picker {
           flex: 4;
           height: 48px;
-          border: 1px solid #ddd;
+          border: 2px solid #000;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -229,7 +229,7 @@ function QuickChatSection({ qty, onQtyChange, soldOut }: { qty: number; onQtyCha
         /* Disabled state for sold-out products — grayed out, no pointer */
         .quick-chat-root .qty-picker.qty-disabled {
           background: #f3f4f6;
-          border-color: #e5e7eb;
+          border-color: #9ca3af;
         }
         .quick-chat-root .qty-picker.qty-disabled button {
           background: #f3f4f6;
@@ -242,7 +242,7 @@ function QuickChatSection({ qty, onQtyChange, soldOut }: { qty: number; onQtyCha
         .quick-chat-root .wishlist-btn {
           flex: 1;
           min-width: 48px;
-          border: 1px solid #ddd;
+          border: 2px solid #000;
           background: #fff;
         }
         .quick-chat-root .chat-btn {
