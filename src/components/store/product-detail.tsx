@@ -5,6 +5,7 @@ import {
   Star,
   Check,
   X,
+  Share2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCart } from '@/lib/cart-store'
@@ -114,6 +115,31 @@ export function ProductDetail({ productId }: { productId: string }) {
   const buyNow = () => {
     handleAdd()
     setTimeout(() => openCart(), 200)
+  }
+
+  // Share — uses the native Web Share API when available, otherwise
+  // falls back to copying the current URL to the clipboard. Failures
+  // are surfaced via toast; user-cancelled native share sheets are
+  // silently ignored. Non-blocking.
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    const shareData = {
+      title: product?.title ?? 'Check out this product',
+      text: product?.title ?? 'Check out this product',
+      url,
+    }
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share(shareData)
+      } else if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(url)
+        toast.success('Link copied to clipboard')
+      } else {
+        toast.error('Sharing is not supported on this device')
+      }
+    } catch {
+      // user cancelled the native share sheet, or share failed — silent
+    }
   }
 
   // Sold out = stock is 0. Controls both inline buttons and sticky bar.
@@ -301,16 +327,73 @@ export function ProductDetail({ productId }: { productId: string }) {
                 Replaces the old UpiDiscountBanner. Shown directly below the price. */}
             <OffersDropdown price={product.price} />
 
-            {/* Product info sections — Quick Chat + Qty picker, Offers video,
-                and Delivery Info (pincode checker). Sits directly below the
-                "Get it for ₹XX" UPI banner. mt-6 adds suitable breathing room
-                between the UPI banner and this section. Internal name: deliveryinfo.
-                The qty state is lifted up to ProductDetail so the StickyActionBar's
-                "Add to bag" button uses the same quantity the customer picked here.
-                When the product is sold out (stock === 0), the qty picker is
-                disabled. */}
+            {/* Product info sections — Renders (in this order):
+                Offers Video → Inline Buttons (Add to bag + Share + Buy now)
+                → Quick Chat / Qty picker → Delivery info (pincode checker).
+                Sits directly below the "Get it for ₹XX" UPI banner; mt-6 adds
+                breathing room. Internal name: deliveryinfo. The qty state is
+                lifted up to ProductDetail so the StickyActionBar's "Add to bag"
+                button uses the same quantity picked here. When the product is
+                sold out (stock === 0), the qty picker is disabled. The inline
+                buttons (buttonsSlot) are passed in from ProductDetail so the
+                inlineButtonsRef stays attached for the StickyActionBar's
+                IntersectionObserver. */}
             <div className="mt-6">
-              <ProductInfoSections qty={qty} onQtyChange={setQty} soldOut={!product.stock || product.stock === 0} />
+              <ProductInfoSections
+                qty={qty}
+                onQtyChange={setQty}
+                soldOut={!product.stock || product.stock === 0}
+                buttonsSlot={
+                  <div id="inline-buy-now" ref={inlineButtonsRef}>
+                    {soldOut ? (
+                      <div className="w-full h-13 flex items-center justify-center bg-gray-300 text-gray-600 text-sm font-semibold uppercase tracking-wide">
+                        Sold Out
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {/* Row 1: Add to bag (more space — white bg, black text
+                            and border) + Share (rest of the space — white bg,
+                            black icon + label, no border). */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleAdd}
+                            className={cn(
+                              'flex-[2] h-13 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-wide transition-colors',
+                              added
+                                ? 'bg-emerald-600 text-white border border-emerald-600'
+                                : 'bg-white text-black border border-black hover:bg-gray-50'
+                            )}
+                          >
+                            {added ? (
+                              <>
+                                <Check className="h-4 w-4" /> Added to bag
+                              </>
+                            ) : (
+                              <>
+                                <BagIcon className="h-4 w-4" /> Add to bag
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={handleShare}
+                            className="flex-1 h-13 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-wide bg-white text-black hover:bg-gray-50 transition-colors"
+                          >
+                            <Share2 className="h-4 w-4" /> Share
+                          </button>
+                        </div>
+                        {/* Row 2: Buy now — full width, #f9758d */}
+                        <button
+                          onClick={buyNow}
+                          className="w-full h-13 flex items-center justify-center text-white text-sm font-semibold uppercase tracking-wide hover:shadow-lg transition-colors"
+                          style={{ backgroundColor: '#f9758d' }}
+                        >
+                          Buy now
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                }
+              />
             </div>
 
             {/* SLOT: product-after-price */}
@@ -319,48 +402,11 @@ export function ProductDetail({ productId }: { productId: string }) {
             {/* SLOT: product-after-pincode (was PincodeChecker, now just a slot) */}
             <ProductCustomSlot slot="product-after-pincode" />
 
-            {/* SLOT: product-after-buttons (inline buttons removed — sticky bar handles add/buy) */}
+            {/* SLOT: product-after-buttons — inline buttons now live inside
+                ProductInfoSections (between OffersVideo and QuickChat), but
+                this slot still renders here for legacy custom content
+                targeted at "after Add to bag / Buy now". */}
             <ProductCustomSlot slot="product-after-buttons" />
-
-            {/* Inline Add to Bag + Buy Now buttons — these sit naturally
-                in the page flow. The sticky bar at the bottom only appears
-                when these buttons are scrolled out of view (via
-                IntersectionObserver). Both the inline buttons and the
-                sticky bar use the same handlers (handleAdd + buyNow) so
-                they're functionally identical. */}
-            <div id="inline-buy-now" ref={inlineButtonsRef} className="mt-6">
-              {soldOut ? (
-                <div className="w-full h-13 flex items-center justify-center bg-gray-300 text-gray-600 text-sm font-semibold uppercase tracking-wide">
-                  Sold Out
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleAdd}
-                    className={cn(
-                      'flex-1 h-13 flex items-center justify-center gap-2 text-sm font-semibold uppercase tracking-wide transition-colors',
-                      added ? 'bg-emerald-600 text-white' : 'bg-brand text-white hover:shadow-lg'
-                    )}
-                  >
-                    {added ? (
-                      <>
-                        <Check className="h-4 w-4" /> Added to bag
-                      </>
-                    ) : (
-                      <>
-                        <BagIcon className="h-4 w-4" /> Add to bag
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={buyNow}
-                    className="flex-1 h-13 flex items-center justify-center bg-foreground text-white text-sm font-semibold uppercase tracking-wide hover:shadow-lg transition-colors"
-                  >
-                    Buy now
-                  </button>
-                </div>
-              )}
-            </div>
 
             {/* Custom sections targeted to product page (legacy product-below-actions) */}
             <ProductCustomSections />
