@@ -790,13 +790,17 @@ function DeliveryInfo() {
 }
 
 /* ============================================================
-   COMBINED EXPORT — order: Offers Video → Buttons → Quick Chat/Qty → Delivery Info
+   COMBINED EXPORT — order: Quick Chat/Qty → Buttons → Offers Video → Delivery Info
 
-   The `buttonsSlot` is an optional React node (the inline Add to bag /
-   Buy now / Share buttons from product-detail.tsx) that gets rendered
-   BETWEEN OffersVideo and QuickChatSection. The caller is responsible
-   for keeping its own refs (e.g. inlineButtonsRef for StickyActionBar)
-   attached to whatever root element it passes in here.
+   The `buttonsSlot` is an optional React node (the inline Add to bag +
+   Share row, then the full-width Buy now button, from product-detail.tsx)
+   that gets rendered BETWEEN QuickChatSection and OffersVideo — i.e.
+   the qty picker / like / quick chat row sits ABOVE the Add to bag +
+   Share buttons, and the Offers video sits BELOW the Buy now button.
+
+   The caller is responsible for keeping its own refs (e.g.
+   inlineButtonsRef for StickyActionBar) attached to whatever root
+   element it passes in here.
 ============================================================ */
 
 export function ProductInfoSections({
@@ -812,9 +816,9 @@ export function ProductInfoSections({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-      <OffersVideo />
-      {buttonsSlot}
       <QuickChatSection qty={qty} onQtyChange={onQtyChange} soldOut={soldOut} />
+      {buttonsSlot}
+      <OffersVideo />
       <DeliveryInfo />
     </div>
   )
