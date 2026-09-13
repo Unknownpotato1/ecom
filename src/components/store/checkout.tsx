@@ -1356,6 +1356,44 @@ export function Checkout() {
                 </>
               )}
             </Button>
+
+            {/* Secure checkout badge — below Place Order button.
+                Lock icon (inline SVG, matching the user-provided spec) +
+                "Guaranteed safe & secure checkout" text + Cashfree logo.
+                Served from /public/cashfree-logo.jpg (downloaded on-origin
+                so no external GitHub dependency). Shown only on the
+                checkout page. */}
+            <div className="mt-3 flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="h-4 w-4"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"
+                  />
+                </svg>
+                <span>Guaranteed safe &amp; secure checkout</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span>Powered by</span>
+                <img
+                  src="/cashfree-logo.jpg"
+                  alt="Cashfree"
+                  className="h-3 w-auto object-contain"
+                  draggable={false}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </aside>
       </div>
