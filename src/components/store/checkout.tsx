@@ -212,10 +212,27 @@ export function Checkout() {
     const loadingToast = toast.loading('Verifying your payment...')
 
     // Verify the payment with Cashfree (with retries, since the payment
-    // status may take a few seconds to update after the redirect-back)
-    const verifyWithRetry = async (): Promise<boolean> => {
+    // status may take a few seconds to update after the redirect-back).
+    //
+    // Returns an object with:
+    //   - verified: true if orderStatus === 'PAID'
+    //   - orderStatus: the raw Cashfree order_status (PAID, ACTIVE, EXPIRED, etc.)
+    //   - networkError: true if we couldn't reach Cashfree's API at all
+    //
+    // This distinction is critical: if the user CANCELED the payment on
+    // the Cashfree page, Cashfree redirects them back with cf_order_id
+    // in the URL — but the order status will be ACTIVE or EXPIRED, NOT
+    // PAID. We must NOT create an order in that case.
+    const verifyWithRetry = async (): Promise<{
+      verified: boolean
+      orderStatus: string | null
+      networkError: boolean
+    }> => {
       const MAX_RETRIES = 6
       const RETRY_DELAY_MS = 2000
+
+      let lastOrderStatus: string | null = null
+      let hadNetworkError = false
 
       for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
         try {
@@ -225,32 +242,43 @@ export function Checkout() {
             body: JSON.stringify({ orderId: cfOrderId }),
           })
           const verifyData = await verifyRes.json()
+          lastOrderStatus = verifyData.orderStatus || null
+
           if (verifyData.verified) {
-            return true
+            return { verified: true, orderStatus: lastOrderStatus, networkError: false }
+          }
+          // If Cashfree explicitly tells us the order is EXPIRED or
+          // still ACTIVE after all retries, the payment was NOT made —
+          // stop retrying early, the user canceled or didn't pay.
+          // (For ACTIVE, we keep retrying in case the payment is still
+          // processing — only short-circuit on EXPIRED.)
+          if (verifyData.orderStatus === 'EXPIRED') {
+            return { verified: false, orderStatus: 'EXPIRED', networkError: false }
           }
           if (attempt < MAX_RETRIES) {
             await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
           }
         } catch {
+          hadNetworkError = true
           if (attempt < MAX_RETRIES) {
             await new Promise((r) => setTimeout(r, RETRY_DELAY_MS))
           }
         }
       }
-      return false
+      return {
+        verified: false,
+        orderStatus: lastOrderStatus,
+        networkError: hadNetworkError,
+      }
     }
 
     const completeOrder = async () => {
-      const success = await verifyWithRetry()
+      const result = await verifyWithRetry()
       toast.dismiss(loadingToast)
 
-      if (success) {
-        // Payment verified — create the order record
+      if (result.verified) {
+        // Payment verified (orderStatus === 'PAID') — create the order record
         try {
-          // Temporarily set the form + items from the pending data so
-          // createOrderRecord uses the correct values. We call the API
-          // directly instead of using createOrderRecord to avoid state
-          // timing issues after a full page redirect.
           const orderRes = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -315,10 +343,16 @@ export function Checkout() {
           setPlacing(false)
           setCfProcessing(false)
         }
-      } else {
-        // Verification timed out — but the user was redirected back,
-        // which means Cashfree completed the flow. Proceed with order
-        // creation anyway (better than leaving them stuck after paying).
+      } else if (result.networkError && !result.orderStatus) {
+        // Genuine network error — we couldn't reach Cashfree's API at all
+        // and never got an order status. This is the ONLY case where we
+        // fall back to creating the order anyway, because the user was
+        // redirected back by Cashfree (meaning the flow ran) and we can't
+        // tell if the payment succeeded or not. Better to risk a
+        // duplicate order than to leave a paying customer stuck.
+        // (This branch is intentionally rare — it only fires when every
+        // retry failed with a network exception, NOT when Cashfree
+        // returned a clear ACTIVE/EXPIRED status.)
         try {
           const orderRes = await fetch('/api/orders', {
             method: 'POST',
@@ -356,13 +390,6 @@ export function Checkout() {
                 body: JSON.stringify({ id: pending.discountCode, incrementUsage: true }),
               }).catch(() => {})
             }
-            // Fire Purchase event for Meta Pixel (Cashfree timeout fallback
-            // path). The payment verification timed out, but the user was
-            // redirected back by Cashfree (meaning the flow completed) and
-            // the order was successfully created. We fire Purchase here
-            // with the order number as event_id for deduplication — if the
-            // verified path somehow also fired (it shouldn't in this branch,
-            // but defensively), Meta deduplicates by event_id.
             trackPurchase({
               total: data.order.total,
               orderId: data.order.orderNumber,
@@ -383,6 +410,20 @@ export function Checkout() {
           toast.error('Order creation error. Please contact support.')
           setPlacing(false)
           setCfProcessing(false)
+        }
+      } else {
+        // Cashfree told us the payment was NOT made (orderStatus is
+        // ACTIVE or EXPIRED, not PAID) and there was no network error.
+        // The user canceled the payment on the Cashfree page or the
+        // payment failed. Do NOT create an order. Restore the checkout
+        // so the customer can try again.
+        sessionStorage.removeItem('cf_pending_order')
+        setPlacing(false)
+        setCfProcessing(false)
+        if (result.orderStatus === 'EXPIRED') {
+          toast.error('Payment session expired. Please place your order again.')
+        } else {
+          toast.error('Payment was not completed. Your order was not placed.')
         }
       }
 
