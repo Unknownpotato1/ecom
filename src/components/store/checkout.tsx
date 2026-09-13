@@ -88,7 +88,12 @@ export function Checkout() {
   // model — FS2 overrides the ENTIRE total, not just a discount amount.
   const isFS2 = appliedPromo?.code === 'FS2'
 
-  const prepaidExtraDiscount = isFS2 ? 0 : (payment === 'prepaid' ? Math.round((sub - promoDiscount) * 0.10) : 0)
+  // Prepaid extra discount: 10% of the ORIGINAL subtotal (not the
+  // promo-discounted subtotal). This makes promo codes + prepaid
+  // discount stack on the original price — e.g. WELCOME10 (10% off)
+  // + prepaid (10% off) = 20% off original, not 10% + 10% of the
+  // remaining. So ₹499 → ₹399 (not ₹404).
+  const prepaidExtraDiscount = isFS2 ? 0 : (payment === 'prepaid' ? Math.round(sub * 0.10) : 0)
   const discount = isFS2 ? Math.max(0, sub - 2) : promoDiscount + prepaidExtraDiscount
   const FREE_SHIPPING_THRESHOLD = 249
   const shipping = isFS2 ? 0 : (sub - discount >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99)
@@ -97,10 +102,11 @@ export function Checkout() {
   const codRemaining = isFS2 ? 0 : Math.max(0, total - codPartial)
 
   // The extra amount the customer would save by switching from COD to
-  // prepaid (10% of the post-promo subtotal). Used to display a concrete
-  // ₹ saving amount on the COD→prepaid slide-in card. When FS2 is applied,
-  // there's no extra prepaid saving (the price is already ₹2 flat).
-  const onlineSaving = isFS2 ? 0 : Math.round((sub - promoDiscount) * 0.10)
+  // prepaid (10% of the ORIGINAL subtotal, same as prepaidExtraDiscount).
+  // Used to display a concrete ₹ saving amount on the COD→prepaid slide-in
+  // card. When FS2 is applied, there's no extra prepaid saving (the price
+  // is already ₹2 flat).
+  const onlineSaving = isFS2 ? 0 : Math.round(sub * 0.10)
 
   // ── Abandoned checkout tracking ──────────────────────────────────
   // Save the checkout form to the server whenever the customer types
@@ -580,8 +586,10 @@ export function Checkout() {
     }
 
     // Normal prepaid flow — recompute totals with the prepaid extra 10%
-    // discount included.
-    const prepaidExtra = Math.round((sub - promoDiscount) * 0.10)
+    // discount included. The prepaid extra is 10% of the ORIGINAL subtotal
+    // (not the promo-discounted subtotal) so promo codes + prepaid stack
+    // on the original price (e.g. WELCOME10 + prepaid = 20% off original).
+    const prepaidExtra = Math.round(sub * 0.10)
     const prepaidDiscountTotal = promoDiscount + prepaidExtra
     const prepaidShipping =
       sub - prepaidDiscountTotal >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
@@ -893,8 +901,11 @@ export function Checkout() {
       return
     }
 
-    // Normal prepaid flow — recompute totals with the prepaid extra 10% discount.
-    const prepaidExtra = Math.round((sub - promoDiscount) * 0.10)
+    // Normal prepaid flow — recompute totals with the prepaid extra 10%
+    // discount. The prepaid extra is 10% of the ORIGINAL subtotal (not the
+    // promo-discounted subtotal) so promo codes + prepaid stack on the
+    // original price (e.g. WELCOME10 + prepaid = 20% off original).
+    const prepaidExtra = Math.round(sub * 0.10)
     const prepaidDiscountTotal = promoDiscount + prepaidExtra
     const prepaidShipping =
       sub - prepaidDiscountTotal >= FREE_SHIPPING_THRESHOLD || sub === 0 ? 0 : 99
