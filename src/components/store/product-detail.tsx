@@ -460,10 +460,6 @@ export function ProductDetail({ productId }: { productId: string }) {
                 {tab === 'description' && (
                   <div className="space-y-3 text-muted-foreground leading-relaxed">
                     <p>{product.longDescription || 'No description available.'}</p>
-                    <p>
-                      Every Eviola hamper is hand-packed in our Bengaluru studio. We use recyclable kraft boxes,
-                      satin ribbons, and a handwritten note card so your gift feels as thoughtful as it looks.
-                    </p>
                   </div>
                 )}
                 {tab === 'specifications' && (
